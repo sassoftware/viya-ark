@@ -1,0 +1,234 @@
+####################################################################
+#### viya-services-stop.yml                                     ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+---
+- hosts: sas-all
+  become: yes
+  become_user: root
+  gather_facts: false
+  vars_files:
+    - viya-services-vars.yml
+
+  tasks:
+    - name: Check any SAS processes running
+      shell: "{{sasps_cmd}}"
+      register: psflag
+      ignore_errors: true
+      check_mode: no
+      changed_when: false
+
+    - set_fact:
+        deployhostnum: "{{groups['sas-all'] | length }}"
+        check_mode: no
+
+- hosts: sas-all
+  become: yes
+  become_user: root
+  gather_facts: false
+  vars_files:
+    - viya-services-vars.yml
+  tasks:
+
+    - block:
+
+      - name: Find all SAS services
+        shell: "{{list_services_cmd}}"
+        changed_when: false
+        register: service_list_full
+
+      - name: Convert results to ansible variable
+        set_fact:
+          services_list: "{{ service_list_full.stdout_lines }}"
+
+      - name: Stop Microservices
+        any_errors_fatal: true
+        service:
+          name: "{{item}}"
+          state: stopped
+        with_items:
+          - "{{services_list}}"
+        when: deployhostnum | int != 1
+
+      - name: Stop all services on a single machine deployment
+        any_errors_fatal: true
+        shell: /etc/init.d/sas-viya-all-services stop
+        when: deployhostnum | int == 1
+
+      any_errors_fatal: true
+      when: psflag.stdout != "" and not ansible_check_mode
+
+- hosts: httpproxy
+  become: yes
+  become_user: root
+  gather_facts: false
+  tasks:
+    - name: Stop SAS HTTP proxy service
+      any_errors_fatal: true
+      service:
+        name: sas-viya-httpproxy-default
+        state: stopped
+      when: psflag.stdout != "" and deployhostnum | int != 1
+
+- hosts: sas-casserver-primary
+  become: yes
+  become_user: root
+  gather_facts: false
+  tasks:
+    - name: Stop CAS server
+      any_errors_fatal: true
+      service:
+        name: sas-viya-cascontroller-default
+        state: stopped
+      when: psflag.stdout != "" and deployhostnum | int != 1
+
+- hosts: pgpoolc
+  become: yes
+  become_user: root
+  vars_files:
+    - ../../../vars.yml
+  tasks:
+    - name: Stop SAS Infrastructure Data Server
+      any_errors_fatal: true
+      service:
+        name: "sas-viya-sasdatasvrc-{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME'] }}{{item}}"
+        state: stopped
+      with_items:
+        - ''
+        - '-pgpool0-ct-pool_hba'
+        - '-pgpool0-ct-pgpool'
+        - '-pgpool0-ct-pcp'
+      when: psflag.stdout != "" and deployhostnum | int != 1
+
+- hosts: sasdatasvrc
+  become: yes
+  become_user: root
+  vars_files:
+    - ../../../vars.yml
+  tasks:
+    - block:
+      - name: Stop SAS Infrastructure Data Server Consul Template
+        any_errors_fatal: true
+        service:
+          name: "sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-postgresql"
+          state: stopped
+        with_items:
+          - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
+
+      - name: Stop SAS Infrastructure Data Server Consul Template
+        any_errors_fatal: true
+        service:
+          name: "sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-pg_hba"
+          state: stopped
+        with_items:
+          - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
+
+      when: psflag.stdout != "" and deployhostnum | int != 1
+
+- hosts: rabbitmq
+  become: yes
+  become_user: root
+  gather_facts: false
+  tasks:
+    - name: Stop SAS Message Broker RabbitMQ
+      any_errors_fatal: true
+      service:
+        name: sas-viya-rabbitmq-server-default
+        state: stopped
+      when: psflag.stdout != "" and deployhostnum | int != 1
+
+- hosts: sas-all:!consul
+  become: yes
+  become_user: root
+  gather_facts: false
+  tasks:
+    - name: Stop SAS Configuration consul Agent(s)
+      any_errors_fatal: true
+      service:
+        name: sas-viya-consul-default
+        state: stopped
+      when: psflag.stdout != "" and deployhostnum | int != 1
+
+- hosts: consul
+  become: yes
+  become_user: root
+  gather_facts: false
+  tasks:
+    - name: Stop SAS Secret Manager - vault
+      any_errors_fatal: true
+      service:
+        name: sas-viya-vault-default
+        state: stopped
+      when: psflag.stdout != "" and deployhostnum | int != 1
+
+    - name: Stop SAS Configuration consul Server(s)
+      any_errors_fatal: true
+      service:
+        name: sas-viya-consul-default
+        state: stopped
+      when: psflag.stdout != "" and deployhostnum | int != 1
+
+- hosts: ComputeServer
+  become: yes
+  become_user: root
+  gather_facts: false
+  tasks:
+    - block:
+
+      - name: Check compsrv child processes
+        shell: ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/'| grep -v grep| awk '{print $2}'
+        register: cleancompsrv
+        check_mode: no
+      - name: Clean up compsrv child processes
+        shell: "kill -KILL {{item}}"
+        ignore_errors: true
+        with_items: "{{cleancompsrv.stdout_lines|list}}"
+        when: not ansible_check_mode
+
+      when: psflag.stdout != ""
+
+- hosts: sas-all
+  become: yes
+  become_user: root
+  gather_facts: false
+  vars_files:
+    - viya-services-vars.yml
+  tasks:
+    - debug: msg="All Viya processes have been stopped" 
+      when: psflag.stdout == ""
+      check_mode: no
+
+    - block:
+      - name: Capture stray processes
+        shell: ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep -v grep|awk '{print}'
+        register: stray_processes
+        changed_when: false
+        check_mode: no
+
+      - name: Display stray processes
+        debug:
+          msg:
+            - "Please examine the following stray process(es)"
+            - "If enable_stray_cleanup=true, it will be cleaned up automatically"
+            - "This playbook can be rerun to clean up the child procsses"
+            - "{{stray_processes.stdout_lines}}"
+        failed_when: stray_processes.stdout != '' and not ansible_check_mode
+        when: (stray_processes.stdout != '') and (enable_stray_cleanup|bool != true)
+
+      - name: Clean up stray processes if enabled
+        shell: "kill -KILL {{item.split()[1]}}"
+        when: (enable_stray_cleanup|bool == true) and (stray_processes.stdout != '')
+        check_mode: no
+        any_errors_fatal: true
+        with_items: "{{stray_processes.stdout_lines}}"
+
+      - name: Display cleanup stray processes
+        debug:
+          msg:
+            - "The following stray processes have been cleaned up"
+            - "{{stray_processes.stdout_lines}}"
+        check_mode: no
+        when: (stray_processes.stdout != '') and (enable_stray_cleanup|bool == true)
+
+      when: psflag.stdout != ""

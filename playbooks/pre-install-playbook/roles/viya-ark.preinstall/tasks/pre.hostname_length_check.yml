@@ -1,0 +1,65 @@
+---
+####################################################################
+## Hostname Length Check
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags hostname_length_check -e use_pause=0 -e max_hostname_length=64
+#   make it fail
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags hostname_length_check -e use_pause=0 -e max_hostname_length=2
+
+- block:
+  ## hostname block
+  - name: Capture the length of the hostname
+    shell: "hostname  | wc -c"
+    changed_when: False
+    check_mode: no
+    register: hostname_length
+
+  - name: Show the hostname length
+    debug: var=hostname_length.stdout
+  - name: Show the maximum desired hostname length
+    debug: var=max_hostname_length
+
+  - name: "Assert that hostname is not too long (less than {{max_hostname_length}} characters"
+    assert:
+      that:
+        - (hostname_length.stdout | int) <= (max_hostname_length | int)
+      msg: |
+        The hostname is too long.
+        Yours is {{hostname_length.stdout | int}} characters long. It should be {{max_hostname_length}} characters or less.
+        Add --skip-tags skipnamelengthfail to bypass.
+    tags:
+      - skipnamelengthfail
+
+    ## if hostname and hostname -f don't return the same thing, rabbit causes issues.
+  - name: Get the value of hostname
+    shell: "hostname"
+    changed_when: False
+    check_mode: no
+    register: normal_hostname
+
+  - name: Get the value of hostname -f
+    shell: "hostname -f"
+    changed_when: False
+    check_mode: no
+    register: full_hostname
+
+  - name: "Assert that <hostname -f> contains at least one dot"
+    assert:
+      that:
+        -  "'.' in (full_hostname.stdout)"
+      msg: |
+        Your fully qualified hostname value ({{full_hostname.stdout}}) does not contain a dot.
+        So, it does not really look fully qualified.
+        This will likely make rabbitmq unhappy. (because it uses long-form names to communicate between members of the cluster).
+        Add --skip-tags skipnamematchfail to bypass.
+    tags:
+      - skipnamematchfail
+
+
+  ## end of hostname block
+  tags:
+    - hostname_length_check
+    - hostname
+    - detectableonly

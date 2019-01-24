@@ -1,0 +1,24 @@
+---
+
+########################################################################
+## Change the Maximum Number of OS Tasks (SUSE Linux Only).
+## Revise the maximum number of OS tasks each user can run concurrently
+########################################################################
+
+- block:
+
+  - name: Configure max number of OS tasks on Suse
+    check_mode: no
+    lineinfile:
+      path: /etc/systemd/logind.conf
+      regexp: '.*UserTasks.*'
+      line: 'UserTasksMax={{suse_max_os_tasks}}'
+
+  - name: Restart systemd-logind
+    check_mode: no
+    shell: "systemctl restart systemd-logind"
+
+  when: ansible_os_family == suse_os_name
+
+  tags:
+    - max_tasks_config

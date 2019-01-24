@@ -1,0 +1,49 @@
+---
+####################################################################
+## CPU Check
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml --tags cpu_check -e "use_pause=0" -e "min_cores_num=1"
+#   make it fail
+#     ansible-playbook viya_pre_install_playbook.yml --tags cpu_check -e "use_pause=0" -e "min_cores_num=100"
+
+- block:
+  - name: Querying CPUs
+    setup:
+      filter: "ansible_processor*"
+    register: processors
+  - name: Show the processor information gathered by Ansible
+    debug: var=processors.ansible_facts
+
+  - name: Querying detailed CPU info from /proc/cpuinfo
+    shell: "cat /proc/cpuinfo"
+    changed_when: False
+    check_mode: no
+    register: detailedcpuinfo
+  - name: Show the detailed cpu info from /proc/cpuinfo
+    debug: var=detailedcpuinfo.stdout_lines
+
+  - name: Querying number of CPU cores
+    shell: "{{core_count_command}}"
+    changed_when: False
+    check_mode: no
+    register: cpuinfo
+  - name: Show the number of CPU cores
+    debug: var=cpuinfo.stdout
+
+  - name: Assert that there are enough ({{min_cores_num}}) cores on the server
+    assert:
+      that:
+        - (cpuinfo.stdout | int) >= (min_cores_num | int)
+      msg: |
+        This server should have at least ({{min_cores_num}}) cores.
+        It only has {{(cpuinfo.stdout | int)}} core(s).
+        Add --skip-tags skipcoresfail to bypass.
+    tags:
+      - skipifbelowspecs
+      - skipcoresfail
+  ## block end
+  tags:
+    - cpu_check
+    - detectableonly

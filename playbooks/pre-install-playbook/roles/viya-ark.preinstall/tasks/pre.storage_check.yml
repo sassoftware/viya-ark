@@ -1,0 +1,95 @@
+---
+####################################################################
+## Storage Check
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml --tags storage -e "use_pause=0" --extra-vars '{"storage_list": {  "path": "/" , "min_storage_mb": 1 , "min_io": 1 } }'
+#   make it fail
+
+- block:
+  - name: Query the storage for all servers being used in deployment
+    setup:
+      filter: "*mount*"
+    register: mount
+  - name: Show the mountpoint information gathered by Ansible
+    debug: var=mount
+
+  - name: "Make sure all directories exist, create them if needed"
+    file:
+      path: "{{ item.path }}"
+      state: directory
+    with_items: "{{storage_list}}"
+
+  - name: "Get status for directories"
+    stat:
+      path: "{{ item.path }}"
+    register: "directories_exists"
+    with_items: "{{storage_list}}"
+
+  - name: Show the status of directories
+    debug: var=directories_exists
+
+  - name: "Assert that directories exist, fail if they don't"
+    assert:
+      that:
+        - item.stat.exists and (item.stat.isdir or item.stat.islnk)
+      msg: |
+        The directory {{item.item.path}} does not exist on this server.
+        Edit the storage_list variable if this is a mistake.
+        Or add --skip-tags skipstoragefail to bypass.
+    with_items:
+      - "{{directories_exists.results}}"
+    tags:
+      - skipifbelowspecs
+      - skipstoragefail
+
+  - name: Get the amount of free disk space (in MB) of each directory.
+    shell: df -Ph "{{ item.item.path }}" --block-size=M | tail -1 | awk '{print $4}' | sed 's/[^0-9]*\([0-9]\+\)[^0-9]*/\1/'
+    changed_when: False
+    check_mode: no
+    with_items:
+      - "{{directories_exists.results}}"
+    register: df_result
+  - name: Show the results of the df command
+    debug: var=df_result
+
+  - name: "Assert that directories have enough free space"
+    assert:
+      that:
+        - (item.stdout | int) >= (item.item.item.min_storage_mb | int)
+      msg: |
+        The directory {{item.item.item.path}} only has {{(item.stdout | int) / 1000}} GB of free space.
+        It should have at least {{(item.item.item.min_storage_mb | int) / 1000}} GB.
+        Edit the storage_list variable if this is a mistake.
+        Or add --skip-tags skipstoragefail to bypass.
+    with_items:
+      - "{{df_result.results}}"
+    tags:
+      - skipifbelowspecs
+      - skipstoragefail
+
+##
+## We need smarter checks:
+## that /opt/sas and / are not the same partition
+##
+## ...
+
+  - name: Get the device associated with all the directories.
+    shell: df "{{ item.path }}" | tail -1 | awk '{print $1}'
+    changed_when: False
+    check_mode: no
+    register: device_list
+    with_items: "{{storage_list}}"
+    tags:
+      - storagedev
+
+  - name: Show the device information
+    debug: var=device_list.results
+    tags:
+      - storagedev
+
+  ## end of block
+  tags:
+    - storage_check
+    - detectableonly

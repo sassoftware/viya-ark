@@ -1,0 +1,26 @@
+---
+- block:
+
+  - name: Change default timeouts in /etc/systemd/system.conf (1/2)
+    become: yes
+    become_user: root
+    lineinfile:
+      dest: /etc/systemd/system.conf
+      regexp: "^DefaultTimeoutStartSec"
+      line: "DefaultTimeoutStartSec={{DefaultTimeoutStartSec}}"
+      state: present
+      backup: yes
+
+  - name: Change default timeouts in /etc/systemd/system.conf (2/2)
+    become: yes
+    become_user: root
+    lineinfile:
+      dest: /etc/systemd/system.conf
+      regexp: "^DefaultTimeoutStopSec"
+      line: "DefaultTimeoutStopSec={{DefaultTimeoutStopSec}}"
+      state: present
+      backup: yes
+
+  when: ansible_distribution_major_version == '7'
+  tags:
+    - timeouts_config

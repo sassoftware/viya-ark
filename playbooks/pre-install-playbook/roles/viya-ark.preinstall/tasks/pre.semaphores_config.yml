@@ -1,0 +1,14 @@
+---
+- block:
+  - name: "Configure systemctl params for semaphores in /etc/sysctl"
+    become: yes
+    become_user: root
+    sysctl:
+      name: "{{item.name}}"
+      value: "{{item.value}}"
+      state: present
+      sysctl_set: yes
+    with_items:
+      - "{{semaphores}}"
+  tags:
+    - semaphores_config

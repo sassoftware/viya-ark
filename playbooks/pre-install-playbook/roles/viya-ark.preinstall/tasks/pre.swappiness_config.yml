@@ -1,0 +1,12 @@
+---
+- block:
+  - name: "Set swappiness to {{swappiness}} in /etc/sysctl.conf"
+    become: yes
+    become_user: root
+    sysctl:
+      name: vm.swappiness
+      value: "{{swappiness}}"
+      state: present
+      sysctl_set: yes
+  tags:
+    - swappiness_config

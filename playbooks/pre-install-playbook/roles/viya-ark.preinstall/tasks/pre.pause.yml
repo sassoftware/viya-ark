@@ -1,0 +1,9 @@
+---
+
+- name: "WARNING: If you are running this playbook without the --check parameter, it WILL perform changes to your systems."
+  pause:
+    seconds: 60
+    prompt: "Press 'ctl+c' and then 'A' to abort the process. The playbook will continue after 60 seconds"
+  when: (ansible_check_mode == False) and (use_pause == True)
+  tags:
+    - always

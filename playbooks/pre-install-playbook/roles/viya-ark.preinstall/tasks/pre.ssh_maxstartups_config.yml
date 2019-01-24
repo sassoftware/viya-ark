@@ -1,0 +1,123 @@
+---
+####################################################################
+## SSH MaxStartups Config
+####################################################################
+## read more about SSH maxstartups at:
+## https://stackoverflow.com/questions/4812134/in-sshd-configuration-what-is-maxstartups-103060-means
+
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags ssh_maxstartups_config -e use_pause=0
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags ssh_maxstartups_config -e use_pause=0 -e maxstartups_val=500
+#   make it fail
+#
+
+- block:
+  ## block start
+
+  - name: Get current full SSH maxstartups settings
+    shell: "sshd -T | grep maxstartups"
+    changed_when: False
+    register: cur_maxstartups_settings
+
+  - name: Show current full SSH maxstartups settings
+    debug:
+      var: cur_maxstartups_settings.stdout
+
+  - name: Capture current SSH maxstartups value (third one)
+    shell: "sshd -T | grep maxstartups | awk -F'[: ]' '{print $4}'"
+    changed_when: False
+    check_mode: no
+    register: cur_maxstartups_3
+
+  - name: Show the current value for sshd MaxStartups
+    debug: var=cur_maxstartups_3.stdout
+
+  ## case 1: current value is bigger, we leave as-is
+  - block:
+    - name: Display information about SSH when we leave the value of MaxStartups unchanged
+      debug:
+        msg:
+          - "Your current maxstartups value ({{cur_maxstartups_3.stdout}}) is larger than or equal to the desired maxstartups value ({{maxstartups_val}}) "
+          - " We won't udpate the SSH maxstartups value"
+    when: cur_maxstartups_3 is defined and ((cur_maxstartups_3.stdout | int) >= maxstartups_val|int)
+
+  ## case 2: current value is smaller, we update
+  - block:
+    - name: Display information about SSH when we have to update the value of MaxStartups
+      debug:
+        msg:
+          - "Your current maxstartups value ({{cur_maxstartups_3.stdout}}) is smaller than the desired maxstartups value ({{maxstartups_val}})"
+
+    - name: Capture current SSH maxstartups value (first one)
+      shell: "sshd -T | grep maxstartups | awk -F'[: ]' '{print $2}'"
+      changed_when: False
+      check_mode: no
+      register: cur_maxstartups_1
+
+    - name: Capture current SSH maxstartups value (second one)
+      shell: "sshd -T | grep maxstartups | awk -F'[: ]' '{print $3}'"
+      changed_when: False
+      check_mode: no
+      register: cur_maxstartups_2
+
+    - name: Build the new line to be added to the sshd_config
+      set_fact:
+        newsshline: "{% if cur_maxstartups_1.stdout=='' or cur_maxstartups_2.stdout=='' %}MaxStartups {{maxstartups_val}}{% else %}MaxStartups {{cur_maxstartups_1.stdout}}:{{cur_maxstartups_2.stdout}}:{{maxstartups_val}}{% endif %}"
+
+    - name: Display the new line to be added to the sshd_config file
+      debug: var=newsshline
+
+    - name: Configure SSH with MaxStartups={{maxstartups_val}} in /etc/ssh/sshd_config
+      lineinfile:
+        dest=/etc/ssh/sshd_config
+        regexp="^MaxStartups"
+        line="{{newsshline}}"
+        state=present
+        backup=yes
+      register: sshd_config
+
+
+    ##
+    ## Re-run sshd -T to see if it executes successfully or complains,
+    ## in order to validate our change to sshd_config file did not break sshd settings
+    ##
+    - name: Run sshd -T to test for validity of /etc/ssh/sshd_config file after making our change
+      shell: "sshd -T"
+      changed_when: False
+      check_mode: no
+      register: sshd_validation_results
+      ignore_errors: true
+      when: sshd_config is defined
+
+    - name: Show results of sshd -T execution (return code)
+      debug:
+        msg:
+          #- "{{sshd_validation_results.stdout_lines}}"
+          - "{{sshd_validation_results.rc}}"
+      when: sshd_validation_results.rc is defined
+
+    - block:
+      - name: We restart the SSHD service
+        service:
+          name: sshd
+          state: restarted
+        when: sshd_config.changed
+      when: sshd_validation_results.rc is defined and sshd_validation_results.rc == 0
+
+    - name: Clarifying message in case of issue
+      assert:
+        that:
+          - sshd_validation_results.rc is defined and sshd_validation_results.rc == 0
+        msg: |
+          It seems that something went wrong with the file /etc/ssh/sshd_config.
+          You should review the MaxStartups line, and correct it.
+          Do NOT restart the sshd service until the command 'sshd -T' returns a clean output.
+      when: sshd_validation_results.rc is defined
+
+    when: cur_maxstartups_3 is defined and ((cur_maxstartups_3.stdout | int) < maxstartups_val|int)
+
+  ## block end
+  tags:
+    - ssh_maxstartups_config
+    - fixable

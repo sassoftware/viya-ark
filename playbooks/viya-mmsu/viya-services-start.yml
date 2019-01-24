@@ -1,0 +1,149 @@
+####################################################################
+#### viya-services-start.yml                                    ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+---
+- hosts: sas-all
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - viya-services-vars.yml
+  tasks:
+    - name: Check the accessibility of the hosts
+      wait_for_connection:
+        timeout: "{{host_connection_timer}}"
+
+- hosts: consul
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Start SAS Primary Consul Server
+      service:
+        name: sas-viya-consul-default
+        state: started
+    - name: Start SAS Secret Manager (Vault)
+      service:
+        name: sas-viya-vault-default
+        state: started
+
+- hosts: sas-all:!consul
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Start SAS Local Consul Servers
+      service:
+        name: sas-viya-consul-default
+        state: started
+
+- hosts: rabbitmq
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Start SAS Message Broker (RabbitMQ)
+      service:
+        name: sas-viya-rabbitmq-server-default
+        state: started
+
+- hosts: sasdatasvrc
+  become: yes
+  become_user: root
+  any_errors_fatal: true
+  vars_files:
+    - ../../../vars.yml
+  tasks:
+    - name: Start SAS Infrastructure Data Server Consul Template
+      service:
+        name: "sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-pg_hba"
+        state: started
+      with_items:
+        - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
+
+    - name: Start SAS Infrastructure Data Server Consul Template
+      service:
+        name: "sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-postgresql"
+        state: started
+      with_items:
+        - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
+
+- hosts: pgpoolc
+  become: yes
+  become_user: root
+  any_errors_fatal: true
+  vars_files:
+    - ../../../vars.yml
+  tasks:
+    - name: Start SAS Infrastructure Data Server
+      service:
+        name: "sas-viya-sasdatasvrc-{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME'] }}{{item}}"
+        state: started
+      with_items:
+        - '-pgpool0-ct-pcp'
+        - '-pgpool0-ct-pgpool'
+        - '-pgpool0-ct-pool_hba'
+        - ''
+
+- hosts: httpproxy
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Start SAS HTTP proxy
+      service:
+        name: sas-viya-httpproxy-default
+        state: started
+
+- hosts: sas-casserver-primary
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+
+  tasks:
+    - name: Start CAS servers
+      service:
+        name: sas-viya-cascontroller-default
+        state: started
+
+- hosts: consul,rabbitmq,httpproxy,pgpoolc,sasdatasvrc,sas-casserver-primary
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Start services on core servers which might take a while
+      shell: /etc/init.d/sas-viya-all-services start
+      register: svas1
+
+- hosts: sas-all:!consul:!rabbitmq:!httpproxy:!pgpoolc:!sasdatasvrc:!sas-casserver-primary
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Start all services which might take a while
+      shell: /etc/init.d/sas-viya-all-services start
+      register: svas2
+
+- hosts: sas-all
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - viya-services-vars.yml
+  tasks:
+    - name: Rerun start services if needed
+      shell: /etc/init.d/sas-viya-all-services start
+      when: not ansible_check_mode and ((svas1 is defined and svas1.stdout|search('Failed!')) or (svas2 is defined and svas2.stdout|search('Failed!')))
+      register: svasall
+      until: svasall.stdout.find('Failed!') == -1
+      retries: "{{svas_retry_count}}"
+      delay: "{{svas_delay_timer}}"

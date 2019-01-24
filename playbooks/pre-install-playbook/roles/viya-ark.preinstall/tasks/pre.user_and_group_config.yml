@@ -1,0 +1,224 @@
+---
+####################################################################
+## User and Group Config
+####################################################################
+# Test harness
+## group already exists with different gid
+#  ansible-playbook va_pre_install_playbook.yml --tags user_and_group_config -e "use_pause=0" --extra-vars '{"custom_group_list": {  "group": "root" , "gid":"2500"  }     }'
+## gid is already taken
+#  ansible-playbook va_pre_install_playbook.yml --tags user_and_group_config -e "use_pause=0" --extra-vars '{"custom_group_list": {  "group": "weirdname" , "gid":"0"  }     }'
+## user exists with alternative uid
+#  ansible-playbook va_pre_install_playbook.yml --tags user_and_group_config -e "use_pause=0" --extra-vars '{"custom_user_list": {  "name": "root" , "uid":"9999" , "group":"root" , "groups":"root" }     }'
+## uid is already taken
+#  ansible-playbook va_pre_install_playbook.yml --tags user_and_group_config -e "use_pause=0" --extra-vars '{"custom_user_list": {  "name": "notroot" , "uid":"0" , "group":"root" , "groups":"root" }     }'
+
+
+
+- block:
+  ## block start
+
+  ## Check if the groups exist, and if so, what its gid is
+  - name: Get the GID each group name
+    shell:  "getent group {{item.group}} | awk -F'[:]' '{print $3}' "
+    changed_when: False
+    check_mode: no
+    register: gather_gid
+    failed_when: no
+    with_items:
+      - "{{ custom_group_list }}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - group
+  - name: display the group
+    debug: var=gather_gid
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - group
+
+  - name: Assert that the groups either does not exist, or if it does, has the desired GID
+    any_errors_fatal: true
+    assert:
+      that:
+        - ( item.stdout == "" ) or (( item.stdout | int ) == ( item.item.gid | int))
+      msg: |
+        We looked for the group '{{item.item.group}}'. (getent group {{item.item.group}}).
+        We found that this group already exists and has a GID of {{item.stdout}}.
+        In your variables file, you stated that group '{{item.item.group}}' should have a GID of '{{item.item.gid}}'.
+        Therefore, we are not making any changes. You can do one of the following
+        - Review the content of the 'custom_group_list' variable to make it match your existing group(s).
+        - Add  -e 'create_local_cas_and_sas_accounts=false'   to the command so that it does not verify or create accounts.
+        - Add  --skip-tags user_and_group_config   to have ansible skip the entire section about users and groups.
+    with_items:
+      - "{{gather_gid.results}}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - group
+
+  ##
+  ## if we passed the previous check, we know that either:
+  ##
+  ##    * the group exists and has the right GID, or
+  ##    * the group does not exist at all
+  ##
+
+  ## Check if the groups exist, and if so, what its gid is
+  - name: Get the group from the GID
+    shell:  "getent group {{item.gid}} | awk -F'[:]' '{print $1}' "
+    changed_when: False
+    check_mode: no
+    register: gather_group
+    failed_when: no
+    with_items:
+      - "{{ custom_group_list }}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - group
+  - name: display the group
+    debug: var=gather_group
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - group
+
+  - name: Assert that the either the GID is not used, or if used, it's used for the right group
+    any_errors_fatal: true
+    assert:
+      that:
+        - ( item.stdout == "" ) or (( item.stdout ) == ( item.item.group ))
+      msg: |
+        We looked for the GID '{{item.item.gid}}'. (getent group {{item.item.gid}}).
+        We found that this GID is already assigned but to the group '{{item.stdout}}'.
+        In your variables file, you stated that group '{{item.item.group}}' should have a GID of '{{item.item.gid}}', but it seems to already belong to group '{{item.stdout}}'.
+        Therefore, we are not making any changes. You can do one of the following
+        - Review the content of the 'custom_group_list' variable to make it match your existing group(s).
+        - Add  -e 'create_local_cas_and_sas_accounts=false'   to the command so that it does not verify or create accounts.
+        - Add  --skip-tags user_and_group_config   to have ansible skip the entire section about users and groups.
+    with_items:
+      - "{{gather_group.results}}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - group
+
+  ##
+  ## if we got this far, it's safe to create/update the group.
+  ## let's create the group
+  ##
+  - name: Ensure groups are present
+    any_errors_fatal: true
+    group:
+      name: "{{ item.group }}"
+      gid: "{{item.gid}}"
+      state: present
+    with_items:
+      - "{{ custom_group_list }}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - group
+
+  ##
+  ## now we deal with the users.
+  ## make sure the user either does not exist, or if it does, it has the right UID.
+  ##
+  - name: Get the UID for each user
+    shell:  "getent passwd {{item.name}} | awk -F'[:]' '{print $3}' "
+    changed_when: False
+    check_mode: no
+    register: gather_uid
+    failed_when: no
+    with_items:
+      - "{{ custom_user_list }}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - users
+  - name: display the uid
+    debug: var=gather_uid
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - users
+
+  - name: Assert that the user either does not exist, or if it does, has the desired UID
+    any_errors_fatal: true
+    assert:
+      that:
+        - ( item.stdout == "" ) or (( item.stdout | int ) == ( item.item.uid | int))
+      msg: |
+        We looked for the user '{{item.item.name}}'. (getent passwd {{item.item.name}}).
+        We found that this user already exists and has a UID of {{item.stdout}}.
+        In your variables file, you stated that user '{{item.item.name}}' should have a UID of '{{item.item.uid}}'.
+        Therefore, we are not making any changes. You can do one of the following.
+        - Review the content of the 'custom_user_list' variable to make it match your existing users(s).
+        - Add  -e 'create_local_cas_and_sas_accounts=false'   to the command so that it does not verify or create accounts.
+        - Add  --skip-tags user_and_group_config   to have ansible skip the entire section about users and groups.
+    with_items:
+      - "{{gather_uid.results}}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - users
+
+  ## Check if the user exist, and if so, what its gid is
+  - name: Get the user name from the wanted UIDs
+    shell:  "getent passwd {{item.uid}} | awk -F'[:]' '{print $1}' "
+    changed_when: False
+    check_mode: no
+    register: gather_name
+    failed_when: no
+    with_items:
+      - "{{ custom_user_list }}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - users
+  - name: display the user names
+    debug: var=gather_name
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - users
+
+  - name: Assert that the either the UID is not used, or if used, it's used for the right user name
+    any_errors_fatal: true
+    assert:
+      that:
+        - ( item.stdout == "" ) or (( item.stdout ) == ( item.item.name ))
+      msg: |
+        We looked for the UID '{{item.item.uid}}'. (getent group {{item.item.uid}}).
+        We found that this UID is already assigned but to the user '{{item.stdout}}'.
+        In your variables file, you stated that user '{{item.item.name}}' should have a UID of '{{item.item.uid}}', but it seems to already belong to '{{item.stdout}}'.
+        Therefore, we are not making any changes. You can do one of the following.
+        - Review the content of the 'custom_user_list' variable to make it match your existing user(s).
+        - Add  -e 'create_local_cas_and_sas_accounts=false'   to the command so that it does not verify or create accounts.
+        - Add  --skip-tags user_and_group_config   to have ansible skip the entire section about users and groups".
+    with_items:
+      - "{{gather_name.results}}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - users
+
+
+  - name: Ensure users are present
+    user:
+      name: "{{ item.name }}"
+      uid: "{{item.uid}}"
+      group: "{{ item.group }}"
+      groups: "{{ item.groups }}"
+      append: yes
+      state: present
+    with_items:
+       - "{{ custom_user_list }}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - users
+
+  - name: Ensure umask are correctly set for users
+    lineinfile:
+      dest: "/home/{{ item[0].name }}/.bashrc"
+      line: "{{ item[1] }}"
+      state: present
+      create: yes
+    with_nested:
+       - "{{ custom_user_list }}"
+       - [ "# Set umask to 0002 instead of the default 0022, so that the default permissions for files", "# created by this user grant write permission to members of this user's primary group", "umask {{umask_value}}" ]
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - users
+
+  ## block end
+  tags:
+    - user_and_group_config

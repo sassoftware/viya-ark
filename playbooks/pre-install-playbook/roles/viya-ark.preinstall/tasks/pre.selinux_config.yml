@@ -1,0 +1,66 @@
+---
+####################################################################
+## SELINUX Config
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml --tags selinux_config -e use_pause=0
+#   make it fail
+#
+
+- name: Check if SELinux config file exists (signifying SELinux is installed)
+  stat:
+    path: /etc/selinux/config
+  register: config_file
+  tags:
+    - prereq
+    - selinux_config
+
+- debug:
+    msg: "/etc/selinux/config doesn't exist."
+  when: not config_file.stat.exists
+  tags:
+    - prereq
+    - selinux_config
+
+- debug:
+    msg: "/etc/selinux/config exists."
+  when: config_file.stat.exists
+  tags:
+    - prereq
+    - selinux_config
+
+- block:
+  ## block start
+
+  - name: Disable SELinux (will only take effect after a reboot)
+    ## this could also be set to permissive
+    lineinfile:
+      dest=/etc/selinux/config
+      regexp="^SELINUX=.*"
+      line="SELINUX=permissive"
+      state=present
+      backup=yes
+    tags:
+      - prereq
+      - selinux
+
+  - name: Get selinux status
+    shell: /usr/sbin/getenforce
+    changed_when: False
+    check_mode: no
+    register: selinuxstatus
+    tags:
+      - prereq
+      - selinux
+
+  - name: Make SELinux permissive (in the current session) but only if it's currently enabled
+    shell: "setenforce 0"
+    when: selinuxstatus.stdout is defined and  selinuxstatus.stdout == 'Enforcing'
+    ignore_errors: yes
+
+  when: config_file.stat.exists
+  ## block end
+  tags:
+    - prereq
+    - selinux_config

@@ -1,0 +1,50 @@
+####################################################################
+#### viya-services-status.yml                                   ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+---
+- hosts: sas-all
+  become: yes
+  become_user: root
+  gather_facts: False
+  vars_files:
+    - viya-services-vars.yml
+  tasks:
+    - name: Capture all statuses from Consul
+      shell: /etc/init.d/sas-viya-all-services status
+      check_mode: no
+      changed_when: false
+      register: allservicesstatus
+
+    - name: Display the status from SAS Configuration Server (Consul)
+      debug: var=allservicesstatus.stdout_lines
+
+- hosts: httpproxy
+  become: yes
+  become_user: root
+  vars_files:
+    - viya-services-vars.yml
+
+  tasks:
+    - name: Get url_scraping_cmd command
+      set_fact:
+        url_scraping_cmd: "{{sles_url_scraping_cmd}}"
+      when: ansible_os_family == 'Suse'
+
+    - name: Get url_scraping_cmd command
+      set_fact:
+        url_scraping_cmd: "{{rhel_url_scraping_cmd}}"
+      when: ansible_os_family == 'RedHat'
+
+    - name: Capture URLs from the Apache HTTP Proxy
+      shell: "{{url_scraping_cmd}}"
+      check_mode: no
+      changed_when: false
+      register: url_list
+
+    - name: Display Viya URLs
+      debug:
+        msg:
+         - "Available Viya services URL listing:"
+         - "{{url_list.stdout_lines}}"

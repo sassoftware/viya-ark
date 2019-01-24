@@ -1,0 +1,9 @@
+####################################################################
+#### viya-services-restart.yml                                  ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+---
+- include: viya-services-stop.yml
+- include: viya-services-start.yml
+- include: viya-services-status.yml

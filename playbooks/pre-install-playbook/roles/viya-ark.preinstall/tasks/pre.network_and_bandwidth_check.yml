@@ -1,0 +1,126 @@
+---
+####################################################################
+## Network and Bandwidth Check
+####################################################################
+# Test harness
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml --tags network_and_bandwidth_check -e "use_pause=0" -e "max_num_priv_ips=10"
+#   make it fail
+#     ansible-playbook viya_pre_install_playbook.yml --tags network_and_bandwidth_check -e "use_pause=0" -e "max_num_priv_ips=0"
+
+- block:
+  ## block start
+
+  - name: "Count the number of private IPs (other than loopback)"
+    shell: "{{priv_ip_count_command}}"
+    changed_when: False
+    check_mode: no
+    register: num_priv_ips
+    tags:
+      - nics
+      - privips
+
+  - name: Show the number of private IPs found on the server
+    debug: var=num_priv_ips.stdout
+    tags:
+      - nics
+      - privips
+
+  - name: Assert that there only ({{max_num_priv_ips|int}}) IPs or less on the server
+    assert:
+      that:
+        - (num_priv_ips.stdout | int) <= (max_num_priv_ips | int)
+      msg: |
+        This server seems to have {{num_priv_ips.stdout|int}} IP addresses.
+        It should only have {{max_num_priv_ips|int}} at most.
+        This will require more work for Consul to successfully start.
+        Please read the Deployment guide and search for the reference to the following parameter: consul_bind_adapter=   
+        Add --skip-tags skipipsfail to suppress this failure and message.
+    tags:
+      - nics
+      - privips
+      - skipipsfail
+      - skipifbelowspecs
+      - skipnicssfail
+
+  - name: "Trying to hit the SAS yum repository "
+    shell: "curl -v -k https://{{item}}/"
+    changed_when: False
+    check_mode: no
+    register: curl_sas_yum
+    with_items: "{{sas_yum_urls}}"
+    failed_when: "('Connect' in curl_sas_yum.stderr and item in curl_sas_yum.stderr ) != true"
+    tags:
+      - yum_repo
+
+  ## Generic Speed Test of Connection to the Internet
+  - name: Bandwidth to the Internet Check - Download 100 MB file
+          - (the higher the better, otherwise downloading rpms will take long)
+    shell: "time curl -o /dev/null  http://speedtest.sea01.softlayer.com/downloads/test100.zip 2>&1 | tail"
+    check_mode: no
+    changed_when: False
+    register: time_speed_test
+    tags:
+      - bandwidth
+
+  - name: Display bandwidth test results
+    debug: var=time_speed_test.stdout_lines
+    tags:
+      - bandwidth
+
+  ## DNS and Addressing
+  - name: Hostname Ping check - (a server has to know itself by its hostname)
+    shell: 'ping `hostname` -c 1'
+    check_mode: no
+    changed_when: False
+    register: hostname_ping
+    tags:
+      - hostname
+
+  - name: Show the results of the self ping test
+    debug: var=hostname_ping.stdout_lines
+    tags:
+      - hostname
+
+  ## block end
+  tags:
+    - network_and_bandwidth_check
+    - detectableonly
+
+## DNS and Addressing
+- name: Various Hostname check
+        - (hostname ; hostname -s ; hostname -f ; hostname -i)
+  shell: "hostname ; hostname -s; hostname -f ; hostname -i"
+  check_mode: no
+  changed_when: False
+  register: various_hostname_test
+  ignore_errors: yes
+  tags:
+    - hostname
+
+- name: Show the result of 'hostname ; hostname -s ; hostname -f ; hostname -i'
+  debug: var=various_hostname_test.stdout_lines
+  tags:
+    - hostname
+    - extras
+
+####################################################################
+## Hostname checks
+####################################################################
+# Test harness
+
+## Check /etc/hosts
+- name: Check /etc/hosts
+  shell: "cat /etc/hosts"
+  check_mode: no
+  changed_when: False
+  register: etc_hosts
+  ignore_errors: yes
+  tags:
+    - hosts
+
+- name: Show the content of /etc/hosts
+  debug: var=etc_hosts.stdout_lines
+  tags:
+    - hosts
+    - extras

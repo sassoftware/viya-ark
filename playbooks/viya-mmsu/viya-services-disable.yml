@@ -1,0 +1,17 @@
+####################################################################
+#### viya-services-disable.yml                                  ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+---
+- hosts: sas-all
+  become: yes
+  become_user: root
+  gather_facts: False
+  any_errors_fatal: true
+
+  tasks:
+    - name: Disable SAS Viya all services from system reboot
+      service:
+        name: sas-viya-all-services
+        enabled: no

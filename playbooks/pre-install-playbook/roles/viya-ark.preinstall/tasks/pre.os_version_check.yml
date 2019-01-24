@@ -1,0 +1,58 @@
+---
+####################################################################
+## OS Version Check
+####################################################################
+# Test harness:
+## fail because not ubuntu
+##    ansible-playbook viya_pre_install_playbook.yml --tags os_version_check -e "use_pause=0" -e "redhat_os_name=ubuntu"
+## fail because neither 4 or 5
+##    ansible-playbook viya_pre_install_playbook.yml --tags os_version_check -e "use_pause=0" -e "os_major_version_1=4 os_major_version_2=5"
+## fail because not high enough within 6 or 7.
+##    ansible-playbook viya_pre_install_playbook.yml --tags os_version_check -e "use_pause=0" -e "os_major_version_1=6 os_major_version_2=7 os_major_minor_version_1=6.99 os_major_minor_version_2=7.99"
+
+- block:
+  - name: Ensure that the Operating System is supported for Viya
+    assert:
+      that:
+        # the OS is redhat or SUSE
+        - ansible_os_family == redhat_os_name or ansible_os_family == suse_os_name 
+      msg: |
+        The OS of this server is not supported.
+        Viya requires {{redhat_os_name}} {{os_major_version_1}} or {{os_major_version_2}}, (at least {{os_major_minor_version_1}} or {{os_major_minor_version_2}} ) or {{suse_os_name}} at least version {{suse_os_major_minor_version}}
+        You seem to have {{ansible_os_family}} {{ansible_distribution_version}}
+
+  - name: Ensure that the Operating System version is supported when on RedHat (this includes Oracle Linux)
+    assert:
+      that: 
+        # either 6 or 7
+        - ansible_distribution_major_version | version_compare(os_major_version_1, '==')
+          or
+          ansible_distribution_major_version | version_compare(os_major_version_2, '==')
+        # at least 6.7 if 6 or at least 7.1 if 7
+        - (ansible_distribution_major_version | version_compare(os_major_version_1, '==')
+          and
+          ansible_distribution_version | version_compare(os_major_minor_version_1, '>='))
+          or
+          (ansible_distribution_major_version | version_compare(os_major_version_2, '==')
+          and
+          ansible_distribution_version | version_compare(os_major_minor_version_2, '>='))
+      msg: |
+        The OS of this server is not supported.
+        Viya requires {{redhat_os_name}} {{os_major_version_1}} or {{os_major_version_2}}, (at least {{os_major_minor_version_1}} or {{os_major_minor_version_2}} )
+        You seem to have {{ansible_os_family}} {{ansible_distribution_version}}
+    when: ansible_os_family == redhat_os_name
+
+  - name: Ensure that the Operating System version is supported when on Suse
+    assert:
+      that:
+        # version is at least 12.2
+        - ansible_distribution_version | version_compare(suse_os_major_minor_version, '>=')
+      msg: |
+        The OS of this server is not supported.
+        Viya requires {{suse_os_name}} at least version {{suse_os_major_minor_version}}
+        You seem to have {{ansible_os_family}} {{ansible_distribution_version}}
+    when: ansible_os_family == suse_os_name
+
+  tags:
+  - os_version_check
+  - os_name_check

@@ -1,0 +1,54 @@
+---
+####################################################################
+## YUM Cache Config
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags yum_cache_config -e use_pause=0
+#   make it fail
+
+- block:
+  - name: Show message telling you that you wanted YUM cache 'on'
+    debug: msg="You want YUM cache enabled"
+
+  - name: Getting the amount of free disk space (in MB) in the /var/cache/yum directory.
+    shell: df -Ph /var/cache/yum  --block-size=M | tail -1 | awk '{print $4}' | sed 's/[^0-9]*\([0-9]\+\)[^0-9]*/\1/'
+    changed_when: False
+    check_mode: no
+    register: var_cache_yum_actual
+
+  - name: Show information about YUM cache storage
+    debug: msg="You have {{var_cache_yum_actual.stdout}} MB free in /var/cache/yum and you need {{yum_cache_min_space_mb}} MB free"
+
+
+  - name: "Assert that there is enough space for YUM cache"
+    assert:
+      that:
+        - var_cache_yum_actual.stdout | int > yum_cache_min_space_mb | int
+      msg: |
+        There is only {{var_cache_yum_actual.stdout | int}} MB available for YUM cache.
+        You need at least {{yum_cache_min_space_mb}} MB.
+        Either add more space or set the yum_cache_yn to 0.
+        Add --skip-tags skipyumspacefail to bypass.
+    tags:
+      - skipifbelowspecs
+      - skipyumspacefail
+
+  when:  ansible_os_family == redhat_os_name and yum_cache_yn | bool  == true
+  tags:
+    - yumcache
+    - detectableonly
+
+##
+## If the location of the YUM cache (/var/cache/yum) has the space for it (10-15 GB), set this to 1
+## If not, leave this to zero
+##
+- name: Enable/disable YUM caching ({{yum_cache_yn}})
+  lineinfile:
+    dest=/etc/yum.conf
+    regexp="^keepcache="
+    line="keepcache={{yum_cache_yn}}"
+  when: ansible_os_family == redhat_os_name and yum_cache_yn | bool  == true
+  tags:
+    - yum_cache_config
+    - fixable

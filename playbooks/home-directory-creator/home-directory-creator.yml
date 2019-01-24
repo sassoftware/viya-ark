@@ -1,0 +1,81 @@
+---
+- hosts: sas-all
+  become: yes
+  become_user: root
+
+  vars:
+    yum_packages_homedir:
+      - oddjob-mkhomedir
+    mkhomedir_script: /etc/pam.d/sasauth-mkhomedir.sh
+    sasauth_locations:
+      - /etc/pam.d/sasauth-spre
+      - /etc/pam.d/sasauth-viya
+      - /etc/pam.d/cas
+      - /etc/pam.d/sasauth
+
+  tasks:
+
+  - name: Ensures required packages are present
+    yum:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - "{{yum_packages_homedir}}"
+    tags:
+      - packages
+
+  - name: Ensure service is enabled and running
+    service:
+      name: oddjobd
+      enabled: yes
+      state: started
+    tags:
+      - service
+
+  - name: Ensure {{mkhomedir_script}} exists
+    copy:
+      dest: "{{mkhomedir_script}}"
+      content: |
+        #!/bin/sh
+        dbus-send --system --dest=com.redhat.oddjob_mkhomedir --print-reply / com.redhat.oddjob_mkhomedir.mkhomedirfor string:"$PAM_USER"
+      backup: yes
+      owner: root
+      group: root
+      mode: 0755
+    tags:
+      - script
+
+  - name: ensure the "auth" file exists
+    stat:
+      path: "{{item}}"
+    with_items:
+      - "{{sasauth_locations}}"
+    register: auth_list
+    tags:
+      - authfilemodif
+
+## commenting out the debugging info
+#  - debug: var=auth_list
+#    tags:
+#      - authfilemodif
+#  - debug: var=item
+#    with_items: "{{auth_list.results}}"
+#    tags:
+#      - authfilemodif
+#  - debug: var=item.stats.exists
+#    with_items: "{{auth_list.results}}"
+#    tags:
+#      - authfilemodif
+
+  - name: Update the auth file, if it exists
+    lineinfile:
+      dest: "{{item.item}}"
+      insertafter: EOF
+      regexp: "{{mkhomedir_script}}"
+      line: "account     optional    pam_exec.so {{mkhomedir_script}}"
+      state: present
+      backup: yes
+    with_items: "{{auth_list.results}}"
+    when: item.stat.exists == true
+    tags:
+      - authfilemodif

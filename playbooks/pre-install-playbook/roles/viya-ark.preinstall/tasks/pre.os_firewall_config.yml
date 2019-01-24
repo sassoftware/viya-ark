@@ -1,0 +1,68 @@
+---
+####################################################################
+## OS-level Firewall Config
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags network_and_bandwidth_check -e use_pause=0
+#   make it fail
+#
+
+- block:
+  ## block start
+
+  - name: Include OS Family specfic Firewall names
+    include_vars: "{{ item }}"
+    with_first_found:
+      - "{{ ansible_os_family }}.yml"
+      - default.yml
+
+  - name: Show OS Family specific Firewall names
+    debug:
+       var: "{{ item }}"
+    with_items:
+       - firewall_service_path
+       - firewall_service_name
+
+  ## on RHEL 7 & SUSE, we make sure that firewalld is disabled and stopped
+  - name: Check if Firewall exists
+    stat: path="{{ firewall_service_path }}"
+    register: firewall_status
+    tags:
+      - prereq
+      - firewall
+
+  - name: Disable firewalld (on RHEL 7) or SuSEfirewall2 on SUSE/SLES
+    service:
+      name="{{ firewall_service_name }}"
+      enabled=no
+      state=stopped
+    when: ((ansible_os_family == redhat_os_name and ansible_distribution_major_version == '7') or ansible_os_family == suse_os_name) and firewall_status.stat.exists
+    tags:
+      - prereq
+      - firewall
+
+  ## on RHEL 6, we deal with iptables and ip6tables
+  - name: Disable iptables (on RHEL 6)
+    service:
+      name=iptables
+      enabled=no
+      state=stopped
+    when: ansible_distribution_major_version == '6' and ansible_os_family == redhat_os_name
+    ignore_errors: yes
+    tags:
+      - prereq
+      - firewall
+
+  - name: Disable ip6tables (on RHEL 6)
+    service:
+      name=ip6tables
+      enabled=no
+      state=stopped
+    when: ansible_distribution_major_version == '6' and ansible_os_family == redhat_os_name
+    ignore_errors: yes
+
+   ## block end
+  tags:
+    - prereq
+    - os_firewall_config

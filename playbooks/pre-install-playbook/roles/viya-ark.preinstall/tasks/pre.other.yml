@@ -1,0 +1,28 @@
+---
+
+####################################################################
+## e-mailing the results (optional)
+####################################################################
+
+  - name: Sending the log file by e-mail
+    check_mode: no
+    local_action: mail
+      host="some_smtp_host"
+      port=25
+      subject="Ansible log file"
+      body="Hello, \n please find the Ansible log file attached. \n \n Sincerely,  Ansible. "
+      from="server@localhost"
+      to="{{admin_email}}"
+      attach="./deployment.log"
+    when: admin_email is defined
+    ignore_errors: yes
+    tags:
+      - mail
+
+
+# restricting ephemeral port range
+  # - name: "Ephemeral port range"
+  #   sysctl:
+  #     name: net.ipv4.ip_local_port_range
+  #     value: "50000 55000"
+  #     state: present

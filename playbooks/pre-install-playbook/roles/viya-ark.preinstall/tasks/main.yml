@@ -1,0 +1,22 @@
+---
+- include: pre.pause.yml
+- include: pre.os_version_check.yml
+- include: pre.third_party_check.yml
+- include: pre.memory_check.yml
+- include: pre.cpu_check.yml
+- include: pre.storage_check.yml
+- include: pre.hostname_length_check.yml
+- include: pre.yum_cache_config.yml
+- include: pre.required_packages_config.yml
+- include: pre.ssh_maxstartups_config.yml
+- include: pre.max_os_tasks_config.yml
+- include: pre.user_and_group_config.yml
+- include: pre.selinux_config.yml
+- include: pre.ulimit_config.yml
+- include: pre.os_firewall_config.yml
+- include: pre.ntp_config.yml
+- include: pre.network_and_bandwidth_check.yml
+- include: pre.timeouts_config.yml
+- include: pre.swappiness_config.yml
+- include: pre.semaphores_config.yml
+- include: pre.other.yml

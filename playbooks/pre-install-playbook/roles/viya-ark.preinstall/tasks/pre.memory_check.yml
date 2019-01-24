@@ -1,0 +1,40 @@
+---
+####################################################################
+## Memory Check
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -e "use_pause=0" --tags memory_check -e "min_mem_mb=1"
+#   make it fail
+#     ansible-playbook viya_pre_install_playbook.yml --tags memory_check -e "use_pause=0" -e "min_mem_mb=9999999"
+
+- block:
+  ## Display all the values:
+  - name: Query the Server Memory for all servers being used in deployment
+    setup:
+      filter: "*memory*"
+    register: memory
+
+  - name: Show all memory info gathered by Ansible
+    debug: var=memory
+
+  - name: Show total memory info
+    debug: msg="Total Memory is {{ ansible_memory_mb.real.total }} MB"
+  - name: Show free memory info
+    debug: msg="Free  Memory is {{ ansible_memory_mb.real.free }} MB"
+
+  - name: Assert that there is enough ({{(min_mem_mb|int)/1000}} GB) memory on the server
+    assert:
+      that:
+        - ( ansible_memory_mb.real.total | int ) >= ( min_mem_mb | int )
+      msg: |
+        This server should have at least {{(min_mem_mb | int) / 1000}} GB of total memory.
+        It only has {{( ansible_memory_mb.real.total | int) / 1000}} GB.
+        Add --skip-tags skipmemfail to bypass.
+    tags:
+      - skipifbelowspecs
+      - skipmemfail
+  ## block end
+  tags:
+    - memory_check
+    - detectableonly

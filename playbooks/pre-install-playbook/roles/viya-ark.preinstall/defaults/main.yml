@@ -1,0 +1,185 @@
+---
+## OS names and Minimum versions
+redhat_os_name: RedHat
+suse_os_name: Suse
+os_major_version_1: 7
+os_major_minor_version_1: 7.1
+os_major_version_2: 6
+os_major_minor_version_2: 6.7
+suse_os_major_version: 12
+suse_os_major_minor_version: 12.2
+
+## local users ##
+create_local_cas_and_sas_accounts: true
+cas_user: cas
+sas_user: sas
+sas_group: sas
+umask_value: "0002"
+custom_group_list:
+  - { group: "{{sas_group}}",       gid: 1001 }
+
+custom_user_list:
+  - { name: "{{sas_user}}" , uid: 1001 ,  group: "{{sas_group}}",  groups: "{{sas_group}}"}
+  - { name: "{{cas_user}}" , uid: 1002 ,  group: "{{sas_group}}",  groups: "{{sas_group}}"}
+
+## storage ##
+storage_list:
+  # update as needed.
+  - { path: /, min_storage_mb: 5000, min_io: 2}
+  - { path: /opt/sas, min_storage_mb: 40000, min_io: 2}
+
+  #
+  # this line can be added to check on another partition
+  #
+  #- { path: /sastmp, min_storage_mb: 4000, min_io: 99}
+  #
+
+## Minimum total Memory on each machine
+min_mem_mb: 80000
+
+## Minimum number of cores on each machine
+min_cores_num: 4
+## command used to count the cores:
+    # commenting out because this does not work well on OpenStack
+    # "cat /proc/cpuinfo | grep 'cpu cores' | uniq | awk -F'[:]' '{print $2}' "
+    # instead, I found this command which seems to work better. https://access.redhat.com/discussions/480953
+    ## note that this does not seem to work on Oracle Linux. :-(
+# core_count_command: egrep -e 'core id' -e ^physical /proc/cpuinfo | xargs -l2 echo|sort -u | wc -l
+#core_count_command: "echo $((`getconf _NPROCESSORS_ONLN` / (  `grep 'siblings' /proc/cpuinfo | awk -F'[: ]' '{print $3}' | sort | uniq` / `grep 'cpu cores' /proc/cpuinfo | awk -F'[: ]' '{print $4}' | sort | uniq` )  ))"
+core_count_command: "echo $(lscpu -e=core | sed '1 d' | wc -l)"
+
+## SSH Max Startups
+maxstartups_val: 100
+
+## SUSE Max OS Tasks
+suse_max_os_tasks: 50000
+
+## Linux 7.x systemd minimum required version
+systemd_7x_min_major: 219
+systemd_7x_min_minor: 30
+
+
+## ulimit values
+ulimit_nofile_val: 150000
+ulimit_soft_nproc_val: 65536
+
+# dealing with ulimits:
+default_ulimits_dir: /etc/security/limits.d
+ulimit_file_loc: /etc/security/limits.d/viya_3.4_limits.conf
+ulimits:
+  -
+    comment: "#Added (1) for Viya Installation"
+    domain: "*"
+    item: nofile
+    type: "-"
+    use_max: true
+    use_min: false
+    value: 150000
+  -
+    comment: "#Added (2) for Viya Installation"
+    domain: "{{sas_user}}"
+    item: stack
+    type: "-"
+    use_max: true
+    use_min: false
+    value: 10240
+  -
+    comment: "#Added (3) for Viya Installation"
+    domain: "*"
+    item: nproc
+    type: "-"
+    use_max: true
+    use_min: false
+    value: 100000
+
+
+# max_hostname_length: 64       ## official number from the doc
+max_hostname_length: 58        ## better number, SAS note is yet to be written.
+
+## version-specific and solution-specific
+viya_version: 3.4
+
+## yum related
+yum_cache_yn: 0                ## do you want to turn the yum cache on or off? (1=on, 0=off)
+yum_cache_min_space_mb: 8000   ## how many MB of free space should be in /var/yum/cache ?
+
+## general packages that are mandatory for Viya to work
+
+packages_general:
+  - "{{ java_openjdk_version }}"
+  - numactl
+  - "{{ libXp_x86_64_pkg }}"
+  - "{{ libXp_i686_pkg }}"
+  - "{{ libXext_pkg }}"
+  - "{{ libXmu_pkg }}"
+  - "{{ libXtst_pkg }}"
+  - xterm             ## this is required for the xterm functions from CAS Monitor
+  - xorg-x11-xauth
+  - strace            ## may be neeeded for hadooptracer
+  - net-tools         ## you need to have netstat on the server
+
+packages_nicetohave:
+  - "{{ browser }}"   ## a browser on the server can be useful
+  - xclock            ## can be used to test X11 display
+  - mlocate           ## quicker way to find your files
+  - wget
+  #- python-passlib   ## useful to encrypt passwords with python
+  - curl
+  - "{{ ldapclient }}"  ## very useful for testing AD/LDAP connection
+  #- sshpass          ## sshpass can be problematic so ignore_errors has been added
+  - "{{ firewall }}"
+  - lsof
+  - tmux              ## help insure against accidental disconnections of SSH
+  - ntp               ## ntp helps ensure that servers have synchronized time
+
+yum_packages_rhel6:
+  - libpng
+
+yum_packages_rhel7:
+  - libpng12
+
+##
+## SAS YUM repos.
+##
+## if your servers can not reach them, you are going to have to create a local YUM mirror
+##
+sas_yum_urls:
+  - ses.sas.download
+  - bwp1.ses.sas.download
+  - bwp2.ses.sas.download
+  - sesbw.sas.download
+
+## maximum number of IP adresses (excluding loopback)
+#max_num_nics: 1             ## maximum number of network interfaces (excluding loopback)
+## the command used to count active NICs
+#nic_count_command: "ls -A /sys/class/net | grep -v lo | wc -l"
+#nic_count_command: "netstat -i|grep -ve ^lo -e ^Iface -e ^Kernel | wc -l"
+#nic_count_command: "ip link show up | grep -ve link -e ': lo:' | wc -l"
+## we should be counting IPs, and not NICs.
+##
+max_num_priv_ips: 1             ## maximum number of network interfaces
+priv_ip_count_command: "ip -4 -o addr | awk -F'[ ]' '{print $2}' | grep -v lo | wc -l"
+
+
+
+## third-party software requirements
+required_ansible_min_version: "2.4"
+required_python_min_version: "2.6"
+
+
+DefaultTimeoutStopSec: 1800s
+DefaultTimeoutStartSec: 1800s
+
+
+semaphores:
+  - { name: kernel.sem        , value: 512 32000 256 1024 }
+  - { name: net.core.somaxconn, value: 2048 }
+
+
+swappiness: 1
+
+## do a 60 seconds pause at the begginning if not using the --check option
+use_pause: true
+
+## not used.
+#admin_email: me@somewhere.com

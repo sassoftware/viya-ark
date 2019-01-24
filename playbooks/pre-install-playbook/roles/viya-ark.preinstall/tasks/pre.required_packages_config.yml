@@ -1,0 +1,127 @@
+---
+####################################################################
+## Required Packages Config
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags required_packages_config -e use_pause=0
+#   make it fail
+#
+
+- block:
+  ## block start
+
+  - name: Include OS Family specific package names
+    include_vars: "{{ item }}"
+    with_first_found:
+      - "{{ ansible_os_family }}.yml"
+      - default.yml
+    
+  - name: Show OS Family specific package names
+    debug:
+       var: "{{ item }}" 
+    with_items:
+      - java_openjdk_version
+      - libXp_x86_64_pkg
+      - libXp_i686_pkg
+      - libXext_pkg
+      - libXmu_pkg
+      - libXtst_pkg
+
+  ## works for all OS Families
+  - name: Ensures required packages are present
+    package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - "{{packages_general}}"
+    tags:
+      - packages
+
+  ## RHEL 6 specific
+  - name: Ensures required RHEL6 packages are present
+    package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - "{{yum_packages_rhel6}}"
+    when: ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '6'
+    tags:
+      - packages
+
+  ## RHEL 7 specific
+  - name: Ensures required RHEL7 packages are present
+    package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - "{{yum_packages_rhel7}}"
+    when: ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '7'
+    tags:
+      - packages
+
+  ##
+  ## we need systemd to be above 219-30
+  ## try to make sure we have the latest one.
+  ##
+  - name: Ensures systemd package is the most recent
+    package:
+      name: systemd
+      state: latest
+    when: ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '7'
+    tags:
+      - packages
+
+  - name: Ensures "nice to have" packages are present
+    package:
+      name: "{{ item }}"
+      state: present
+    ignore_errors: yes
+    with_items:
+      - "{{packages_nicetohave}}"
+    tags:
+      - packages
+      - nicetohave
+
+  ## On Linux 7.x, verify that the systemd package on each machine is at required version.
+  - block:
+
+    ##
+    ## Verify that systemd version meets minimum requirment
+    ##
+
+    - name: obtain systemd major version
+      shell: systemctl --version | grep systemd | awk '{print $2}'
+      register: systemd_major
+      changed_when: False
+      check_mode: no
+
+    - name: Display systemd major version
+      debug: var=systemd_major
+
+    - name: "Unexpected version of systemd: {{ systemd_major.stdout }}. Failing the playbook"
+      fail:
+      when: systemd_major.stdout <  systemd_7x_min_major
+
+    - name: obtain systemd minor version
+      shell: rpm systemd -q | sed 's/^[^-]*-\([0-9]*-[0-9]*\).*/\1/' | awk -F'[-]' '{print $2}'
+      register: systemd_minor
+      changed_when: False
+      check_mode: no
+
+    - name: Display systemd minor version
+      debug: var=systemd_minor
+
+    - name: "Unexpected minor version of systemd: {{ systemd_major.stdout }}-{{ systemd_minor.stdout }}. Failing the playbook"
+      fail:
+      when: systemd_major.stdout == systemd_7x_min_major and ( systemd_minor.stdout <  systemd_7x_min_minor )
+
+    when: ansible_distribution_major_version == '7'
+    tags:
+      - systemd
+      - packages
+
+  ## block end
+  tags:
+    - required_packages_config
+    - fixable

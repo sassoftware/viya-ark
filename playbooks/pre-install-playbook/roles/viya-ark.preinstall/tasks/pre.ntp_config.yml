@@ -1,0 +1,30 @@
+---
+####################################################################
+## NTP Check
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags ntp_config -e use_pause=0
+#   make it fail
+#
+
+- block:
+  ## block start
+
+  - name: Check if ntp service exists
+    stat: path=/usr/lib/systemd/system/ntpd.service
+    register: ntpd_service
+
+  - name: Ensures NTP service is started and enabled
+    service:
+      name: "{{ item }}"
+      state: started
+      enabled: yes
+    when: ntpd_service.stat.exists
+    with_items:
+      - ntpd
+
+  ## block end
+  tags:
+    - fixable
+    - ntp_config
