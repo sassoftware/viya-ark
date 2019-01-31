@@ -5,7 +5,7 @@
 - include: pre.memory_check.yml
 - include: pre.cpu_check.yml
 - include: pre.storage_check.yml
-- include: pre.hostname_length_check.yml
+- include: pre.hostname_check.yml
 - include: pre.yum_cache_config.yml
 - include: pre.required_packages_config.yml
 - include: pre.ssh_maxstartups_config.yml
