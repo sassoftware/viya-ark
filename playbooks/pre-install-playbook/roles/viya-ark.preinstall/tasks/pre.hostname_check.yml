@@ -1,0 +1,117 @@
+---
+####################################################################
+## Hostname Check
+####################################################################
+# Test harness: Length Check
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags hostname_length_check -e use_pause=0 -e max_hostname_length=64
+#   make it fail
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags hostname_length_check -e use_pause=0 -e max_hostname_length=2
+# Test harness: Format Check
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags hostname_format_check -e use_pause=0 -e max_hostname_length=64
+#   make it fail
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags hostname_format_check -e use_pause=0 -e max_hostname_length=2
+
+- block:
+  ## hostname block
+
+  - name: Get the value of hostname -f
+    shell: "hostname -f"
+    changed_when: False
+    check_mode: no
+    register: full_hostname
+    tags:
+      - hostname_format_check
+      - hostname_length_check
+  
+    ## if hostname and hostname -f don't return the same thing, rabbit causes issues.
+  - name: Get the value of hostname
+    shell: "hostname"
+    changed_when: False
+    check_mode: no
+    register: normal_hostname
+    tags:
+      - hostname_format_check
+      - hostname_length_check
+  
+  - block:
+    ## hostname length block
+    - name: Capture the length of the hostname
+      shell: "hostname  | wc -c"
+      changed_when: False
+      check_mode: no
+      register: hostname_length
+  
+    - name: Show the hostname length
+      debug: var=hostname_length.stdout
+    - name: Show the maximum desired hostname length
+      debug: var=max_hostname_length
+  
+    - name: "Assert that hostname is not too long (less than {{max_hostname_length}} characters"
+      assert:
+        that:
+          - (hostname_length.stdout | int) <= (max_hostname_length | int)
+        msg: |
+          The hostname is too long.
+          Yours is {{hostname_length.stdout | int}} characters long. It should be {{max_hostname_length}} characters or less.
+          Add --skip-tags skipnamelengthfail to bypass.
+    ## end of hostname length check
+    tags:
+      - hostname_length_check
+      - skipnamelengthfail
+      - detectableonly
+  
+  - block:
+    ## hostname format block
+    - name: "Assert that <hostname -f> contains at least one dot"
+      assert:
+        that:
+          -  "'.' in (full_hostname.stdout)"
+        msg: |
+          Your fully qualified hostname value ({{full_hostname.stdout}}) does not contain a dot.
+          So, it does not really look fully qualified.
+          This will likely make rabbitmq unhappy. (because it uses long-form names to communicate between members of the cluster).
+          Add --skip-tags skipnameformatfail to bypass.
+  
+    - name: "Assert that <hostname -f> is valid for IETF format standards (vis-a-vis RFC952/RFC1123)."
+      assert:
+        that:
+          - full_hostname.stdout is match( '(^((?!-)[a-zA-Z0-9-]+(?<!-)\.)+[a-zA-Z]{2,}$)' )
+        msg: |
+          Your fully qualified hostname value ({{full_hostname.stdout}}) does not meet RFC952/RFC1123 format requirements. 
+          That name should only be made up of letters, numbers, dots (.) and dashes (-). For example, underscores (_) are not allowed.
+          Add --skip-tags skipnameformatfail to bypass.
+    ## end of hostname format block
+    tags:
+      - hostname_format_check
+      - skipnameformatfail
+      - detectableonly
+
+
+    ## Miscellaneous host/hostname related task
+  - name: Various Hostname check
+          - (hostname ; hostname -s ; hostname -f ; hostname -i)
+    shell: "hostname ; hostname -s; hostname -f ; hostname -i"
+    check_mode: no
+    changed_when: False
+    register: various_hostname_test
+    ignore_errors: yes
+  
+  - name: Show the result of 'hostname ; hostname -s ; hostname -f ; hostname -i'
+    debug: var=various_hostname_test.stdout_lines
+  
+  - name: Check /etc/hosts
+    shell: "cat /etc/hosts"
+    check_mode: no
+    changed_when: False
+    register: etc_hosts
+    ignore_errors: yes
+    
+  - name: Show the content of /etc/hosts
+    debug: var=etc_hosts.stdout_lines
+    
+  ## end hostname check
+  tags:
+    - hostname
+    - detectableonly
