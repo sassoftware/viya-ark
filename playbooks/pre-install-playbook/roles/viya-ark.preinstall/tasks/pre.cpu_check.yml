@@ -12,6 +12,7 @@
   - name: Querying CPUs
     setup:
       filter: "ansible_processor*"
+      gather_timeout: 300
     register: processors
   - name: Show the processor information gathered by Ansible
     debug: var=processors.ansible_facts

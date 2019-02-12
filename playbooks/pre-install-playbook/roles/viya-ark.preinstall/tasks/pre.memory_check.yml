@@ -13,6 +13,7 @@
   - name: Query the Server Memory for all servers being used in deployment
     setup:
       filter: "*memory*"
+      gather_timeout: 300
     register: memory
 
   - name: Show all memory info gathered by Ansible
