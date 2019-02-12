@@ -11,6 +11,7 @@
   - name: Query the storage for all servers being used in deployment
     setup:
       filter: "*mount*"
+      gather_timeout: 300
     register: mount
   - name: Show the mountpoint information gathered by Ansible
     debug: var=mount
