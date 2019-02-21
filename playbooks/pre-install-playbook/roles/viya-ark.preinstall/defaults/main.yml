@@ -1,6 +1,7 @@
 ---
 ## OS names and Minimum versions
 redhat_os_name: RedHat
+oracle_os_name: OracleLinux
 suse_os_name: Suse
 os_major_version_1: 7
 os_major_minor_version_1: 7.1
@@ -137,6 +138,11 @@ yum_packages_rhel6:
 
 yum_packages_rhel7:
   - libpng12
+  - "{{ cgrouptools }}"
+
+packages_suse:
+  - "{{ cgrouptools }}"
+
 
 ##
 ## SAS YUM repos.

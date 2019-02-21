@@ -9,6 +9,7 @@ libXtst_pkg: libXtst6
 browser: MozillaFirefox
 ldapclient: openldap2-client
 firewall: SuSEfirewall2
+cgrouptools: libcgroup-tools
 
 # Firewall related names for SuSE/SLES
 firewall_service_path: /usr/lib/systemd/system/SuSEfirewall2.service
