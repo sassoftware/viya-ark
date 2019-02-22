@@ -17,11 +17,11 @@
 
 - block:
   ## block start
-  - name: Check cgconfig.d directory 
+  - name: Check for cgconfig.d directory 
     stat:
        path: /etc/cgconfig.d
     register: cgconfig_d_dir
-  - name: Check cgconfig.conf file
+  - name: Check for cgconfig.conf file
     stat: 
        path: /etc/cgconfig.conf
     register: cgconfig_conf_file
