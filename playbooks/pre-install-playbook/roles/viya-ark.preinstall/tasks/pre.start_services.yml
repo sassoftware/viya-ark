@@ -35,6 +35,11 @@
   # RHEL 6 doesn't support systemctl for service management, so no service file exists but we still
   # wish to start the cgconfig service.  Thus the more complex when expression related to the 
   # service file.
+  # Let user know when Suse is the family, we will not be starting cgconfig service
+  - debug:
+      msg: The cgconfig service will NOT be started for {{ansible_distribution}} due to lack of necessary configuration. Contact system administrator for assistance if this service needs to be started.       
+    when: ansible_os_family == suse_os_name  
+
   - name: Start cgconfig service
     service: 
       name: cgconfig
@@ -45,7 +50,6 @@
       (cgconfig_service_file.stat.exists == true or
        (ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '6'))
 
-  when: ansible_distribution == redhat_os_name|string or ansible_distribution == oracle_os_name|string
   ## block end
   tags:
     - cgconfig_service_start
