@@ -1,5 +1,5 @@
 ---
-# OS specific package names for RedHat
+# OS specific package names for RedHat and OracleLinux
 java_openjdk_version: java-1.8.0-openjdk
 libXp_x86_64_pkg: libXp.x86_64
 libXp_i686_pkg: libXp.i686
@@ -9,6 +9,7 @@ libXtst_pkg: libXtst
 browser: firefox
 ldapclient: openldap-clients
 firewall: python-firewall
+cgrouptools: libcgroup-tools
 
 # Firewall related names for SuSE/SLES
 firewall_service_path: /usr/lib/systemd/system/firewalld.service

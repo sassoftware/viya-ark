@@ -1,0 +1,57 @@
+---
+####################################################################
+## Start Services
+## 
+####################################################################
+# 
+
+# cgconfig service
+# This service has some optional utility for CAS.  The required packages
+# are installed by the pre.required_packages_config.yml module.
+# The service will be started only for RedHat/OracleLinux environments
+# because the necessary configuration for the service to start are either
+# established by the installation of needed packages or the configuration
+# is already in place.   SLES requires more intervention by administrators
+# to be able to setup the required configuration files so the service will
+# start.  Those steps are not going to be handled by pre-install playbook.
+
+- block:
+  ## block start
+  - name: Check for cgconfig.d directory 
+    stat:
+       path: /etc/cgconfig.d
+    register: cgconfig_d_dir
+  - name: Check for cgconfig.conf file
+    stat: 
+       path: /etc/cgconfig.conf
+    register: cgconfig_conf_file
+  - name: Check for required cgconfig.service file
+    stat: 
+       path: /usr/lib/systemd/system/cgconfig.service
+    register: cgconfig_service_file
+
+  # RHEL 7 and OracleLinux 7 will need existence of all that above files or directories to be in 
+  # a position to start the cgconfig service.
+  # RHEL 6 doesn't support systemctl for service management, so no service file exists but we still
+  # wish to start the cgconfig service.  Thus the more complex when expression related to the 
+  # service file.
+  # Let user know when Suse is the family, we will not be starting cgconfig service
+  - debug:
+      msg: The cgconfig service will NOT be started for {{ansible_distribution}} due to lack of necessary configuration. Contact system administrator for assistance if this service needs to be started.       
+    when: ansible_os_family == suse_os_name  
+
+  - name: Start cgconfig service
+    service: 
+      name: cgconfig
+      state: started
+    when:
+      cgconfig_d_dir.stat.exists == true and
+      cgconfig_conf_file.stat.exists == true and 
+      (cgconfig_service_file.stat.exists == true or
+       (ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '6'))
+
+  ## block end
+  tags:
+    - cgconfig_service_start
+
+

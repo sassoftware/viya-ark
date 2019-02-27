@@ -11,23 +11,13 @@
 - block:
   ## block start
 
+  # Note that Oracle 7 distributions reflect being RedHat ansible_os_family
   - name: Include OS Family specific package names
     include_vars: "{{ item }}"
     with_first_found:
       - "{{ ansible_os_family }}.yml"
       - default.yml
     
-  - name: Show OS Family specific package names
-    debug:
-       var: "{{ item }}" 
-    with_items:
-      - java_openjdk_version
-      - libXp_x86_64_pkg
-      - libXp_i686_pkg
-      - libXext_pkg
-      - libXmu_pkg
-      - libXtst_pkg
-
   ## works for all OS Families
   - name: Ensures required packages are present
     package:
@@ -49,14 +39,25 @@
     tags:
       - packages
 
-  ## RHEL 7 specific
-  - name: Ensures required RHEL7 packages are present
+  ## RHEL and Oracle 7 specific
+  - name: Ensures required RHEL7 or Oracle7 packages are present
     package:
       name: "{{ item }}"
       state: present
     with_items:
       - "{{yum_packages_rhel7}}"
-    when: ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '7'
+    when: (ansible_distribution == redhat_os_name|string or ansible_distribution == oracle_os_name|string) and ansible_distribution_major_version == '7'
+    tags:
+      - packages
+
+  ## Suse specific
+  - name: Ensures required Suse packages are present
+    package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - "{{packages_suse}}"
+    when: ansible_os_family == suse_os_name|string
     tags:
       - packages
 
