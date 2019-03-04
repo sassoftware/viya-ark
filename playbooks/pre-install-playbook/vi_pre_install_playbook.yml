@@ -44,8 +44,5 @@
 - hosts: sas-all
   become: yes
   become_user: root
-  vars:
-   semaphores:
-    - { name: vm.max_map_count, value: 262144 }
   roles:
    - viya-ark.preinstall
