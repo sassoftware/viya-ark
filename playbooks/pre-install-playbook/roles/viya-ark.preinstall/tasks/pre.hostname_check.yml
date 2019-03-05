@@ -38,7 +38,7 @@
   - block:
     ## hostname length block
     - name: Capture the length of the hostname
-      shell: "hostname  | wc -c"
+      shell: "hostname  | awk '{printf $0}' | wc -c"
       changed_when: False
       check_mode: no
       register: hostname_length
