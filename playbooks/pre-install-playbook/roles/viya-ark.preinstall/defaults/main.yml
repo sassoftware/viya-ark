@@ -180,6 +180,7 @@ DefaultTimeoutStartSec: 1800s
 semaphores:
   - { name: kernel.sem        , value: 512 32000 256 1024 }
   - { name: net.core.somaxconn, value: 2048 }
+  - { name: vm.max_map_count, value: 262144 }
 
 
 swappiness: 1
