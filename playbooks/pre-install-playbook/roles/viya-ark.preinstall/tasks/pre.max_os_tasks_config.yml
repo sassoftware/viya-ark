@@ -7,16 +7,23 @@
 
 - block:
 
+  - name: Check logind.conf file exists
+    stat: path=/etc/systemd/logind.conf
+    register: logind_conf_file
+
   - name: Configure max number of OS tasks on Suse
-    check_mode: no
     lineinfile:
       path: /etc/systemd/logind.conf
       regexp: '.*UserTasks.*'
       line: 'UserTasksMax={{suse_max_os_tasks}}'
+    register: logind_config
+    when: logind_conf_file.stat.exists
 
   - name: Restart systemd-logind
-    check_mode: no
-    shell: "systemctl restart systemd-logind"
+    service:
+      name: systemd-logind
+      state: restarted
+    when: logind_config.changed
 
   when: ansible_os_family == suse_os_name
 
