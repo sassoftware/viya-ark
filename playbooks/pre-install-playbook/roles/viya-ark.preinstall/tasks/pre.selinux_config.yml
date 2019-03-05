@@ -33,7 +33,7 @@
 - block:
   ## block start
 
-  - name: Disable SELinux (will only take effect after a reboot)
+  - name: Set SELinux to Permissive mode (will only take effect after a reboot)
     ## this could also be set to permissive
     lineinfile:
       dest=/etc/selinux/config
