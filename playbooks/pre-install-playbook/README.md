@@ -5,6 +5,11 @@ This playbook verifies and optionally performs many of the tasks that are requir
 
 Use this playbook to prepare for a deployment of SAS Viya 3.4.
 
+This playbook does not require you to provide the details of your software Order.  It will therefore apply all usual pre-reqs for Visual Analytics, Visual Statistics, and Visual Data Mining and Machine Learning, on all machines, regardless of their role. 
+
+At this time, the playbook will only perform some of the pre-requisites for Visual Investigator. Work is under-way to finalize this. 
+
+
 ## Prerequisites for Running the Pre-installation Playbook
 Before running this playbook, take the following steps:
 * Install Ansible. Version 2.4.1 or later is recommended.
