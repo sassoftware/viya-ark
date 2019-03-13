@@ -49,7 +49,7 @@
     check_mode: no
     register: curl_sas_yum
     with_items: "{{sas_yum_urls}}"
-    failed_when: "('Connect' in curl_sas_yum.stderr and item in curl_sas_yum.stderr ) != true"
+    failed_when: "('Connected' in curl_sas_yum.stderr and item in curl_sas_yum.stderr ) != true"
     tags:
       - yum_repo
 
