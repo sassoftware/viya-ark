@@ -12,8 +12,8 @@
     - viya-services-vars.yml
 
   tasks:
-    - name: Check any SAS processes running
-      shell: "{{sasps_cmd}}"
+    - name: Check any SAS process running
+      shell: "{{sasps_cmd}}|tail -1"
       register: psflag
       ignore_errors: true
       check_mode: no
@@ -33,25 +33,14 @@
 
     - block:
 
-      - name: Find all SAS services
-        shell: "{{list_services_cmd}}"
-        changed_when: false
-        register: service_list_full
-
-      - name: Convert results to ansible variable
-        set_fact:
-          services_list: "{{ service_list_full.stdout_lines }}"
-
-      - name: Stop Microservices
-        any_errors_fatal: true
-        service:
-          name: "{{item}}"
-          state: stopped
-        with_items:
-          - "{{services_list}}"
+      - name: Stop SAS microservices
+        script: viya-svs.sh stopms
         when: deployhostnum | int != 1
 
-      - name: Stop all services on a single machine deployment
+      - name: Stop SAS multi-tenant services
+        script: viya-svs.sh stopmt
+
+      - name: Stop SAS all services on a single machine deployment
         any_errors_fatal: true
         shell: /etc/init.d/sas-viya-all-services stop
         when: deployhostnum | int == 1
@@ -66,9 +55,7 @@
   tasks:
     - name: Stop SAS HTTP proxy service
       any_errors_fatal: true
-      service:
-        name: sas-viya-httpproxy-default
-        state: stopped
+      script: viya-svs.sh stop sas-viya-httpproxy-default
       when: psflag.stdout != "" and deployhostnum | int != 1
 
 - hosts: sas-casserver-primary
@@ -76,11 +63,9 @@
   become_user: root
   gather_facts: false
   tasks:
-    - name: Stop CAS server
+    - name: Stop SAS CAS server
       any_errors_fatal: true
-      service:
-        name: sas-viya-cascontroller-default
-        state: stopped
+      script: viya-svs.sh stopcas
       when: psflag.stdout != "" and deployhostnum | int != 1
 
 - hosts: pgpoolc
@@ -91,9 +76,7 @@
   tasks:
     - name: Stop SAS Infrastructure Data Server
       any_errors_fatal: true
-      service:
-        name: "sas-viya-sasdatasvrc-{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME'] }}{{item}}"
-        state: stopped
+      script: viya-svs.sh stop sas-viya-sasdatasvrc-{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME'] }}{{item}}
       with_items:
         - ''
         - '-pgpool0-ct-pool_hba'
@@ -109,18 +92,14 @@
   tasks:
     - block:
       - name: Stop SAS Infrastructure Data Server Consul Template
+        script: viya-svs.sh stop sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-postgresql
         any_errors_fatal: true
-        service:
-          name: "sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-postgresql"
-          state: stopped
         with_items:
           - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
 
       - name: Stop SAS Infrastructure Data Server Consul Template
         any_errors_fatal: true
-        service:
-          name: "sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-pg_hba"
-          state: stopped
+        script: viya-svs.sh stop sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-pg_hba
         with_items:
           - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
 
@@ -133,9 +112,7 @@
   tasks:
     - name: Stop SAS Message Broker RabbitMQ
       any_errors_fatal: true
-      service:
-        name: sas-viya-rabbitmq-server-default
-        state: stopped
+      script: viya-svs.sh stop sas-viya-rabbitmq-server-default
       when: psflag.stdout != "" and deployhostnum | int != 1
 
 - hosts: sas-all:!consul
@@ -145,9 +122,7 @@
   tasks:
     - name: Stop SAS Configuration consul Agent(s)
       any_errors_fatal: true
-      service:
-        name: sas-viya-consul-default
-        state: stopped
+      script: viya-svs.sh stop sas-viya-consul-default
       when: psflag.stdout != "" and deployhostnum | int != 1
 
 - hosts: consul
@@ -157,16 +132,12 @@
   tasks:
     - name: Stop SAS Secret Manager - vault
       any_errors_fatal: true
-      service:
-        name: sas-viya-vault-default
-        state: stopped
+      script: viya-svs.sh stop sas-viya-vault-default
       when: psflag.stdout != "" and deployhostnum | int != 1
 
     - name: Stop SAS Configuration consul Server(s)
       any_errors_fatal: true
-      service:
-        name: sas-viya-consul-default
-        state: stopped
+      script: viya-svs.sh stop sas-viya-consul-default
       when: psflag.stdout != "" and deployhostnum | int != 1
 
 - hosts: ComputeServer
@@ -176,11 +147,16 @@
   tasks:
     - block:
 
-      - name: Check compsrv child processes
-        shell: ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/'| grep -v grep| awk '{print $2}'
+      - name: Check SAS compsrv child processes
+        shell: ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/'| grep compsrv|grep -v grep| awk '{print $2}'
         register: cleancompsrv
         check_mode: no
-      - name: Clean up compsrv child processes
+
+      - name: Display the process info
+        debug: var=cleancompsrv
+        check_mode: no
+
+      - name: Clean up SAS compsrv child processes
         shell: "kill -KILL {{item}}"
         ignore_errors: true
         with_items: "{{cleancompsrv.stdout_lines|list}}"
@@ -195,18 +171,19 @@
   vars_files:
     - viya-services-vars.yml
   tasks:
-    - debug: msg="All Viya processes have been stopped" 
+    - name: Display SAS processes information
+      debug: msg="No Viya process running" 
       when: psflag.stdout == ""
       check_mode: no
 
     - block:
-      - name: Capture stray processes
-        shell: ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep -v grep|awk '{print}'
+      - name: Capture SAS stray processes
+        shell: "{{sasps_cmd}}"
         register: stray_processes
         changed_when: false
         check_mode: no
 
-      - name: Display stray processes
+      - name: Display SAS stray processes
         debug:
           msg:
             - "Please examine the following stray process(es)"
@@ -216,14 +193,14 @@
         failed_when: stray_processes.stdout != '' and not ansible_check_mode
         when: (stray_processes.stdout != '') and (enable_stray_cleanup|bool != true)
 
-      - name: Clean up stray processes if enabled
+      - name: Clean up SAS stray processes if enabled
         shell: "kill -KILL {{item.split()[1]}}"
         when: (enable_stray_cleanup|bool == true) and (stray_processes.stdout != '')
         check_mode: no
         any_errors_fatal: true
         with_items: "{{stray_processes.stdout_lines}}"
 
-      - name: Display cleanup stray processes
+      - name: Display SAS cleanup stray processes
         debug:
           msg:
             - "The following stray processes have been cleaned up"
