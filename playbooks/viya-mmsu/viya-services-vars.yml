@@ -4,18 +4,19 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 ---
-########################################
+svs_label: 3.4.20190218
+#########################################
 # Variables used in playbooks
-########################################
-host_connection_timer: 5     #seconds
+#########################################
 svas_retry_count: 2
-svas_delay_timer: 2          #seconds
-enable_stray_cleanup: false  #stray processes cleanup
+svas_delay_timer: 2                   #seconds
+enable_stray_cleanup: false           #stray processes cleanup
+log_diskspace_minimum: 2097152000     #2GB
 
-########################################
+#########################################
 # Commands used in playbooks
-########################################
-sasps_cmd: ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep -v grep|tail -1
+#########################################
+sasps_cmd: ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool'|grep -v grep|awk '{print}'
 rhel_url_scraping_cmd: 'host=$(hostname -f);cat /etc/httpd/conf.d/proxy.conf|grep ProxyPass|grep -e "/SAS"|awk "{print \$2}"|sort|uniq|sed "s/^/http:\/\/"$host"/"'
 sles_url_scraping_cmd: 'host=$(hostname -f);cat /etc/apache2/conf.d/proxy.conf|grep ProxyPass|grep -e "/SAS"|awk "{print \$2}"|sort|uniq|sed "s/^/http:\/\/"$host"/"'
-list_services_cmd: ls /etc/init.d/sas-viya*|awk -F '/' '{print $NF}'|grep -vE "\-all\-|\-consul\-|\-vault\-|\-httpproxy\-|\-rabbitmq\-|\-sasdatasvrc\-|\-pgpoolc\-|\-cascontroller\-"
+list_svas_cmd: ls /etc/init.d/sas-*-all-services|awk -F '/' '{print $NF}'
