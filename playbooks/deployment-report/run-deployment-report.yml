@@ -1,0 +1,115 @@
+####################################################################
+#### run-deployment-report.yml                                  ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+
+####################################################################
+#
+# This playbook gathers information about SAS software installed on
+# the hosts in the given inventory file as well as a snapshot of
+# some system resources, like memory and filesystem usage. This
+# playbook does not alter state on any host except for the Ansible
+# controller where the .yml and .html files are written.
+#
+####################################################################
+
+---
+- name: "Viya Deployment Report"
+  hosts: sas-all
+  become: true
+
+  vars:
+    # These variables can be safely overridden on the commandline
+    existing_data_file: ""
+    include_package_files: false
+    exclude_html: false
+    report_file_name: "viya_deployment_report"
+    report_data_file_name: "{{ report_file_name + '_data' }}"
+
+    # These variables should not be overridden
+    output_dir: "{{ playbook_dir + '/../../..' }}"
+
+  tasks:
+    - name: "Check for existing data - ({{ existing_data_file }})"
+      stat:
+        path: "{{ existing_data_file }}"
+      delegate_to: localhost
+      run_once: true
+      register: data
+      when: existing_data_file != ""
+
+    - name: "Load existing data file"
+      include_vars:
+        file: "{{ existing_data_file }}"
+        name: sas_deployment_details
+      delegate_to: localhost
+      run_once: true
+      when: existing_data_file != "" and data.stat.exists
+
+    - set_fact:
+        sas_viya_deployment_report_created_ts: "{{ lookup('pipe','date +\"%A, %B %d, %Y %I:%M%p\"') }}"
+        sas_viya_deployment_report_file_ts: "{{ lookup('pipe','date +%F_%H-%M-%S') }}"
+      delegate_to: localhost
+      run_once: true
+
+    - name: "Get SAS host details"
+      get_sas_host_details:
+        hostvars: "{{ hostvars[inventory_hostname] }}"
+        include_package_files: "{{ include_package_files }}"
+      when: existing_data_file == "" or not data.stat.exists
+      register: sas_host_details
+
+    - name: "Process SAS host details"
+      process_sas_host_details:
+        hostvars: "{{ hostvars }}"
+        report_timestamp: "{{ sas_viya_deployment_report_created_ts }}"
+        registered_dict_name: 'sas_host_details'
+      delegate_to: localhost
+      run_once: true
+      register: processed_host_details
+      when: existing_data_file == "" or not data.stat.exists
+
+    - set_fact:
+        sas_deployment_details: "{{ processed_host_details.results }}"
+      delegate_to: localhost
+      run_once: true
+      when: existing_data_file == "" or not data.stat.exists
+
+    - set_fact:
+        sas_viya_deployment_report_file: "{{ report_file_name + '_' + sas_viya_deployment_report_file_ts + '.html' }}"
+        sas_viya_deployment_report_data_file: "{{ report_data_file_name + '_' + sas_viya_deployment_report_file_ts + '.yml' }}"
+      delegate_to: localhost
+      run_once: true
+
+    - name: "Create Viya Deployment Report data file"
+      local_action:
+        module: copy
+        content: "{{ sas_deployment_details | to_nice_yaml }}"
+        dest: "{{ output_dir + '/' + sas_viya_deployment_report_data_file }}"
+        mode: 0777
+      run_once: true
+      when: existing_data_file == "" or not data.stat.exists
+
+    - name: "Viya Deployment Report Data location"
+      debug:
+        msg: "Created {{ output_dir | realpath }}/{{ sas_viya_deployment_report_data_file }}"
+      delegate_to: localhost
+      run_once: true
+      when: existing_data_file == "" or not data.stat.exists
+
+    - name: "Create Viya Deployment HTML Report"
+      template:
+        src: templates/viya_deployment_report.html.j2
+        dest: "{{ output_dir + '/' +  sas_viya_deployment_report_file }}"
+        mode: 0777
+      delegate_to: localhost
+      run_once: true
+      when: not exclude_html
+
+    - name: "Viya Deployment Report location"
+      debug:
+        msg: "Created {{ output_dir | realpath }}/{{ sas_viya_deployment_report_file }}"
+      delegate_to: localhost
+      run_once: true
+      when: not exclude_html
