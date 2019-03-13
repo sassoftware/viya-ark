@@ -1,0 +1,36 @@
+---
+####################################################################
+## Required Packages Config
+####################################################################
+# Test harness:
+#
+
+- block:
+  ## block start
+
+  - name: Include vars of supported locales
+    include_vars: 
+      file: locale.yml
+
+  - set_fact:
+      cmd: localectl | grep LANG | awk '{print $3}' | awk 'BEGIN{FS="="; RS="."} {print $2}'
+    when: ansible_distribution_major_version != '6'
+  - set_fact:
+      cmd: grep LANG /etc/sysconfig/i18n  | awk 'BEGIN{FS="="; RS="."} {print $2}'
+    when: ansible_distribution_major_version == '6'
+
+  - name: Gather supported LOCALE language
+    shell: "{{ cmd }}"
+    register: lang
+ 
+  - debug:
+      msg: "Current LANG: {{ lang.stdout }}"      
+
+  - name: Assert currently configured language is supported.
+    assert: 
+      that: 'lang.stdout in languages_list'
+      msg: "Current Locale language setting ({{ lang.stdout}}) is not in the list of supported languages"
+    
+  ## block end
+  tags:
+    - locale_check
