@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
 ####################################################################
-#### get_sas_host_details.py                                    ####
+# ### get_sas_host_details.py                                    ###
 ####################################################################
-#### Author: SAS Institute Inc.                                 ####
+# ### Author: SAS Institute Inc.                                 ###
 ####################################################################
 
 import os
@@ -47,7 +47,7 @@ EXAMPLES = '''
 - name: Inspect SAS deployment
   get_sas_host_details:
     hostvars: "{{ hostvars[inventory_hostname] }}"
-    
+
 # Get SAS deployment information with package file details
 - name: Inspect SAS deployment
   get_sas_host_details:
@@ -621,14 +621,17 @@ class _HostDetailsKeys(object):
                         port: ''
                         pid: ''
                         status: ''
+                        resident_memory: ''
 
-                :cvar str PORT:   Key referencing *port* (str) in *attributes* (dict).
-                :cvar str PID:    Key referencing *pid* (str) in *attributes* (dict).
-                :cvar str STATUS: Key referencing *status* (str) in *attributes* (dict).
+                :cvar str PORT:            Key referencing *port* (str) in *attributes* (dict).
+                :cvar str PID:             Key referencing *pid* (str) in *attributes* (dict).
+                :cvar str STATUS:          Key referencing *status* (str) in *attributes* (dict).
+                :cvar str RESIDENT_MEMORY: Key referencing *resident_memory* in *attributes* (dict).
                 """
                 PORT = 'port'
                 PID = 'pid'
                 STATUS = 'status'
+                RESIDENT_MEMORY = 'resident_memory'
 
         # =====
         # Class: ServicesStatusKeys(object)
@@ -646,14 +649,17 @@ class _HostDetailsKeys(object):
                     down: ''
                     other: ''
                     up: ''
+                    memory: ''
 
             :cvar str DOWN:  Key referencing *down* (str) in *status* (dict).
             :cvar str OTHER: Key referencing *other* (str) in *status* (dict).
             :cvar str UP:    Key referencing *up* (str) in *status* (dict).
+            :cvar str MEMORY: Key referencing *memory* (str) in *status* (dict).
             """
             DOWN = 'down'
             OTHER = 'other'
             UP = 'up'
+            MEMORY = 'memory'
 
 
 # =====
@@ -963,7 +969,7 @@ def _get_filesystems_info(module):
     }
 
     # execute the command to retrieve filesystem information
-    cmd_stdout = _execute_command("df --print-type --block-size=MB", module)
+    cmd_stdout = _execute_command("df --print-type", module)
 
     # split stdout by each line
     all_filesystems = cmd_stdout.split('\n')[1:]
@@ -981,9 +987,12 @@ def _get_filesystems_info(module):
             results[_HostDetailsKeys.ResourceCheckKeys.RESULTS][filesystem_index] = {
                 _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.FILESYSTEM: filesystem_info[0],
                 _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.TYPE: filesystem_info[1],
-                _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.SIZE: filesystem_info[2],
-                _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.USED: filesystem_info[3],
-                _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.AVAILABLE: filesystem_info[4],
+                _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.SIZE:
+                    _bytesHumanReadable(int(filesystem_info[2]) * 1024),
+                _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.USED:
+                    _bytesHumanReadable(int(filesystem_info[3]) * 1024),
+                _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.AVAILABLE:
+                    _bytesHumanReadable(int(filesystem_info[4]) * 1024),
                 _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.USED_RATIO: filesystem_info[5],
                 _HostDetailsKeys.ResourceCheckKeys.FilesystemAttributesKeys.MOUNTED_ON: filesystem_info[6]
             }
@@ -1020,7 +1029,7 @@ def _get_memory_info(module):
     mem_results = results[_HostDetailsKeys.ResourceCheckKeys.RESULTS]
 
     # execute the command to retrieve memory information
-    cmd_stdout = _execute_command("free -m", module)
+    cmd_stdout = _execute_command("free -b", module)
 
     # split the stdout by new line (each mem type should be on its own line)
     all_mem = cmd_stdout.split('\n')[1:]
@@ -1040,17 +1049,17 @@ def _get_memory_info(module):
     # get attributes of physical memory
     physical_results = dict()
     if len(mem) == 7:
-        physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.TOTAL] = mem[1]
-        physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.USED] = mem[2]
-        physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.FREE] = mem[3]
-        physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.SHARED] = mem[4]
+        physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.TOTAL] = _bytesHumanReadable(mem[1])
+        physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.USED] = _bytesHumanReadable(mem[2])
+        physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.FREE] = _bytesHumanReadable(mem[3])
+        physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.SHARED] = _bytesHumanReadable(mem[4])
 
         if free_format == _ResourceFormats.CURRENT:
             # current format
             physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.BUFF_CACHE] = \
-                mem[5]
+                _bytesHumanReadable(mem[5])
             physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.AVAILABLE] = \
-                mem[6]
+                _bytesHumanReadable(mem[6])
             # old format
             physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.BUFFERS] = ''
             physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.CACHED] = ''
@@ -1059,8 +1068,8 @@ def _get_memory_info(module):
             physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.BUFF_CACHE] = ''
             physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.AVAILABLE] = ''
             # old format
-            physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.BUFFERS] = mem[5]
-            physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.CACHED] = mem[6]
+            physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.BUFFERS] = _bytesHumanReadable(mem[5])
+            physical_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.MemoryAttributesKeys.CACHED] = _bytesHumanReadable(mem[6])
 
         mem_results[_HostDetailsKeys.ResourceCheckKeys.MemoryResultsKeys.PHYSICAL] = physical_results
 
@@ -1116,16 +1125,16 @@ def _get_sas_root_info(module):
         _HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.USED_RATIO: '',
     }
 
-    root_du_stdout = _execute_command("du --block-size=MB --summarize " + SAS_ROOT_PATH, module)
+    root_du_stdout = _execute_command("du --summarize " + SAS_ROOT_PATH, module)
     root_du = root_du_stdout.split()
 
     root_size = ''
     if len(root_du) == 2:
-        root_size = root_du[0]
-        root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.SIZE] = root_size
+        root_size = int(root_du[0]) * 1024
+        root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.SIZE] = _bytesHumanReadable(root_size)
         root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.PATH] = root_du[1]
 
-    root_df_stdout = _execute_command("df --print-type --block-size=MB " + SAS_ROOT_PATH, module)
+    root_df_stdout = _execute_command("df --print-type " + SAS_ROOT_PATH, module)
     root_df = root_df_stdout.split("\n")[1:]
 
     fs_size = ''
@@ -1134,15 +1143,19 @@ def _get_sas_root_info(module):
         root_fs = root_df[0].split()
 
         if len(root_fs) == 7:
-            fs_size = root_fs[2]
+            fs_size = int(root_fs[2]) * 1024
             root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.FILESYSTEM] = root_fs[0]
-            root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.FILESYSTEM_TOTAL] = fs_size
+            root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.FILESYSTEM_TOTAL] = _bytesHumanReadable(fs_size)
             root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.MOUNT] = root_fs[6]
 
-    if root_size.endswith(_ResourceUnits.MB) and fs_size.endswith(_ResourceUnits.MB):
-        used_ratio = float(root_size[:-2]) / float(fs_size[:-2])
-        root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.USED_RATIO] = \
-            str(int(round(used_ratio * 100))) + '%'
+    # if root_size.endswith(_ResourceUnits.MB) and fs_size.endswith(_ResourceUnits.MB):
+    #     used_ratio = float(root_size[:-2]) / float(fs_size[:-2])
+    #     root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.USED_RATIO] = \
+    #         str(int(round(used_ratio * 100))) + '%'
+
+    used_ratio = float(root_size) / float(fs_size)
+    root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.USED_RATIO] = \
+        str(int(round(used_ratio * 100))) + '%'
 
     results[_HostDetailsKeys.ResourceCheckKeys.RESULTS] = root_results
     return results
@@ -1170,6 +1183,7 @@ def _get_sas_service_info(module):
     total_up = 0
     total_down = 0
     total_other = 0
+    total_memory = 0
 
     # find all 'all-services' executables
     for service in glob.glob("/etc/init.d/*-all-services"):
@@ -1189,12 +1203,27 @@ def _get_sas_service_info(module):
 
                 name = status_values[0]
                 status = status_values[1]
+                pid = status_values[4]
+
+                # If the service is up and running then get the memory size.
+                if status == _ServiceStatus.UP:
+                    java_memory = _get_process_memory_info(pid, module)
+                else:
+                    java_memory['RESIDENT_MEMORY'] = "Service not running"
+                    java_memory['VIRTUAL_MEMORY'] = '-'
+                    java_memory['JAVA_HEAP'] = '-'
+                    java_memory['INITIAL_JAVA_HEAP'] = '-'
+
+                if (java_memory['RESIDENT_MEMORY'] != '-') and (java_memory['RESIDENT_MEMORY'] != 'Service not running'):
+                    print("java_memory[RESIDENT_MEMORY] = %s" % java_memory['RESIDENT_MEMORY'])
+                    h_read_memory = _bytesHumanReadable(java_memory['RESIDENT_MEMORY'])
+                    total_memory += java_memory['RESIDENT_MEMORY']
 
                 service_attributes = {
-                    _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.STATUS:
-                        status,
+                    _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.STATUS: status,
                     _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.PORT: status_values[3],
-                    _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.PID: status_values[4]
+                    _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.PID: pid,
+                    _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.RESIDENT_MEMORY: h_read_memory
                 }
 
                 # Add up service status totals
@@ -1209,11 +1238,15 @@ def _get_sas_service_info(module):
                     _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ATTRIBUTES: service_attributes
                 }
 
+    # Make total memory human reaable
+    h_total_memory = _bytesHumanReadable(total_memory)
+
     # add overall status results to dict
     results[_HostDetailsKeys.SASServicesKeys.STATUS] = {
         _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.UP: total_up,
         _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.DOWN: total_down,
-        _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.OTHER: total_other
+        _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.OTHER: total_other,
+        _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.MEMORY: h_total_memory
     }
 
     # return SAS service information
@@ -1273,6 +1306,76 @@ def _get_sas_package_info(module, package_manager, include_package_files=False):
 
     # return SAS package information
     return results
+
+
+# =====
+# _get_memory_info(pid, AnsibleModule)
+# =====
+def _get_process_memory_info(pid, module):
+    """
+    Calculates the amount of memory the micorservice is currently using.
+
+    :param  str pid: The Pid number of the running service
+    :param AnsibleModule module: The AnsibleModule object representing the current module.
+
+    :return: A human reaable string with the memory size for the service.
+    :rtype dict:
+    """
+
+    # initialize the main dictionary
+    proc = {}
+
+    process_output = _execute_command("ps -auxww | grep " + pid, module)
+    processes = process_output.split('\n')
+
+    for row in processes:
+        # skip blank lines
+        if row is '':
+            continue
+
+        nfields = len(row.split()) - 1
+        ps_line = row.split(None, nfields)
+
+        # Making sure we have the parent Pid
+        if pid == ps_line[1]:
+            total_mem = int(ps_line[4]) * 1024
+            res_mem   = int(ps_line[5]) * 1024
+
+            proc['VIRTUAL_MEMORY'] = total_mem
+            proc['RESIDENT_MEMORY'] = res_mem
+
+            # Here for future use if needed
+            if (row.find("java") != -1):
+                command = ps_line[len(ps_line) - 1].split()
+                for arg in command:
+                    if "-Xmx" in arg:
+                        max_java_pool = re.sub('-Xmx', '', arg)
+                        if 'm' in max_java_pool or 'M' in max_java_pool:
+                            max_num = int(re.sub('[Mm]', '', max_java_pool))
+                            max_num_bytes = (max_num * (1024 ** 2))
+                        if 'g' in max_java_pool or 'G' in max_java_pool:
+                            max_num = int(re.sub('g', '', max_java_pool))
+                            max_num_bytes = (max_num * (1024 ** 3))
+
+                        proc['JAVA_HEAP'] = _bytesHumanReadable(max_num_bytes)
+
+                    if "-Xms" in arg:
+                        initial_java_pool = re.sub('-Xms', '', arg)
+                        if 'm' in initial_java_pool or 'M' in initial_java_pool:
+                            init_num = int(re.sub('[Mm]', '', initial_java_pool))
+                            init_num_bytes = (init_num * (1024 ** 2))
+                        if 'g' in initial_java_pool or 'G' in initial_java_pool:
+                            init_num = int(re.sub('[Gg]', '', initial_java_pool))
+                            init_num_bytes = (init_num * (1024 ** 3))
+
+                        proc['INITIAL_JAVA_HEAP'] = _bytesHumanReadable(init_num_bytes)
+    if not proc:
+        proc['RESIDENT_MEMORY'] = "-"
+        proc['VIRTUAL_MEMORY'] = "-"
+        proc['JAVA_HEAP'] = "-"
+        proc['INITIAL_JAVA_HEAP'] = "-"
+
+    return(proc)
 
 
 # =====
@@ -1495,6 +1598,45 @@ def _execute_command(command, module, shell=True):
         module.fail_json(msg=message, command_stderr=stderr)
 
     return stdout
+
+
+# =====
+# Turn bytes into a human reaable form
+# =====
+def _bytesHumanReadable(num_bytes, unit_step=1024.0):
+    """
+    Converts the number of bytes passed into a human-readable format.
+
+    :param The number of bytes: The number to be converted.
+    :param The base number: unit_step used in the conversion.
+    :return:  Human reaable number
+    :rtype str:
+    """
+
+    num_bytes = float(num_bytes)
+    unit = 'bytes'
+
+    if (num_bytes / unit_step) >= 1:
+        num_bytes /= unit_step
+        unit = 'KB'
+    if (num_bytes / unit_step) >= 1:
+        num_bytes /= unit_step
+        unit = 'MB'
+    if (num_bytes / unit_step) >= 1:
+        num_bytes /= unit_step
+        unit = 'GB'
+    if (num_bytes / unit_step) >= 1:
+        num_bytes /= unit_step
+        unit = 'TB'
+
+    # Rounding to the tenth.
+    num_bytes = round(num_bytes, 1)
+
+    if num_bytes == 0:
+        unit = ''
+        num_bytes = int(0)
+
+    return str(num_bytes) + ' ' + unit
 
 
 # =====

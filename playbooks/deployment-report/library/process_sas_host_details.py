@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
 ####################################################################
-#### process_sas_host_details.py                                ####
+# ### process_sas_host_details.py                                ###
 ####################################################################
-#### Author: SAS Institute Inc.                                 ####
+# ### Author: SAS Institute Inc.                                 ###
 ####################################################################
 
 from ansible.module_utils.basic import AnsibleModule
