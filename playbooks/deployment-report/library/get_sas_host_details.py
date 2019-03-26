@@ -1214,7 +1214,8 @@ def _get_sas_service_info(module):
                     java_memory['JAVA_HEAP'] = '-'
                     java_memory['INITIAL_JAVA_HEAP'] = '-'
 
-                if java_memory['RESIDENT_MEMORY'] is not '-':
+                if (java_memory['RESIDENT_MEMORY'] != '-') and (java_memory['RESIDENT_MEMORY'] != 'Service not running'):
+                    print("java_memory[RESIDENT_MEMORY] = %s" % java_memory['RESIDENT_MEMORY'])
                     h_read_memory = _bytesHumanReadable(java_memory['RESIDENT_MEMORY'])
                     total_memory += java_memory['RESIDENT_MEMORY']
 
