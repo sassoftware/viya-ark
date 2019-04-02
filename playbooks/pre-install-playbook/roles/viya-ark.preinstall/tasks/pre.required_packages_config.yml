@@ -100,9 +100,11 @@
     - name: Display systemd major version
       debug: var=systemd_major
 
-    - name: "Unexpected version of systemd: {{ systemd_major.stdout }}. Failing the playbook"
-      fail:
-      when: systemd_major.stdout <  systemd_7x_min_major
+    - name: "Assert that systemd major version {{ systemd_major.stdout }} is valid."
+      assert:
+        that: 
+          - (systemd_major.stdout | int) >= (systemd_7x_min_major | int)
+        msg: "Unexpected major version of systemd.  Minimum version required is {{ systemd_7x_min_major }}-{{ systemd_7x_min_minor }}"
 
     - name: obtain systemd minor version
       shell: rpm systemd -q | sed 's/^[^-]*-\([0-9]*-[0-9]*\).*/\1/' | awk -F'[-]' '{print $2}'
@@ -115,9 +117,13 @@
     - name: Display systemd minor version
       debug: var=systemd_minor
 
-    - name: "Unexpected minor version of systemd: {{ systemd_major.stdout }}-{{ systemd_minor.stdout }}. Failing the playbook"
-      fail:
-      when: systemd_major.stdout == systemd_7x_min_major and ( systemd_minor.stdout <  systemd_7x_min_minor )
+    - name: "Assert that systemd minor version {{ systemd_minor.stdout }} is valid."
+      assert:
+        that: 
+          - (systemd_major.stdout | int) == (systemd_7x_min_major | int)
+          - (systemd_minor.stdout | int) >= (systemd_7x_min_minor | int)
+        msg: "Unexpected minor version of systemd. Minimum version required is {{ systemd_7x_min_major }}-{{ systemd_7x_min_minor }}"
+
 
     when: ansible_distribution_major_version == '7'
     tags:

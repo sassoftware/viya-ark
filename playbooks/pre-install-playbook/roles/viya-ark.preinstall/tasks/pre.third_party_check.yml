@@ -12,15 +12,21 @@
 
 - block:
   ## third-party checks block
-  - name: Check for minimum version of Ansible
-    fail: msg="It looks like your are using Ansible version {{ansible_version.full}} but SAS deployment requires version {{required_ansible_min_version}}."
-    when: ansible_version.full is version_compare(required_ansible_min_version, '<')
+  - name: Assert at least the minimum version of Ansible is used.
+    assert:
+      that:
+        - ansible_version.full is version_compare(required_ansible_min_version, '>')
+      msg: 
+        "It looks like your are using Ansible version {{ansible_version.full}} but SAS deployment requires version {{required_ansible_min_version}}."
     tags:
       - ansible_version_check
 
-  - name: Check for minimum version of Python
-    fail: msg="It looks like your are using Python {{ansible_python_version}} but SAS deployment requires Python {{required_python_min_version}}."
-    when: ansible_python_version is version_compare(required_python_min_version, '<')
+  - name: Assert at least the minimum version of Python is used.
+    assert:
+      that:
+        - ansible_python_version is version_compare(required_python_min_version, '>')
+      msg: 
+        "It looks like your are using Python {{ansible_python_version}} but SAS deployment requires Python {{required_python_min_version}}."
     tags:
       - python_version_check
 
