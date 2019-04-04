@@ -1,9 +1,10 @@
 ---
 ####################################################################
-## Required Packages Config
+## Checking that the locale of the server(s) is supported
 ####################################################################
 # Test harness:
-#
+#     ansible-playbook -i pre-install.inventory.ini viya_pre_install_playbook.yml --tags locale_check --check 
+#     ansible-playbook -i pre-install.inventory.ini viya_pre_install_playbook.yml --tags locale_check 
 
 - block:
   ## block start
@@ -20,6 +21,8 @@
     when: ansible_distribution_major_version == '6'
 
   - name: Gather supported LOCALE language
+    changed_when: False
+    check_mode: no
     shell: "{{ cmd }}"
     register: lang
  
