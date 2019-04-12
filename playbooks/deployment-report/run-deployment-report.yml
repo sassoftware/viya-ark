@@ -83,11 +83,12 @@
       run_once: true
 
     - name: "Create Viya Deployment Report data file"
+      become: no
       local_action:
         module: copy
         content: "{{ sas_deployment_details | to_nice_yaml }}"
         dest: "{{ output_dir + '/' + sas_viya_deployment_report_data_file }}"
-        mode: 0777
+        mode: 0640
       run_once: true
       when: existing_data_file == "" or not data.stat.exists
 
@@ -99,10 +100,11 @@
       when: existing_data_file == "" or not data.stat.exists
 
     - name: "Create Viya Deployment HTML Report"
+      become: no
       template:
         src: templates/viya_deployment_report.html.j2
         dest: "{{ output_dir + '/' +  sas_viya_deployment_report_file }}"
-        mode: 0777
+        mode: 0640
       delegate_to: localhost
       run_once: true
       when: not exclude_html
