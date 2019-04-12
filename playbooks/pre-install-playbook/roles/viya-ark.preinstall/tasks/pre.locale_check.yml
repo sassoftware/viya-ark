@@ -17,7 +17,7 @@
       cmd: localectl | grep LANG | awk '{print $3}' | awk 'BEGIN{FS="="; RS="."} {print $2}'
     when: ansible_distribution_major_version != '6'
   - set_fact:
-      cmd: grep LANG /etc/sysconfig/i18n  | awk 'BEGIN{FS="="; RS="."} {print $2}'
+      cmd: grep LANG /etc/sysconfig/i18n | sed -rn -e "s/^[^#]+='(.*)'/\1/p" -e "s/^[^#]+=\"(.*)\"/\1/p" -e "s/^[^#]+=(.*)/\1/p" | awk 'BEGIN{FS="."} {print $1}'
     when: ansible_distribution_major_version == '6'
 
   - name: Gather supported LOCALE language
