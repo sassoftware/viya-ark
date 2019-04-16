@@ -1,4 +1,4 @@
-# SAS Viya Administration Resource Kit (Viya-ARK) - Deployment Report Playbook
+# SAS Viya Administration Resource Kit (Viya-ARK) - Viya Deployment Report Playbook
 
 ## Introduction
 This playbook gathers information about SAS Viya software and the hosts where it is deployed.
@@ -28,25 +28,25 @@ The output files written to the `sas_viya_playbook/` are:
 
 ## Running the Playbook
 To run the playbook, execute the following command:
-  ```
-  ansible-playbook run-deployment-report.yml -i <inventory_file>
+  ```bash
+  ansible-playbook viya-deployment-report.yml -i <inventory_file>
   ```
 > **Note**: `inventory_file` should be replaced by the path to the inventory file used when deploying the SAS Viya software.
 
 ## Optional Arguments
 
 To create a report which contains a listing of files installed by each package:
-  ```
-  ansible-playbook run-deployment-report.yml -i <inventory_file> -e "include_package_files=true"
+  ```bash
+  ansible-playbook viya-deployment-report.yml -i <inventory_file> -e "include_package_files=true"
   ```
 > **Note**: including this option will greatly increase the size of the report and report data.
 
 To create a report using existing data:
-  ```
-  ansible-playbook run-deployment-report.yml -i <inventory_file> -e "existing_data_file=<path_to_data_file>"
+  ```bash
+  ansible-playbook viya-deployment-report.yml -i <inventory_file> -e "existing_data_file=<path_to_data_file>"
   ```
 
 To exclude the static web-page and only create the report data:
-  ```
-  ansible-playbook run-deployment-report.yml -i <inventory_file> -e "exclude_html=true"
+  ```bash
+  ansible-playbook viya-deployment-report.yml -i <inventory_file> -e "exclude_html=true"
   ```
