@@ -76,6 +76,16 @@ $( function() {
         }
     });
 });
+$( function() {
+    var icon = $(".inline-icon");
+    icon.each(function() {
+        $(this).position({
+            my: "right middle",
+            at: "left middle",
+            of: $(this).next()
+        });
+    });
+});
 </script>
 
 <!-- style -->
@@ -142,6 +152,11 @@ th {
     font-weight: bold;
 }
 
+td.package-update {
+    background: #C0E3F6;
+    color: black;
+}
+
 td, th {
     padding: 6px;
     border: 1px solid #ccc;
@@ -199,6 +214,10 @@ ul.column-list {
 
 .ui-accordion-header.service-status-unknown {
     background: #ECB563;
+}
+
+.ui-accordion-header.package-update-available {
+    background: #C0E3F6;
 }
 </style>
 </head>
@@ -386,13 +405,13 @@ ul.column-list {
 
                 <!-- BEGIN: packages -->
 
-                <h3 id="{{ host[1]._id }}-machine-details-accordion-packages-header">Packages (<b>total</b>: {{ host[1].sas_packages | length }})</h3>
+                <h3 id="{{ host[1]._id }}-machine-details-accordion-packages-header">Packages (<b>total</b>: {{ host[1].sas_packages | length }}{% if host[1].available_package_updates != 0 %} | {{ host[1].available_package_updates }} updates available <span class="ui-icon ui-icon-circle-arrow-n inline-icon"></span>{% endif %})</h3>
 
                 <!-- packages accordion -->
                 <div class="accordion packages-accordion" id="{{ host[1]._id }}-packages-accordion">
 
 {% for package in host[1].sas_packages | dictsort %}
-                    <h4 id="{{ host[1]._id }}-package-{{ package[0] }}-accordion-header">{{ package[0] }}-{{ package[1].attributes.version }}</h4>
+                    <h4 id="{{ host[1]._id }}-package-{{ package[0] }}-accordion-header" {% if package[1].update_status.available %}class="package-update-available"{% endif %}>{{ package[0] }}-{{ package[1].attributes.version }}{% if package[1].update_status.available %} <span class="ui-icon ui-icon-circle-arrow-n inline-icon"></span>{% endif %}</h4>
                     <div>
                         <table>
                             <caption>Details</caption>
@@ -402,6 +421,14 @@ ul.column-list {
                                 <td>{{ package_attr[1] }}</td>
                             </tr>
 {% endfor %}
+                            <tr>
+                                <th>Update Status</th>
+{% if package[1].update_status.available %}
+                                <td class="package-update">{{ package[1].update_status.version }} (available)</td>
+{% else %}
+                                <td>up-to-date</td>
+{% endif %}
+                            </tr>
 {% if package[1].provided_services | length > 0 %}
                             <tr>
                                 <th>Provided Services</th>

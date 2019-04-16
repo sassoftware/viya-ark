@@ -166,18 +166,20 @@ class _HostDetailsKeys(object):
     | sas_services                 | SASServicesKeys               |
     +------------------------------+-------------------------------+
 
-    :cvar str ID:             Key referencing *_id* (str) in *sas_host_details* (dict).
-    :cvar str IPV4:           Key referencing *ipv4* (str) in *sas_host_details* (dict).
-    :cvar str HOST_GROUPS:    Key referencing *ansible_host_groups* (list) in *sas_host_details* (dict).
-    :cvar str OS:             Key referencing *os* (dict) in *sas_host_details* (dict).
-    :cvar str RESOURCE_CHECK: Key referencing *resource_check* (dict) in *sas_host_details* (dict).
-    :cvar str SAS_PACKAGES:   Key referencing *sas_packages* (dict) in *sas_host_details* (dict).
-    :cvar str SAS_SERVICES:   Key referencing *sas_services* (dict) in *sas_host_details* (dict).
-    :cvar str UNREACHABLE:    Key referencing *_unreachable* (bool) in *sas_host_details* (dict).
+    :cvar str ID:                 Key referencing *_id* (str) in *sas_host_details* (dict).
+    :cvar str IPV4:               Key referencing *ipv4* (str) in *sas_host_details* (dict).
+    :cvar str HOST_GROUPS:        Key referencing *ansible_host_groups* (list) in *sas_host_details* (dict).
+    :cvar str AVAIL_UPDATE_COUNT: Key referencing *available_package_updates* in the *sas_host_details* (dict).
+    :cvar str OS:                 Key referencing *os* (dict) in *sas_host_details* (dict).
+    :cvar str RESOURCE_CHECK:     Key referencing *resource_check* (dict) in *sas_host_details* (dict).
+    :cvar str SAS_PACKAGES:       Key referencing *sas_packages* (dict) in *sas_host_details* (dict).
+    :cvar str SAS_SERVICES:       Key referencing *sas_services* (dict) in *sas_host_details* (dict).
+    :cvar str UNREACHABLE:        Key referencing *_unreachable* (bool) in *sas_host_details* (dict).
     """
     ID = '_id'
     IPV4 = 'ipv4'
     HOST_GROUPS = 'ansible_host_groups'
+    AVAIL_UPDATE_COUNT = 'available_package_updates'
     OS = 'os'
     RESOURCE_CHECK = 'resource_check'
     REQUIRED_SOFTWARE = 'required_software'
@@ -494,22 +496,27 @@ class _HostDetailsKeys(object):
                     attributes: {}
                     installed_files: []
                     provided_services: []
+                    update_status: {}
 
         A nested class is provided for referencing key names in nested dicts:
 
-        +----------------------------+-------------------------------+
-        | dict key                   | nested key reference class    |
-        +============================+===============================+
-        | <package_name>.attributes  | PackageAttributesKeys         |
-        +----------------------------+-------------------------------+
+        +-------------------------------+-------------------------------+
+        | dict key                      | nested key reference class    |
+        +===============================+===============================+
+        | <package_name>.attributes     | PackageAttributesKeys         |
+        +-------------------------------+-------------------------------+
+        | <package_name>.update_status  | PackageUpdateStatusKeys       |
+        +-------------------------------+-------------------------------+
 
         :cvar str ATTRIBUTES:        Key referencing *attributes* (dict) in a SAS package dict.
         :cvar str INSTALLED_FILES:   Key referencing *installed_files* (list) in a SAS package dict.
         :cvar str PROVIDED_SERVICES: Key referencing *provided_services* (list) in a SAS package dict.
+        :cvar str UPDATE_STATUS:    Key referencing *update_status* (dict) in a SAS package dict.
         """
         ATTRIBUTES = 'attributes'
         INSTALLED_FILES = 'installed_files'
         PROVIDED_SERVICES = 'provided_services'
+        UPDATE_STATUS = 'update_status'
 
         # =====
         # Class: PackageAttributesKeys(object)
@@ -526,21 +533,49 @@ class _HostDetailsKeys(object):
                 <package_name>
                     attributes:
                         arch: ''
-                        from_repository: ''
+                        build_date: ''
+                        install_date: ''
                         size: ''
                         summary: ''
                         version: ''
 
             :cvar str ARCH:      Key referencing *arch* (str) in *attributes* (dict) for a package.
-            :cvar str FROM_REPO: Key referencing *from_repository* (str) in  *attributes* (dict) for a package.
+            :cvar str BUILD:     Key referencing *build_date* (str) in *attributes* (dict) for a package.
+            :cvar str INSTALL:   Key referencing *install_date* (str) in *attributes* (dict) for a package.
+            :cvar str NAME:      Key referencing *name* (str) in *attributes* (dict) for a package.
             :cvar str SIZE:      Key referencing *size* (str) in *attributes* (dict) for a package.
             :cvar str SUMMARY:   Key referencing *summary* (str) in *attributes* (dict) for a package.
             :cvar str VERSION:   Key referencing *version* (str) in *attributes* (dict) for a package.
             """
             ARCH = 'arch'
-            FROM_REPO = 'from_repository'
+            BUILD = 'build_date'
+            INSTALL = 'install_date'
+            NAME = 'name'
             SIZE = 'size'
             SUMMARY = 'summary'
+            VERSION = 'version'
+
+        class PackageUpdateStatusKeys(object):
+            """
+            Nested internal class for static reference to key names in *update_status* (dict) returned for
+            each package in *sas_packages* (dict).
+
+            The top level keys are:
+
+            .. code-block:: yaml
+
+                <package_name>
+                    update_status:
+                        available: true|false
+                        from_repository: ''
+                        version: ''
+
+            :cvar str AVAIL:     Key referencing *available* (bool) in *update* (dict) for a package.
+            :cvar str FROM_REPO: Key referencing *from_repository* (str) in *update* (dict) for a package.
+            :cvar str VERSION:   Key referencing *version* (str) in *update* (dict) for a package.
+            """
+            AVAIL = 'available'
+            FROM_REPO = 'from_repository'
             VERSION = 'version'
 
     # =====
@@ -923,7 +958,9 @@ def main():
     }
 
     # set host sas deployment info
-    host_details[_HostDetailsKeys.SAS_PACKAGES] = _get_sas_package_info(module, package_manager, include_package_files)
+    packages, available_update_count = _get_sas_package_info(module, package_manager, include_package_files)
+    host_details[_HostDetailsKeys.AVAIL_UPDATE_COUNT] = available_update_count
+    host_details[_HostDetailsKeys.SAS_PACKAGES] = packages
     host_details[_HostDetailsKeys.SAS_SERVICES] = _get_sas_service_info(module)
 
     # map packages to any services they installed
@@ -1254,62 +1291,7 @@ def _get_sas_service_info(module):
 
 
 # =====
-# _get_sas_package_info(AnsibleModule, bool)
-# =====
-def _get_sas_package_info(module, package_manager, include_package_files=False):
-    """
-    Retrieves package information for all installed SAS packages and returns the values as a dict.
-
-    :param AnsibleModule module: The AnsibleModule object representing the current module.
-    :param bool include_package_files: Toggles whether information about the package's installed files should be
-                                       included.
-    :return: A dict of package names mapped to a dict containing package attribute names and their values.
-    :rtype dict:
-    """
-
-    # -- package info -- #
-    if package_manager == _PackageManagers.ZYPPER:
-        results = _get_sas_package_info_zypper(module)
-    else:
-        results = _get_sas_package_info_yum(module)
-
-    # -- file info -- #
-
-    # run rpm file list command
-    files_cmd_stdout = _execute_command("rpm -qg SAS --queryformat '%{NAME}\n[%{FILENAMES}\n]\n'", module)
-
-    # split output by empty line
-    all_package_files = files_cmd_stdout.split("\n\n")[:-1]
-
-    # iterate over each block of output
-    services_by_package = dict()
-    for package_files in all_package_files:
-
-        # split block by newline
-        package_files_list = package_files.split("\n")
-
-        # get the name of the package (first line of output)
-        package_name = package_files_list[0]
-
-        if package_name is not None:
-
-            if include_package_files:
-                results[package_name][_HostDetailsKeys.SASPackageKeys.INSTALLED_FILES] = package_files_list[1:]
-
-            service_paths = [f for f in package_files_list[1:] if re.match("/etc/.*init.d/.*", f)]
-            if len(service_paths) > 0:
-                service_names = [os.path.basename(service_path) for service_path in service_paths]
-                results[package_name][_HostDetailsKeys.SASPackageKeys.PROVIDED_SERVICES] = service_names
-
-                for service_name in service_names:
-                    services_by_package[service_name] = package_name
-
-    # return SAS package information
-    return results
-
-
-# =====
-# _get_memory_info(pid, AnsibleModule)
+# _get_process_memory_info(pid, AnsibleModule)
 # =====
 def _get_process_memory_info(pid, module):
     """
@@ -1379,23 +1361,66 @@ def _get_process_memory_info(pid, module):
 
 
 # =====
-# _get_sas_package_info_yum(AnsibleModule)
+# _get_sas_package_info(AnsibleModule, bool)
 # =====
-def _get_sas_package_info_yum(module):
+def _get_sas_package_info(module, package_manager, include_installed_files=False):
     """
-    Retrieves package information via yum for all installed SAS packages and returns the values as a dict.
+    Retrieves package information for all installed SAS packages and returns the values as a dict.
 
     :param AnsibleModule module: The AnsibleModule object representing the current module.
+    :param bool include_installed_files: Toggles whether information about the package's installed files should be
+                                       included.
     :return: A dict of package names mapped to a dict containing package attribute names and their values.
+    :rtype dict:
+    """
+
+    # -- package info -- #
+
+    # get installed package info via rpm
+    results = _get_installed_package_info(module, include_installed_files)
+
+    if package_manager == _PackageManagers.ZYPPER:
+        update_results = _get_sas_package_update_info_zypper(module)
+    else:
+        update_results = _get_sas_package_update_info_yum(module)
+
+    for package_name, update_info in update_results.items():
+        results[package_name][_HostDetailsKeys.SASPackageKeys.UPDATE_STATUS] = update_info
+
+    # return SAS package information
+    return results, len(update_results)
+
+
+# =====
+# _get_installed_package_info(AnsibleModule)
+# =====
+def _get_installed_package_info(module, include_installed_files):
+    """
+    Retrieves package information via rpm for all installed SAS Packages and returns the values as a dict.
+
+    :param module: The AnsibleModule object representing the current module.
+    :param bool include_installed_files: Toggles whether information about the package's installed files should be
+                                       included.
+    :return: A dict of package names mapped to a dict of package attributes and their values.
     :rtype dict:
     """
     # define results dict
     results = dict()
 
-    # -- package info -- #
+    # attribute delimiter
+    delim = ':::'
+
+    query = _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.NAME + delim + "%{name}\n" + \
+        _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.ARCH + delim + "%{arch}\n" + \
+        _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.BUILD + delim + "%{buildtime:date}\n" + \
+        _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.INSTALL + delim + "%{installtime:date}\n" + \
+        _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.SIZE + delim + "%{size}\n" + \
+        _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.SUMMARY + delim + "%{summary}\n" + \
+        _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.VERSION + delim + "%{version}-%{release}\n" + \
+        "[file" + delim + "%{filenames}\n]\n"
 
     # run package info command
-    info_cmd_stdout = _execute_command("yum -q info $(rpm -qg SAS --queryformat '%{NAME} ')", module)
+    info_cmd_stdout = _execute_command("rpm -qg SAS --queryformat '" + query + "'", module)
 
     # split stdout into an array by empty line, containing package info for all installed packages
     all_package_info = info_cmd_stdout.split("\n\n")
@@ -1409,57 +1434,126 @@ def _get_sas_package_info_yum(module):
         # define a dictionary to map package attributes to their respective key
         package_attrs = dict()
 
-        # iterate over all lines of package info
-        for line in package_info_lines:
+        # get the package name (first line in each block of output)
+        try:
+            package_name_line = package_info_lines.pop(0)
+            package_name_attr = str(package_name_line).split(delim)
+            if len(package_name_attr) == 2 and package_name_attr[0] == \
+                    _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.NAME:
+                package_name = package_name_attr[1]
+            else:
+                package_name = None
+        except IndexError:
+            package_name = None
 
-            # replace multiple consecutive whitespaces with a single whitespace
-            line = re.sub(' +', ' ', line)
-
-            # split line by delimiter to get key and value
-            attr = str(line).split(" : ")
-
-            if len(attr) == 2:
-                key = attr[0]
-                value = attr[1]
-                package_attrs[key] = value
-
-        # get the package name
-        package_name = package_attrs.get(_YumInfoKeys.NAME)
-
-        # add attributes to return value only if a name is found
+        # if package name is valid, parse attributes
         if package_name is not None:
+
+            # create list to hold installed files
+            installed_files = list()
+
+            # iterate over all lines of package info
+            for line in package_info_lines:
+
+                # split line by delimiter to get key and value
+                attr = str(line).split(delim)
+
+                if len(attr) == 2:
+                    key = attr[0]
+                    value = attr[1]
+
+                    # if key is 'file' add it to files list
+                    if key == 'file':
+                        installed_files.append(value)
+                    else:
+                        # get human readable byes for package size
+                        if key == _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.SIZE:
+                            value = _bytesHumanReadable(value)
+                        package_attrs[key] = value
 
             # seed results values
             results[package_name] = {
                 _HostDetailsKeys.SASPackageKeys.ATTRIBUTES: dict(),
                 _HostDetailsKeys.SASPackageKeys.INSTALLED_FILES: list(),
-                _HostDetailsKeys.SASPackageKeys.PROVIDED_SERVICES: list()
+                _HostDetailsKeys.SASPackageKeys.PROVIDED_SERVICES: list(),
+                _HostDetailsKeys.SASPackageKeys.UPDATE_STATUS: {
+                    _HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.AVAIL: False,
+                    _HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.FROM_REPO: '',
+                    _HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.VERSION: ''
+                }
+
             }
 
-            # pull out desired package attributes
-            filtered_package_attrs = dict()
-
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.ARCH] = \
-                package_attrs.get(_YumInfoKeys.ARCH, '')
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.FROM_REPO] = \
-                package_attrs.get(_YumInfoKeys.FROM_REPO, '')
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.SIZE] = \
-                package_attrs.get(_YumInfoKeys.SIZE, '')
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.SUMMARY] = \
-                package_attrs.get(_YumInfoKeys.SUMMARY, '')
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.VERSION] = \
-                package_attrs.get(_YumInfoKeys.VERSION, '') + '-' + package_attrs.get(_YumInfoKeys.RELEASE, '')
-
             # add package attributes to results
-            results[package_name][_HostDetailsKeys.SASPackageKeys.ATTRIBUTES] = filtered_package_attrs
+            results[package_name][_HostDetailsKeys.SASPackageKeys.ATTRIBUTES] = package_attrs
+
+            # determine any provided services
+            service_paths = [f for f in installed_files if re.match("/etc/.*init.d/.*", f)]
+            if len(service_paths) > 0:
+                service_names = [os.path.basename(service_path) for service_path in service_paths]
+                results[package_name][_HostDetailsKeys.SASPackageKeys.PROVIDED_SERVICES] = service_names
+
+            # include installed files, if specified
+            if include_installed_files:
+                results[package_name][_HostDetailsKeys.SASPackageKeys.INSTALLED_FILES] = installed_files
 
     return results
 
 
 # =====
-# _get_sas_package_info_zypper(AnsibleModule)
+# _get_sas_package_update_info_yum(AnsibleModule)
 # =====
-def _get_sas_package_info_zypper(module):
+def _get_sas_package_update_info_yum(module):
+    """
+    Retrieves package information via yum for all installed SAS packages and returns the values as a dict.
+
+    :param AnsibleModule module: The AnsibleModule object representing the current module.
+    :return: A dict of package names mapped to a dict containing package attribute names and their values.
+    :rtype dict:
+    """
+
+    # define results dict
+    results = dict()
+
+    # -- package update info -- #
+
+    # run package info command
+    info_cmd_stdout = _execute_command("yum -q check-updates 'sas-*'", module, 100)
+
+    # split stdout into an array by line, containing update info per package on each line
+    all_update_info = info_cmd_stdout.split("\n")
+
+    # iterate over the package info for all installed packages
+    for line in all_update_info:
+
+        # skip empty lines
+        if str(line).strip() == "":
+            continue
+
+        # replace multiple consecutive whitespaces delim character
+        line = re.sub(' +', ':::', line)
+
+        # split line by delimiter to get key and value
+        attr = str(line).split(':::')
+
+        if len(attr) == 3:
+            # define a dictionary to map package update attributes to their respective key
+            update_attrs = dict()
+
+            package_name = attr[0].replace(".x86_64", "")
+            update_attrs[_HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.AVAIL] = True
+            update_attrs[_HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.FROM_REPO] = attr[2]
+            update_attrs[_HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.VERSION] = attr[1]
+
+            results[package_name] = update_attrs
+
+    return results
+
+
+# =====
+# _get_sas_package_update_info_zypper(AnsibleModule)
+# =====
+def _get_sas_package_update_info_zypper(module):
     """
     Retrieves package information via zypper for all installed SAS packages and returns the values as a dict.
 
@@ -1470,65 +1564,33 @@ def _get_sas_package_info_zypper(module):
     # define results dict
     results = dict()
 
-    # -- package info -- #
+    # -- package update info -- #
 
     # run package info command
-    info_cmd_stdout = _execute_command("zypper -n info $(rpm -qg SAS --queryformat '%{NAME} ')", module)
+    info_cmd_stdout = _execute_command("zypper -n list-updates | grep 'sas-'", module)
 
-    # split stdout into an array by empty line, containing package info for all installed packages
-    all_package_info = info_cmd_stdout.split("\n\n")[1:]
+    # split stdout into an array by line, containing update info per package on each line
+    all_update_info = info_cmd_stdout.split("\n")
 
     # iterate over the package info for all installed packages
-    for package_info in all_package_info:
+    for line in all_update_info:
 
-        # split single package info into individual lines
-        package_info_lines = package_info.split("\n")[3:]
+        # replace multiple consecutive whitespaces with a single whitespace
+        line = re.sub(' +', ' ', line)
 
-        # define a dictionary to map package attributes to their respective key
-        package_attrs = dict()
+        # split line by delimiter to get key and value
+        attr = str(line).split(" | ")
 
-        # iterate over all lines of package info
-        for line in package_info_lines:
+        if len(attr) == 6:
+            # define a dictionary to map package update attributes to their respective key
+            update_attrs = dict()
 
-            # replace multiple consecutive whitespaces with a single whitespace
-            line = re.sub(' +', ' ', line)
+            package_name = attr[2]
+            update_attrs[_HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.AVAIL] = True
+            update_attrs[_HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.FROM_REPO] = attr[1]
+            update_attrs[_HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.VERSION] = attr[4]
 
-            # split line by delimiter to get key and value
-            attr = str(line).split(" : ")
-
-            if len(attr) == 2:
-                key = attr[0]
-                value = attr[1].strip()
-                package_attrs[key] = value
-
-        # get the package name
-        package_name = package_attrs.get(_ZypperInfoKeys.NAME)
-
-        # add attributes to return value only if a name is found
-        if package_name is not None:
-            # seed results values
-            results[package_name] = {
-                _HostDetailsKeys.SASPackageKeys.ATTRIBUTES: dict(),
-                _HostDetailsKeys.SASPackageKeys.INSTALLED_FILES: list(),
-                _HostDetailsKeys.SASPackageKeys.PROVIDED_SERVICES: list()
-            }
-
-            # pull out desired package attributes
-            filtered_package_attrs = dict()
-
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.ARCH] = \
-                package_attrs.get(_ZypperInfoKeys.ARCH, '')
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.FROM_REPO] = \
-                package_attrs.get(_ZypperInfoKeys.FROM_REPO, '')
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.SIZE] = \
-                package_attrs.get(_ZypperInfoKeys.SIZE, '')
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.SUMMARY] = \
-                package_attrs.get(_ZypperInfoKeys.SUMMARY, '')
-            filtered_package_attrs[_HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.VERSION] = \
-                package_attrs.get(_ZypperInfoKeys.VERSION, '')
-
-            # add package attributes to results
-            results[package_name][_HostDetailsKeys.SASPackageKeys.ATTRIBUTES] = filtered_package_attrs
+            results[package_name] = update_attrs
 
     return results
 
@@ -1572,7 +1634,7 @@ def _get_sas_package_info_zypper(module):
 # =====
 # _execute_command(str, AnsibleModule, bool)
 # =====
-def _execute_command(command, module, shell=True):
+def _execute_command(command, module, additional_rc=0, shell=True):
     """
     Returns the stdout of the given command.
 
@@ -1593,7 +1655,7 @@ def _execute_command(command, module, shell=True):
         message = "Command {0} failed.".format(command)
         module.fail_json(msg=message, command_stderr=stderr)
 
-    if proc.returncode != 0:
+    if proc.returncode != 0 and proc.returncode != additional_rc:
         message = "Command {0} failed.".format(command)
         module.fail_json(msg=message, command_stderr=stderr)
 
