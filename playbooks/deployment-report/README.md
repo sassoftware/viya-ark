@@ -50,3 +50,8 @@ To exclude the static web-page and only create the report data:
   ```bash
   ansible-playbook viya-deployment-report.yml -i <inventory_file> -e "exclude_html=true"
   ```
+
+To force the creation of the report files into the current directory:
+  ```bash
+  ansible-playbook viya-deployment-report.yml -i <inventory_file> -e 'output_dir=./'
+  ```
