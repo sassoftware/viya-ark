@@ -8,7 +8,7 @@
 
 do_usage()
 {
-	echo "Usage: This script is used internally by VIRK playbook."
+	echo "Usage: This script is used internally by SAS Viya-ARK MMSU playbooks."
 }
 
 do_stopms()
