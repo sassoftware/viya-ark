@@ -41,7 +41,7 @@ For example, a functioning [Ansible Controller](http://docs.ansible.com/ansible/
 
 # Index of Tools
 Tool support for the latest release of SAS Viya
-* [Pre-installation Playbook (SAS Viya 3.4 and later)](playbooks/pre-install-playbook)
+* [Pre-installation Playbook](playbooks/pre-install-playbook)
 * [Home Directory Creator Playbook](playbooks/home-directory-createor)
 * [SAS Data Server Utility Script](utilities/postgres/viya)
 * [Viya Multi-Machine Services Utilities](playbooks/viya-mmsu)
