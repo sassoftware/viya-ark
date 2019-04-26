@@ -1,6 +1,15 @@
 # Changelog for SAS Viya-ARK
 
 <!-- LATEST RELEASE START -->
+## Viya34-ark-1.2 - May 1, 2019
+
+- **Summary**: 
+    Documentation updates.  Bug fixes.
+- Issues addressed: 
+    - DEPENB-1686 - Unclear the master branch of Viya-ARK is associated with SAS Viya 3.4
+
+<!-- LATEST RELEASE END -->
+
 ## Viya34-ark-1.1 - April 18, 2019
 
 - **Summary**: 
@@ -11,8 +20,6 @@
     - DEPENB-1566 - Add package update available notifications to deployment report
     - DEPENB-1637 - Pre-install playbook local check rejected LOCALE en_US.
     - DEPENB-1664 - Deployment report playbook filename change and not creating report as root user.
-
-<!-- LATEST RELEASE END -->
 
 ## Viya34-ark-1.0 - April 10, 2019
 
