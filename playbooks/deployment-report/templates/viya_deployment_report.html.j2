@@ -219,6 +219,15 @@ ul.column-list {
 .ui-accordion-header.package-update-available {
     background: #C0E3F6;
 }
+
+div.error-output-display {
+    padding: 20px;
+    background-color: #202020;
+    color: red;
+    margin-bottom: 15px;
+    font-family: "Courier New", Courier, monospace;
+    border-radius: 5px;
+}
 </style>
 </head>
 <!-- END: head -->
@@ -251,6 +260,53 @@ ul.column-list {
 {% if host[1]._unreachable %}
         <h2 id="machine-details-{{ host[1]._id }}-accordion-header">{{ host[0] }} (<font color="red">UNREACHABLE!</font>)</h2>
         <div class="machine-details">
+
+            <!-- ansible host groups -->
+            <div class="machine-details-host-groups">
+
+                <h3>Inventory Host Groups</h3>
+                <ul class="column-list">
+{% for host_group in host[1].ansible_host_groups | sort %}
+                    <li>{{ host_group }}</li>
+{% endfor %}
+                </ul>
+            </div>
+        </div>
+{% elif host[1]._failed %}
+        <h2 id="machine-details-{{ host[1]._id }}-accordion-header">{{ host[0] }} (<font color="red">FAILURE!</font>)</h2>
+        <div class="machine-details">
+
+            <h3>Failure Details</h3>
+
+            <!-- error message -->
+            <div>
+                <p>A failure occurred while gathering machine details. Review the output below and the
+                Ansible log for more information.</p>
+            </div>
+
+            <!-- display message -->
+            <div>
+                <h5>Message</h5>
+                <div class="error-output-display">
+                    {{ host[1]._failure_details.msg }} (return code: {{ host[1]._failure_details.rc }})
+                </div>
+            </div>
+
+            <!-- display stdout -->
+            <div>
+                <h5>stdout</h5>
+                <div class="error-output-display">
+                    {{ host[1]._failure_details.stdout }}
+                </div>
+            </div>
+
+            <!-- display stderr -->
+            <div>
+                <h5>stderr</h5>
+                <div class="error-output-display">
+                    {{ host[1]._failure_details.stderr }}
+                </div>
+            </div>
 
             <!-- ansible host groups -->
             <div class="machine-details-host-groups">
