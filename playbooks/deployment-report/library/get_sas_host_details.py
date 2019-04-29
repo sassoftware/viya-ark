@@ -175,6 +175,7 @@ class _HostDetailsKeys(object):
     :cvar str SAS_PACKAGES:       Key referencing *sas_packages* (dict) in *sas_host_details* (dict).
     :cvar str SAS_SERVICES:       Key referencing *sas_services* (dict) in *sas_host_details* (dict).
     :cvar str UNREACHABLE:        Key referencing *_unreachable* (bool) in *sas_host_details* (dict).
+    :cvar str FAILED:             Key referencing *_failed* (bool) in *sas_host_details* (dict)
     """
     ID = '_id'
     IPV4 = 'ipv4'
@@ -186,6 +187,7 @@ class _HostDetailsKeys(object):
     SAS_PACKAGES = 'sas_packages'
     SAS_SERVICES = 'sas_services'
     UNREACHABLE = '_unreachable'
+    FAILED = '_failed'
 
     # =====
     # Class: OSKeys(object)
@@ -927,6 +929,11 @@ def main():
     # if this script is executing then the host is reachable
     host_details[_HostDetailsKeys.UNREACHABLE] = False
 
+    # set if host encountered failure
+    # if this script is executing, a failure scenario is unlikely but the value is set to True
+    # and only reset once all data gathering is done
+    host_details[_HostDetailsKeys.FAILED] = True
+
     # set ipv4
     host_details[_HostDetailsKeys.IPV4] = ipv4
 
@@ -970,6 +977,9 @@ def main():
                 services = host_details[_HostDetailsKeys.SAS_SERVICES][_HostDetailsKeys.SASServicesKeys.INSTALLED]
                 services[service_name][_HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.INSTALLED_BY] = \
                     package_name
+
+    # data gathering is done, set failed state to False
+    host_details[_HostDetailsKeys.FAILED] = False
 
     results = {
         hostname: host_details
@@ -1518,6 +1528,9 @@ def _get_sas_package_update_info_yum(module):
     # -- package update info -- #
 
     # run package info command
+    # by default, _execute_command check for a return code of 0 for success
+    # if packages are found with available updates, the command will return 100
+    # so 100 is provided as an additional success scenario (0 or 100)
     info_cmd_stdout = _execute_command("yum -q check-updates 'sas-*'", module, 100)
 
     # split stdout into an array by line, containing update info per package on each line
@@ -1567,7 +1580,10 @@ def _get_sas_package_update_info_zypper(module):
     # -- package update info -- #
 
     # run package info command
-    info_cmd_stdout = _execute_command("zypper -n list-updates | grep 'sas-'", module)
+    # by default, _execute_command check for a return code of 0 for success
+    # if packages are not found with available updates, the grep command will return 1
+    # so 1 is provided as an additional success scenario (0 or 1)
+    info_cmd_stdout = _execute_command("zypper -n list-updates | grep 'sas-'", module, 1)
 
     # split stdout into an array by line, containing update info per package on each line
     all_update_info = info_cmd_stdout.split("\n")
@@ -1675,7 +1691,11 @@ def _bytesHumanReadable(num_bytes, unit_step=1024.0):
     :rtype str:
     """
 
-    num_bytes = float(num_bytes)
+    try:
+        num_bytes = float(num_bytes)
+    except ValueError:
+        return ""
+
     unit = 'bytes'
 
     if (num_bytes / unit_step) >= 1:
