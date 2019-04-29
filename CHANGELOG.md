@@ -7,6 +7,7 @@
     Documentation updates.  Bug fixes.
 - Issues addressed: 
     - DEPENB-1686 - Unclear the master branch of Viya-ARK is associated with SAS Viya 3.4
+    - DEPENB-876 - LDAP validator
 
 <!-- LATEST RELEASE END -->
 
