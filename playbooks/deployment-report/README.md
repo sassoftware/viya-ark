@@ -29,7 +29,7 @@ The output files written to the `sas_viya_playbook/` are:
 ## Running the Playbook
 To run the playbook, execute the following command:
   ```bash
-  ansible-playbook viya-deployment-report.yml -i <inventory_file>
+  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml
   ```
 > **Note**: `inventory_file` should be replaced by the path to the inventory file used when deploying the SAS Viya software.
 
@@ -37,21 +37,21 @@ To run the playbook, execute the following command:
 
 To create a report which contains a listing of files installed by each package:
   ```bash
-  ansible-playbook viya-deployment-report.yml -i <inventory_file> -e "include_package_files=true"
+  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "include_package_files=true"
   ```
 > **Note**: including this option will greatly increase the size of the report and report data.
 
 To create a report using existing data:
   ```bash
-  ansible-playbook viya-deployment-report.yml -i <inventory_file> -e "existing_data_file=<path_to_data_file>"
+  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "existing_data_file=<path_to_data_file>"
   ```
 
 To exclude the static web-page and only create the report data:
   ```bash
-  ansible-playbook viya-deployment-report.yml -i <inventory_file> -e "exclude_html=true"
+  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "exclude_html=true"
   ```
 
 To force the creation of the report files into the current directory:
   ```bash
-  ansible-playbook viya-deployment-report.yml -i <inventory_file> -e 'output_dir=./'
+  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e 'output_dir=./'
   ```
