@@ -1,0 +1,33 @@
+## this is a sample of what the sitedefault could look like for OpenLDAP
+config:
+    application:
+        sas.identities.providers.ldap.connection:
+            host: 'your_ldap_hostname'
+            port: '389'
+            url: 'ldap://${sas.identities.providers.ldap.connection.host}:${sas.identities.providers.ldap.connection.port}'
+            anonymousBind: 'false'
+            userDN: 'CN=[test] SAS Demo Account,OU=Generic Accounts,OU=Admin,DC=na,DC=customer,DC=com'
+            password: 'dummypass'
+        sas.identities.providers.ldap.group:
+            accountId: 'name'
+            baseDN: 'OU=Groups,DC=na,DC=customer,DC=com'
+            createdDate: 'createTimestamp'
+            distinguishedName: 'none'
+            member: 'member'
+            modifiedDate: 'modifyTimestamp'
+            objectClass: 'groupOfNames'
+            objectFilter: '(objectClass=groupOfNames)'
+            searchFilter: 'dn={0}'
+        sas.identities.providers.ldap.user:
+            accountId: 'uid'
+            baseDN: 'dc=customer,dc=com'
+            createdDate: 'createTimestamp'
+            distinguishedName: 'none'
+            memberOf: 'memberOf'
+            modifiedDate: 'modifyTimestamp'
+            objectClass: 'inetOrgPerson'
+            objectFilter: '(objectClass=inetOrgPerson)'
+            searchFilter: 'uid={0}'
+        sas.identities:
+            administrator: 'your_user_id'
+            

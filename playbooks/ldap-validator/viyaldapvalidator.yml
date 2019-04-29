@@ -1,0 +1,302 @@
+---
+
+## -done- can we access LDAP?
+## -done- do we get the number of users and groups we expect
+## -todo- are all the fields valid?
+## -todo- do these LDAP users exist locally too?
+## -todo- should we configure SSSD if they don't?
+## -todo- make sure the users have home directories etc...
+
+- hosts: CoreServices
+
+  vars:
+    sitedefault_loc: ./sitedefault_sample.yml
+    sizelimit: 5 
+      # From the LDAPSEARCH doc:
+      # -z sizelimit
+              # retrieve at most sizelimit entries for a search.  A sizelimit of 0 (zero) or 
+              # none means no limit.  A sizelimit of  max  means  the maximum integer allowable 
+              # by the protocol.  A server may impose a maximal sizelimit which only the root 
+              # user may override.
+
+  tasks:
+
+  - name: Include the variables from the given file, into a variable called sitedefault
+    include_vars:
+      file: "{{ sitedefault_loc }}"
+      name: sitedefault
+    tags:
+      - sitedefault_include
+
+  - name: show the variables values
+    debug: var=sitedefault
+    tags:
+      - extradebug
+
+  - name: Assert that the most important variables are defined
+    assert:
+      that:
+        - "{{ item }} is defined"
+        - "{{ item }} | trim != '' "
+      msg: |
+        This item is not defined or empty in your sitedefault file: 
+        {{item}}  
+        Please add it
+    with_items:
+      - sitedefault.config.application['sas.identities.providers.ldap.connection']['host']
+      - sitedefault.config.application['sas.identities.providers.ldap.connection']['port']
+      - sitedefault.config.application['sas.identities.providers.ldap.connection']['url']
+      - sitedefault.config.application['sas.identities.providers.ldap.connection']['anonymousBind']
+      - sitedefault.config.application['sas.identities.providers.ldap.connection']['userDN']
+      - sitedefault.config.application['sas.identities.providers.ldap.connection']['password']
+      - sitedefault.config.application['sas.identities.providers.ldap.user']['baseDN']
+      - sitedefault.config.application['sas.identities.providers.ldap.group']['baseDN']
+      - sitedefault.config.application['sas.identities']['administrator']
+    tags:
+      - assertdefinitions
+
+  - name: Make simpler variables
+    set_fact:
+      ldap_server_host: "{{sitedefault.config.application['sas.identities.providers.ldap.connection']['host']}}"
+      ldap_server_port: "{{ sitedefault.config.application['sas.identities.providers.ldap.connection']['port']}} "
+      ldap_protocol: "{{sitedefault.config.application['sas.identities.providers.ldap.connection']['url'].split(':')[0]}}"
+      ldap_anon_bind: "{{sitedefault.config.application['sas.identities.providers.ldap.connection']['anonymousBind']}}"
+      ldap_bind_userdn: "{{sitedefault.config.application['sas.identities.providers.ldap.connection']['userDN']}}"
+      ldap_bind_pw: "{{sitedefault.config.application['sas.identities.providers.ldap.connection']['password']}}"
+      ldap_user_basedn: "{{sitedefault.config.application['sas.identities.providers.ldap.user']['baseDN']}}"
+      ldap_group_basedn: "{{sitedefault.config.application['sas.identities.providers.ldap.group']['baseDN']}}"
+      ldap_defaultadmin_user: "{{sitedefault.config.application['sas.identities']['administrator']}}"      
+    tags:
+      - makevars
+
+#  - name: Define Variable (when default admin is provided)
+#    set_fact:
+#      ldap_defaultadmin_user: "{{sitedefault.config.application['sas.identities']['administrator']}}"
+#    when: sitedefault.config.application['sas.identities']['administrator'] is defined
+
+  - name: Assert that the port is a positive integer
+    assert:
+      that:
+        - ldap_server_port | int > 0
+      msg: |
+        You provided the ldap host ({{ldap_server_host}}) and port ({{ldap_server_port}})
+        That does not seem right
+        Please review your sitedefault file
+    tags:
+      - assertport
+
+  - name: Assert that the variable for anonymousBind is either true or false
+    assert:
+      that:
+        - ldap_anon_bind | bool == True or ldap_anon_bind | bool == False
+      msg: |
+        Your value for anonymousBind is '{{ldap_anon_bind}}'
+        It should be either 'true' or 'false'
+        Please review your sitedefault file
+    tags:
+      - assertbind
+
+
+  # - debug: msg="{{ldap_server_host}},{{ldap_server_port}},{{ldap_protocol}},{{ldap_anon_bind}},{{ldap_bind_userdn}},{{ldap_bind_pw}},{{ldap_user_basedn}},{{ldap_group_basedn}} "
+
+  - name: Make sure LDAP host and port are reachable
+    wait_for:
+      host: "{{ldap_server_host}}"
+      port: "{{ldap_server_port | trim}}"
+      timeout: 1
+      msg:
+       - We tried to reach host "{{ldap_server_host}}" on port "{{ldap_server_port}}"
+       - We did not get a response.
+       - Please ensure that the values are correct
+       - If they are, there may be a firewall blocking the traffic
+    register: ping_ldap_host
+    ignore_errors: no
+    tags:
+      - reachable
+
+  # - debug: var=ping_ldap_host
+
+  - name: "Ensure ldapsearch is available"
+    become: yes
+    become_user: root
+    yum:
+      name: ['openldap-clients']
+      state: present
+    tags:
+      - packages
+
+  - name: create the ldap search string
+    set_fact:
+      # ldapsearchstring_wider: >
+      #   ldapsearch
+      #   -h "{{ldap_server_host}}"
+      #   -p "{{ldap_server_port }}"
+      #   -D "{{ldap_bind_userdn}}"
+      #   -w "{{ldap_bind_pw}}"
+      #   -b "{{sitedefault.config.application['sas.identities.providers.ldap.group']['baseDN']" '(&(objectCategory=person)(objectClass=user))'
+      #   -z 5
+      #   -t mail
+      #   -LLL
+      # ldapsearchstring_bind: >
+      #   ldapsearch
+      #   -v
+      #   -x
+      #   -h "{{ldap_server_host}}"
+      #   -p "{{ldap_server_port | trim}}" {% if ldap_anon_bind | bool == true %}{% elif ldap_anon_bind | bool == false %} -D "{{ldap_bind_userdn}}" -w "{{ldap_bind_pw}}" {% else %} {% endif %}
+      ldapsearchstring_bind: ldapsearch -v -x -h "{{ldap_server_host}}" -p "{{ldap_server_port | trim}}"  {% if ldap_anon_bind | bool == true %}{% elif ldap_anon_bind | bool == false %} -D "{{ldap_bind_userdn}}" -w "{{ldap_bind_pw}}" {% else %} {% endif %}
+    tags:
+      - createsearchstring
+
+  - name: Display the LDAP Search String
+    debug: var=ldapsearchstring_bind
+    tags:
+      - debug
+
+
+## basic connection
+
+  - name: "Do an ldapsearch with the parameters provided"
+    #shell: "{{ldapsearchstring_bind}} -b '' -z 5 "
+    shell: "{{ldapsearchstring_bind}} -z {{sizelimit}} "
+    ignore_errors: yes
+    failed_when: ldapsearch_result.rc != 0 and ldapsearch_result.rc != 4
+    changed_when: false
+    check_mode: no
+    register: ldapsearch_result
+    tags:
+      - ldapsearch1
+
+  - name: Display the result of the LDAP search
+    debug: var=ldapsearch_result
+    tags:
+      - debug
+
+  - name: Assert that the connection to LDAP worked
+    assert:
+      that:
+        - ldapsearch_result.rc  == 0 or ldapsearch_result.rc  == 4
+      msg: |
+        Your ldapsearch query failed. The return code was {{ldapsearch_result.rc}}
+        Please review the error message below for more information
+        {{ldapsearch_result.stderr_lines}}
+    tags:
+      - assert_ldapsearch1
+
+
+## check group BaseDN
+  - name: "Do an ldapsearch for the group BaseDN"
+    shell: "{{ldapsearchstring_bind}} -b '{{ldap_group_basedn}}' -z {{sizelimit}} "
+    ignore_errors: yes
+    failed_when: ldapsearch_group.rc != 0 and ldapsearch_group.rc != 4
+    changed_when: false
+    check_mode: no
+    register: ldapsearch_group
+    tags:
+      - group_basedn
+
+  - name: Display the result of the LDAP search for the groups
+    debug: var=ldapsearch_group
+    tags:
+      - debug
+
+  - name: Assert that ldapsearch for the group BaseDN worked
+    assert:
+      that:
+        - ldapsearch_group.rc  == 0 or ldapsearch_group.rc  == 4
+      msg: |
+        Your ldapsearch query to search for the groups failed. Please check the group BaseDN if its correct. The return code was {{ldapsearch_group.rc}}
+        Please review the error message below for more information
+        {{ldapsearch_group.stderr_lines}}
+    tags:
+      - assert_group_basedn
+
+## check user BaseDN
+  - name: "Do an ldapsearch for the users BaseDN"
+    shell: "{{ldapsearchstring_bind}} -b '{{ldap_user_basedn}}' -z {{sizelimit}} "
+    ignore_errors: yes
+    failed_when: ldapsearch_user.rc != 0 and ldapsearch_user.rc != 4
+    changed_when: false
+    check_mode: no
+    register: ldapsearch_user
+    tags:
+      - ldapsearch_user
+
+  - name: Display the result of the LDAP search for the Users
+    debug: var=ldapsearch_user
+    tags:
+      - debug
+
+  - name: Assert that ldapsearch for the users BaseDN worked
+    assert:
+      that:
+        - ldapsearch_user.rc  == 0 or ldapsearch_user.rc  == 4
+      msg: |
+        Your ldapsearch query to search for the users failed.Please check the User BaseDN if its correct. The return code was {{ldapsearch_user.rc}}
+        Please review the error message below for more information
+        {{ldapsearch_user.stderr_lines}}
+    tags:
+      - assert_ldapsearch_user	  
+
+  - name: "Do an ldapsearch for the Default Admin user"
+    shell: "{{ldapsearchstring_bind}} -b '{{ldap_user_basedn}}' '(&(objectClass=*)(sAMAccountName={{ldap_defaultadmin_user}}))'"
+    ignore_errors: yes
+    failed_when: ldapsearch_defaultadmin.rc != 0 and ldapsearch_defaultadmin.rc != 4
+    changed_when: false
+    check_mode: no
+    register: ldapsearch_defaultadmin
+    when: ldap_defaultadmin_user is defined
+    tags:
+      - ldapsearch_defaultadmin	  
+
+  - name: Display the result of the ldapsearch for the Default Admin user
+    debug: var=ldapsearch_defaultadmin
+    tags:
+      - debug	 	  
+
+
+  - name: data manipulations for Users Fetch
+    set_fact:
+      num_entries_user: "{{ldapsearch_user.stdout_lines | select('match', '.*numEntries:.+') | list }}"
+    tags:
+      - display
+
+  - name: data manipulations for Group Fetch
+    set_fact:
+      num_entries_group: "{{ldapsearch_group.stdout_lines | select('match', '.*numEntries:.+') | list }}"
+    tags:
+      - display
+
+  - name: data manipulations Default Admin User Fetch
+    set_fact:
+      num_entries_defaultadmin_user: "{{ldapsearch_defaultadmin.stdout_lines | select('match', '.*numEntries:.+') | list }}"
+    tags:
+      - display	  
+
+
+
+  - name: "Display statistics for group BaseDN"
+    debug:
+      msg:
+        - "The queries returned  entries"
+        - "{{ num_entries_group }}"
+        - "{{ ldapsearch_group.stdout_lines | select('match', '.*(sAMAccountName|member|memberOf|displayName|group):.+' ) | list }}"
+    tags:
+      - display
+
+  - name: "Display statistics for User BaseDN"
+    debug:
+      msg:
+        - "The queries returned  entries"
+        - "{{ num_entries_user }}"
+        - "{{ ldapsearch_user.stdout_lines | select('match', '.*(sAMAccountName|displayName|mail|co|title|organizationalPerson|otherMailbox):.+' ) | list }}"
+    tags:
+      - display
+
+  - name: "Display statistics for Default Admin User"
+    debug:
+      msg:
+        - "The queries returned  entries"
+        - "{{ num_entries_defaultadmin_user }}"
+        - "{{ ldapsearch_defaultadmin.stdout_lines | select('match', '.*(sAMAccountName|displayName|mail|co|title|organizationalPerson|otherMailbox):.+' ) | list }}"
+    tags:
+      - display	  
