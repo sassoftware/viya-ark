@@ -86,19 +86,58 @@ def main():
     results['created'] = report_timestamp
 
     for inventory_hostname, host_vars in hostvars.items():
-        if host_vars.get(registered_dict_name) is not None:
-            results['sas_hosts'].update(host_vars.get(registered_dict_name)['results'])
-        else:
+
+        # set up returnable values
+        unreachable = True
+        failed = True
+        failure_details = dict(
+            msg="",
+            rc=0,
+            stderr="",
+            stdout="",
+        )
+
+        # get the host details dict
+        host_details = host_vars.get(registered_dict_name)
+
+        # check if the host has the registered dict
+        if host_details is not None:
+
+            # host details exist, so host was reachable
+            unreachable = False
+
+            # check if the host failed
+            failed = host_details['failed']
+
+            # if the module reported a failure, collect details
+            if failed:
+                failure_details['msg'] = host_details['msg']
+                failure_details['rc'] = host_details['rc']
+                failure_details['stderr'] = host_details['module_stderr']
+                failure_details['stdout'] = host_details['module_stdout']
+            else:
+                # get module results
+                host_results = host_details.get('results')
+
+                if host_results is not None:
+                    results['sas_hosts'].update(host_results)
+                else:
+                    failed = True
+
+        # if the results dict could not be found, mark the host as unreachable
+        if failed or unreachable:
             host_groups = host_vars.get('group_names')
 
             if host_groups is not None and 'sas-all' in host_groups:
-                hostname = host_vars.get('ansible_host')
-                if hostname is None:
+                hostname = host_vars.get('ansible_fqdn')
+                if hostname is None or hostname == "":
                     hostname = host_vars.get('ansible_hostname')
-                    if hostname is None:
-                        hostname = host_vars.get('inventory_hostname')
-                        if hostname is None:
-                            hostname = inventory_hostname
+                    if hostname is None or hostname == "":
+                        hostname = host_vars.get('ansible_host')
+                        if hostname is None or hostname == "":
+                            hostname = host_vars.get('inventory_hostname')
+                            if hostname is None or hostname == "":
+                                hostname = inventory_hostname
 
                 try:
                     host_groups.remove('sas-all')
@@ -107,7 +146,9 @@ def main():
 
                 results['sas_hosts'][hostname] = dict(
                     _id=hostname.replace('.', '-'),
-                    _unreachable=True,
+                    _unreachable=unreachable,
+                    _failed=failed,
+                    _failure_details=failure_details,
                     ansible_host_groups=host_groups
                 )
             else:
