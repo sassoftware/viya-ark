@@ -1,0 +1,15 @@
+config:
+    application:
+        sas.identities.providers.ldap.connection:
+            host: 'ad_host'
+            password: 'your_password'
+            port: '389'
+            url: 'ldap://${sas.identities.providers.ldap.connection.host}:${sas.identities.providers.ldap.connection.port}''
+            userDN: 'CN=MY_Account,OU=Shared Accounts,OU=Users,DC=Customer,DC=com'
+        sas.identities.providers.ldap.group:
+            baseDN: 'OU=Groups,DC=Customer,DC=com'
+        sas.identities.providers.ldap.user:
+            baseDN: 'DC=Customer,DC=com'
+            searchFilter: 'sAMAccountName={0}'
+    identities:
+        administrator: 'your_user_id'
