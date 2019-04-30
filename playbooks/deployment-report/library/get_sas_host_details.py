@@ -1241,11 +1241,13 @@ def _get_sas_service_info(module):
                 name = status_values[0]
                 status = status_values[1]
                 pid = status_values[4]
+                h_read_memory = None
 
                 # If the service is up and running then get the memory size.
                 if status == _ServiceStatus.UP:
                     java_memory = _get_process_memory_info(pid, module)
                 else:
+                    java_memory = {}
                     java_memory['RESIDENT_MEMORY'] = "Service not running"
                     java_memory['VIRTUAL_MEMORY'] = '-'
                     java_memory['JAVA_HEAP'] = '-'
