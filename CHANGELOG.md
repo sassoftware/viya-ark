@@ -4,7 +4,7 @@
 ## Viya34-ark-1.2 - May 1, 2019
 
 - **Summary**: 
-    LDAP validtor tool.  VI support.  Documentation updates.  Bug fixes.
+    LDAP validator tool.  VI pre-install playbook support.  Documentation updates.  Bug fixes.
 - Issues addressed: 
     - DEPENB-1686 - Unclear the master branch of Viya-ARK is associated with SAS Viya 3.4
     - DEPENB-876 - LDAP validator
