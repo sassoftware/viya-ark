@@ -1256,6 +1256,7 @@ def _get_sas_service_info(module):
                 if status == _ServiceStatus.UP:
                     java_memory = _get_process_memory_info(pid, module)
                 else:
+                    java_memory = dict()
                     java_memory['RESIDENT_MEMORY'] = "Service not running"
                     java_memory['VIRTUAL_MEMORY'] = '-'
                     java_memory['JAVA_HEAP'] = '-'
@@ -1265,6 +1266,10 @@ def _get_sas_service_info(module):
                     print("java_memory[RESIDENT_MEMORY] = %s" % java_memory['RESIDENT_MEMORY'])
                     h_read_memory = _bytesHumanReadable(java_memory['RESIDENT_MEMORY'])
                     total_memory += java_memory['RESIDENT_MEMORY']
+                else:
+                    # no need to do anything with total_memory, it's defaulted to 0 and we couldn't
+                    # find a valid value to add
+                    h_read_memory = "-"
 
                 service_attributes = {
                     _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.STATUS: status,
