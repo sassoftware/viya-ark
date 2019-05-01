@@ -5,8 +5,8 @@
 # Test harness:
 #   make it pass
 #     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags required_packages_config -e use_pause=0
-#   make it fail
-#
+#   make it fail for jq by using a bad url
+#     ansible-playbook viya_pre_install_playbook.yml -i pre-install.inventory.ini --tags required_packages_config -e use_pause=0 -e jq_url=https://www.abcxyz.com/foo
 
 - block:
   ## block start
@@ -128,6 +128,36 @@
     when: ansible_distribution_major_version == '7'
     tags:
       - systemd
+      - packages
+
+  ## Install jq-1.5 utility for VI
+  - block:
+
+    - name: "Download jq-1.5 utility"
+      get_url:
+        url: "{{jq_url}}"
+        dest: "{{playbook_dir}}/jq"
+        mode: a+x
+
+    - name: "Check for downloaded content, {{playbook_dir}}/jq file" 
+      stat:
+         path: "{{playbook_dir}}/jq"
+      register: jq_util_file
+
+    - name: "Copy jq utility to /usr/bin"
+      copy:
+        src: "{{playbook_dir}}/jq"
+        dest: /usr/bin/jq
+        mode: a+x
+      when: jq_util_file.stat.exists
+
+    - name: "Delete pre-copied jq utility from {{playbook_dir}}/jq"
+      file:
+        path: "{{playbook_dir}}/jq"
+        state: absent
+
+    tags:
+      - jq
       - packages
 
   ## block end
