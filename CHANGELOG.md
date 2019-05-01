@@ -10,6 +10,7 @@
     - DEPENB-876 - LDAP validator
     - DEPENB-1689 - Fix for no report when error hit gathering data.
     - DEPENB-1635 - Incorporate VI specific prereqs
+    - DEPENB-1713 - Deployment Report: memory uninitialized if service down.
 - Ansible Support: Ansible 2.4 - Ansible 2.7
 
 <!-- LATEST RELEASE END -->
