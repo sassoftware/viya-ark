@@ -133,28 +133,36 @@
   ## Install jq-1.5 utility for VI
   - block:
 
-    - name: "Download jq-1.5 utility"
-      get_url:
-        url: "{{jq_url}}"
-        dest: "{{playbook_dir}}/jq"
-        mode: a+x
+    - name: Determine if jq is available
+      changed_when: false
+      check_mode: no
+      ignore_errors: yes
+      shell: which jq
+      register: which_jq
 
-    - name: "Check for downloaded content, {{playbook_dir}}/jq file" 
-      stat:
-         path: "{{playbook_dir}}/jq"
-      register: jq_util_file
+    # - debug: var=which_jq
+    ## Block start (if jq can't be found)
 
-    - name: "Copy jq utility to /usr/bin"
-      copy:
-        src: "{{playbook_dir}}/jq"
-        dest: /usr/bin/jq
-        mode: a+x
-      when: jq_util_file.stat.exists
+    - block:
+      - name: Confirm that /usr/bin/jq does not exist
+        stat:
+          path: "/usr/bin/jq"
+        register: usr_bin_jq
 
-    - name: "Delete pre-copied jq utility from {{playbook_dir}}/jq"
-      file:
-        path: "{{playbook_dir}}/jq"
-        state: absent
+      - name: Display whether /usr/bin/jq exists or not
+        debug: var=usr_bin_jq
+
+      - name: "If jq is not found in /usr/bin, download jq-1.5 utility into it"
+        get_url:
+          url: "{{jq_url}}"
+          dest: "/usr/bin/jq"
+          mode: 0755
+          owner: root
+          group: root
+        when: usr_bin_jq.stat.exists == false
+
+      ## block end (if jq can't be found)
+      when: which_jq.rc != 0
 
     tags:
       - jq
