@@ -1,6 +1,16 @@
 # Changelog for SAS Viya-ARK
 
 <!-- LATEST RELEASE START -->
+## Viya34-ark-1.3 - May 6, 2019
+
+- **Summary**: 
+    Bug fixes.
+- Issues addressed: 
+    - DEPENB-1716 - Fix jq installation issues on remote hosts
+- Ansible Support: Ansible 2.4 - Ansible 2.7
+
+<!-- LATEST RELEASE END -->
+
 ## Viya34-ark-1.2 - May 1, 2019
 
 - **Summary**: 
@@ -12,8 +22,6 @@
     - DEPENB-1635 - Incorporate VI specific prereqs
     - DEPENB-1713 - Deployment Report: memory uninitialized if service down.
 - Ansible Support: Ansible 2.4 - Ansible 2.7
-
-<!-- LATEST RELEASE END -->
 
 ## Viya34-ark-1.1 - April 18, 2019
 
