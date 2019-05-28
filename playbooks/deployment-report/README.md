@@ -21,7 +21,7 @@ The output files written to the `sas_viya_playbook/` are:
 * viya_deployment_report_*\<timestamp\>*.html
 
 ## Prerequisites for running the Deployment Report Playbook
-* Install Ansible. Version 2.4.1 or later is recommended.
+* Install a supported version of Ansible.
 * Install SAS Viya software using the SAS-provided `sas_viya_playbook`.
 * Obtain a local copy of the inventory file used when deploying the SAS Viya software.
 * Verify that the user has sudoers privileges.
