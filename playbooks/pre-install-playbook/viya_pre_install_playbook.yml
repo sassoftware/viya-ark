@@ -4,7 +4,7 @@
 #### Author: SAS Institute Inc.                                 ####
 ####                                                            ####
 ####  WARNING: this playbook only works                         ####
-####           with Ansible 2.4 and above.                      ####
+####           with Ansible 2.5 and above.                      ####
 ####                                                            ####
 ####################################################################
 
