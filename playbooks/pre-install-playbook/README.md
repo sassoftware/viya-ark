@@ -10,7 +10,7 @@ This playbook does not require you to provide the details of your software Order
 
 ## Prerequisites for Running the Pre-installation Playbook
 Before running this playbook, take the following steps:
-* Install Ansible. Version 2.4.1 or later is recommended.
+* Install a supported version of Ansible.
 * Verify that the user has sudoers privileges.
 * Be aware that the playbook makes modifications to the system unless it is run with the --check option.
 * The base inventory file that Viya-ARK provides contains only localhost and will only run on the machine where it was installed. 
