@@ -28,6 +28,9 @@ Tool support for the latest release of SAS Viya
 * [Viya Multi-Machine Services Utilities](playbooks/viya-mmsu)
 * [Deployment Report Playbook](playbooks/deployment-report)
 
+Related Tools Not Contained in Viya-ARK
+* SAS Viya-ARK only supports Linux.  For Windows supporting tools go to [SAS Viya Deployment Assistant for Windows](https://support.sas.com/en/documentation/install-center/viya/deployment-tools/34/deployment-assistant-windows.html)
+
 ## License
 
 This project is licensed under the [Apache 2.0 License](LICENSE).
