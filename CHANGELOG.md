@@ -1,6 +1,18 @@
 # Changelog for SAS Viya-ARK
 
 <!-- LATEST RELEASE START -->
+## Viya34-ark-1.4 - June 5, 2019
+
+- **Summary**: 
+    Changes to supported Ansible versions.  Documentation changes.
+- Issues addressed: 
+    - DEPENB-1810 - Ansible 2.4 no longer supported.  
+    - DEPENB-1708 - SUPPORT.md documentation added.
+    - DEPENB-1822 - SAS Viya Deployment Assistant for Windows reference added to README.md
+- Ansible Support: Ansible 2.5 - Ansible 2.7
+
+<!-- LATEST RELEASE END -->
+
 ## Viya34-ark-1.3 - May 6, 2019
 
 - **Summary**: 
@@ -8,8 +20,6 @@
 - Issues addressed: 
     - DEPENB-1716 - Fix jq installation issues on remote hosts
 - Ansible Support: Ansible 2.4 - Ansible 2.7
-
-<!-- LATEST RELEASE END -->
 
 ## Viya34-ark-1.2 - May 1, 2019
 
