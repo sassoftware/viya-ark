@@ -5,7 +5,7 @@ SAS Viya-ARK provides interoperating tools and utilities to help SAS customers p
 ## Introduction
 SAS Viya-ARK is a collection of resources to automate and streamline tasks that are required to prepare an environment for a SAS Viya deployment.
 
-The master branch supports the latest release of SAS Viya.   Visit the [releases](releases) page for specific information about SAS Viya-ARK and related SAS Viya product releases.
+The master branch supports the latest release of SAS Viya.   Visit the releases page for specific information about SAS Viya-ARK and related SAS Viya product releases.
 
 SAS Viya-ARK provides the following types of assistance:
 
