@@ -117,7 +117,7 @@ def main():
                 failure_details['stdout'] = host_details['module_stdout']
             else:
                 # get module results
-                host_results = host_details.get('results')
+                host_results = host_details.get('sas_host_details')
 
                 if host_results is not None:
                     results['sas_hosts'].update(host_results)
@@ -158,7 +158,7 @@ def main():
     # simple AnsibleModule.exit_json(), passing the key/value results
     #
     # changed will always be 'False' since we'll never alter state on a host
-    module.exit_json(changed=False, results=results)
+    module.exit_json(changed=False, processed_host_details=results)
 
 
 # =====

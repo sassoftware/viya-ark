@@ -58,20 +58,20 @@
         hostvars: "{{ hostvars[inventory_hostname] }}"
         include_package_files: "{{ include_package_files }}"
       when: existing_data_file == "" or not data.stat.exists
-      register: sas_host_details
+      register: get_sas_host_details_results
 
     - name: "Process SAS host details"
       process_sas_host_details:
         hostvars: "{{ hostvars }}"
         report_timestamp: "{{ sas_viya_deployment_report_created_ts }}"
-        registered_dict_name: 'sas_host_details'
+        registered_dict_name: 'get_sas_host_details_results'
       delegate_to: localhost
       run_once: true
-      register: processed_host_details
+      register: process_sas_host_details_results
       when: existing_data_file == "" or not data.stat.exists
 
     - set_fact:
-        sas_deployment_details: "{{ processed_host_details.results }}"
+        sas_deployment_details: "{{ process_sas_host_details_results.processed_host_details }}"
       delegate_to: localhost
       run_once: true
       when: existing_data_file == "" or not data.stat.exists
