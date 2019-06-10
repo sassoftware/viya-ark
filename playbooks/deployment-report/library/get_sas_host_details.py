@@ -989,7 +989,7 @@ def main():
     # simple AnsibleModule.exit_json(), passing the key/value results
     #
     # changed will always be 'False' since we'll never alter state on a host
-    module.exit_json(changed=False, results=results)
+    module.exit_json(changed=False, sas_host_details=results)
 
 
 # =====
@@ -1545,7 +1545,7 @@ def _get_sas_package_update_info_yum(module):
     for line in all_update_info:
 
         # skip empty lines
-        if str(line).strip() == "":
+        if not str(line).strip().startswith('sas-'):
             continue
 
         # replace multiple consecutive whitespaces delim character
