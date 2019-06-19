@@ -12,6 +12,7 @@
 - import_tasks: pre.ssh_maxstartups_config.yml
 - import_tasks: pre.max_os_tasks_config.yml
 - import_tasks: pre.user_and_group_config.yml
+- import_tasks: pre.sudo_access_check.yml
 - import_tasks: pre.selinux_config.yml
 - import_tasks: pre.ulimit_config.yml
 - import_tasks: pre.os_firewall_config.yml
