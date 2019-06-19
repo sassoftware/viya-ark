@@ -1,0 +1,114 @@
+---
+####################################################################
+## Sudo Access Check
+####################################################################
+# Test harness: Check If User Exist
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags users_exist
+#   make it Fail: Add any user in the custom_user_list variable which reside in /default/main.yml file, which is not on the system.
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags users_exist
+# Test harness: Check If Ansible SSH User have access to run task as different user.
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags usersudoaccess
+
+
+# make it fail because user do not exist:
+#    ansible-playbook viya_pre_install_playbook.yml -i inventory --tags sudo_checks \
+#    -e '{"custom_user_list": [ { "name": "not_sas_account" , "uid":"99999", "group":"sas" , "groups":"sas" } ] }'
+
+- block:
+
+  - name: show the variables values
+    debug: var=custom_user_list
+    tags:
+      - users_exist
+
+  - name: Ensure users are present
+    shell: "getent passwd {{ item.name }}"
+    ignore_errors: true
+    check_mode: no
+    changed_when: false
+    with_items:
+       - "{{ custom_user_list }}"
+    register: usersearch_result
+    tags:
+      - users_exist
+      - usersudoaccess
+
+  - name: Show the Users List
+    debug: var=usersearch_result
+    tags:
+      - users_exist
+      - usersudoaccess
+
+  - name: Assert that User Exists
+    assert:
+      that:
+        - item.rc == 0
+      fail_msg: |
+        The user '{{item.item['name']}}' does not exist on the system.
+        Please ensure the user {{item.item['name']}} exists so that the sudo permissions can be assessed properly.
+        If you prefer to bypass this sudo check for now, add --skip-tags sudo_checks.
+      success_msg: "All assertion passed. The user {{item.item['name']}} exists on the system"
+    with_items:
+        - "{{ usersearch_result.results }}"
+    when: not ansible_check_mode
+    tags:
+       - users_exist
+       - usersudoaccess
+
+  - name: capture the current user's actual sudo rights
+    shell: sudo -l
+    become: no
+    ignore_errors: true
+    check_mode: no
+    changed_when: false
+    register: sudo_rights
+    tags:
+      - usersudoaccess
+
+  - debug: var=sudo_rights
+    tags:
+      - usersudoaccess
+
+  - name: Check that we can impersonnate all 3 users
+    shell: |
+      printf "the user $(id) can access $(python --version  2>&1)"
+    become: yes
+    become_user: "{{ item.name }}"
+    become_method: sudo
+    ignore_errors: true
+    check_mode: no
+    changed_when: false
+    with_items:
+        - "{{ custom_user_list }}"
+        - { name: "root" , uid: 0 ,  group: "root",  groups: "root"}
+    register: checkuserpriv_status
+    tags:
+        - usersudoaccess
+
+  - name: Display the result of the Sudo search
+    debug: var=checkuserpriv_status
+    tags:
+      - usersudoaccess
+
+  - name: Assert that Sudo search was successful
+    assert:
+      that:
+        - item.rc == 0
+      fail_msg: |
+        The user {{ ansible_ssh_user }} does not have permission to run tasks as {{item.item['name']}}.
+        Please check the error code for more details: {{item.rc}}.
+        Also, review the sudo permissions for {{ ansible_ssh_user }}
+        {{sudo_rights.stdout_lines}}
+      success_msg: |
+        All assertion passed. The user {{ ansible_ssh_user }} has permission to run tasks as {{item.item['name']}}
+    with_items:
+        - "{{ checkuserpriv_status.results }}"
+    when: not ansible_check_mode
+    tags:
+        - usersudoaccess
+
+  ## The tag 'sudo_checks' is assigned to all tasks
+  tags:
+    - sudo_checks
