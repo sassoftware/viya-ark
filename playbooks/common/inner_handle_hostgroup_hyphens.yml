@@ -1,0 +1,5 @@
+- name: "Create group for '{{ hyphen_groups.key }}' with hyphens replaced by underscores"
+  add_host:
+    name: "{{ item }}"
+    groups: "{{ (hyphen_groups.key) | replace('-','_') }}"
+  loop: "{{ hyphen_groups.value }}"

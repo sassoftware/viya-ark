@@ -4,7 +4,11 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 ---
-- hosts: sas-all
+- import_playbook: ../common/handle_hostgroup_hyphens.yml
+  tags:
+    - always
+
+- hosts: sas_all
   become: yes
   become_user: root
   gather_facts: false
@@ -20,10 +24,10 @@
       changed_when: false
 
     - set_fact:
-        deployhostnum: "{{groups['sas-all'] | length }}"
+        deployhostnum: "{{groups['sas_all'] | length }}"
         check_mode: no
 
-- hosts: sas-all
+- hosts: sas_all
   become: yes
   become_user: root
   gather_facts: false
@@ -58,7 +62,7 @@
       script: viya-svs.sh stop sas-viya-httpproxy-default
       when: psflag.stdout != "" and deployhostnum | int != 1
 
-- hosts: sas-casserver-primary
+- hosts: sas_casserver_primary
   become: yes
   become_user: root
   gather_facts: false
@@ -115,7 +119,7 @@
       script: viya-svs.sh stop sas-viya-rabbitmq-server-default
       when: psflag.stdout != "" and deployhostnum | int != 1
 
-- hosts: sas-all:!consul
+- hosts: sas_all:!consul
   become: yes
   become_user: root
   gather_facts: false
@@ -164,7 +168,7 @@
 
       when: psflag.stdout != ""
 
-- hosts: sas-all
+- hosts: sas_all
   become: yes
   become_user: root
   gather_facts: false

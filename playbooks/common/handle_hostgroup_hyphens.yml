@@ -1,0 +1,21 @@
+---
+# Handles mapping any host group with hyphens as references using underscores.
+# For example, groups['sas_casserver_primary'] will work if inventory only has 'sas-casserver-primary':
+#
+#- import_playbook: ../common/handle_hostgroup_hyphens.yml
+#  tags:
+#    - always
+#
+#- hosts: sas_all
+#  tasks:
+#  - debug:
+#      msg: "{{ hostvars[groups['sas_casserver_primary'][0]]['ansible_hostname'] }}"
+
+- hosts: localhost
+  tasks:
+  - name: Determine if groups with hyphens need mapped using underscores
+    include_tasks: inner_handle_hostgroup_hyphens.yml
+    loop: "{{ lookup('dict', groups) }}"
+    loop_control:
+      loop_var: hyphen_groups
+    when: "'-' in hyphen_groups.key"

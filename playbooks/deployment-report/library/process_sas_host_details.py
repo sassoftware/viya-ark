@@ -128,7 +128,7 @@ def main():
         if failed or unreachable:
             host_groups = host_vars.get('group_names')
 
-            if host_groups is not None and 'sas-all' in host_groups:
+            if host_groups is not None and 'sas_all' in host_groups:
                 hostname = host_vars.get('ansible_fqdn')
                 if hostname is None or hostname == "":
                     hostname = host_vars.get('ansible_hostname')
@@ -140,6 +140,7 @@ def main():
                                 hostname = inventory_hostname
 
                 try:
+                    host_groups.remove('sas_all')
                     host_groups.remove('sas-all')
                 except ValueError:
                     pass  # do nothing
@@ -152,7 +153,7 @@ def main():
                     ansible_host_groups=host_groups
                 )
             else:
-                pass  # this host isn't in sas-all so there's no need to try and report on it
+                pass  # this host isn't in sas_all so there's no need to try and report on it
 
     # in the event of a successful module execution, you will want to
     # simple AnsibleModule.exit_json(), passing the key/value results

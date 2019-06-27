@@ -4,7 +4,11 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 ---
-- hosts: sas-all
+- import_playbook: ../common/handle_hostgroup_hyphens.yml
+  tags:
+    - always
+
+- hosts: sas_all
   become: yes
   become_user: root
   gather_facts: false
@@ -31,7 +35,7 @@
     - name: Start SAS Secret Manager (Vault)
       script: viya-svs.sh start sas-viya-vault-default
 
-- hosts: sas-all:!consul
+- hosts: sas_all:!consul
   become: yes
   become_user: root
   gather_facts: false
@@ -107,7 +111,7 @@
     - name: Start SAS HTTP proxy
       script: viya-svs.sh start sas-viya-httpproxy-default
 
-- hosts: sas-casserver-primary
+- hosts: sas_casserver_primary
   become: yes
   become_user: root
   gather_facts: false
@@ -117,7 +121,7 @@
     - name: Start SAS CAS servers
       script: viya-svs.sh startcas
 
-- hosts: sas-all
+- hosts: sas_all
   become: yes
   become_user: root
   gather_facts: false
@@ -126,7 +130,7 @@
     - name: Start SAS multi-tenant services
       script: viya-svs.sh startmt
 
-- hosts: consul,rabbitmq,httpproxy,pgpoolc,sasdatasvrc,sas-casserver-primary
+- hosts: consul,rabbitmq,httpproxy,pgpoolc,sasdatasvrc,sas_casserver_primary
   become: yes
   become_user: root
   gather_facts: false
@@ -144,7 +148,7 @@
       register: svas1
       when: svas_rc.stat.exists == true
 
-- hosts: sas-all:!consul:!rabbitmq:!httpproxy:!pgpoolc:!sasdatasvrc:!sas-casserver-primary
+- hosts: sas_all:!consul:!rabbitmq:!httpproxy:!pgpoolc:!sasdatasvrc:!sas_casserver_primary
   become: yes
   become_user: root
   gather_facts: false
@@ -162,7 +166,7 @@
       register: svas2
       when: svas_rc.stat.exists == true
 
-- hosts: sas-all
+- hosts: sas_all
   become: yes
   become_user: root
   gather_facts: false

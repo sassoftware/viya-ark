@@ -13,7 +13,7 @@ Before running this playbook, take the following steps:
 * Be aware that the playbook makes modifications to the system unless it is run with the ```--check``` option.
 * To run the playbook on multiple machines, you can update the inventory file to include additional hosts.
   * See the [Ansible Documentation](http://docs.ansible.com/ansible/latest/intro_inventory.html) for instructions.
-  * By default, this playbook will execute on all machines in the sas-all host group.
+  * By default, this playbook will execute on all machines in the sas_all host group.
 * Do not use a softlink for sasauth in /etc/pam.d.
 * Review the list labeled "sasauth_locations" in the vars section of home-directory-creator.yml and verify that it covers the auth files that you need.
 

@@ -869,8 +869,6 @@ class _ZypperInfoKeys(object):
 
 
 # --- Constants --- #
-# A group aggregating all groups in a SAS Viya inventory file
-GROUP_SAS_ALL = 'sas-all'
 # Key name of the dict returned by this module as an ansible_fact
 MODULE_RETURN_KEY = 'results'
 # Root directory path for SAS install
@@ -949,10 +947,11 @@ def main():
         _HostDetailsKeys.OSKeys.PACKAGE_MANAGER: package_manager
     }
 
-    # set Ansible host groups for current host (sas-all is removed since it's just an aggregation of groups)
+    # set Ansible host groups for current host (sas_all is removed since it's just an aggregation of groups)
     ansible_host_groups = hostvars[_HostvarsKeys.ANSIBLE_GROUP_NAMES]
     try:
-        ansible_host_groups.remove(GROUP_SAS_ALL)
+        ansible_host_groups.remove('sas_all')
+        ansible_host_groups.remove('sas-all')
     except ValueError:
         pass  # do nothing
     host_details[_HostDetailsKeys.HOST_GROUPS] = ansible_host_groups
