@@ -39,9 +39,13 @@
 ####################################################################
 
 ---
+- import_playbook: ../common/handle_hostgroup_hyphens.yml
+  tags:
+    - always
+
 # if you want everything to apply to all machines.
 # using all the default values (from roles/viya-ark.preinstall/defaults/main.yml)
-- hosts: sas-all
+- hosts: sas_all
   become: yes
   become_user: root
   ## If you need to override some of the default values (for example, to make it specific to VA), you can do so here

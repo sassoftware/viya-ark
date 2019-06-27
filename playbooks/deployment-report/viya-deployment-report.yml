@@ -15,8 +15,12 @@
 ####################################################################
 
 ---
+- import_playbook: ../common/handle_hostgroup_hyphens.yml
+  tags:
+    - always
+
 - name: "Viya Deployment Report"
-  hosts: sas-all
+  hosts: sas_all
   become: true
 
   vars:

@@ -4,7 +4,11 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 ---
-- hosts: sas-all
+- import_playbook: ../common/handle_hostgroup_hyphens.yml
+  tags:
+    - always
+
+- hosts: sas_all
   become: yes
   become_user: root
   gather_facts: False
