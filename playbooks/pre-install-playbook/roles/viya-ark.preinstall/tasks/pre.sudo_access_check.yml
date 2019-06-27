@@ -97,12 +97,12 @@
       that:
         - item.rc == 0
       fail_msg: |
-        The user {{ ansible_ssh_user }} does not have permission to run tasks as {{item.item['name']}}.
+        The user does not have permission to run tasks as {{item.item['name']}}.
         Please check the error code for more details: {{item.rc}}.
-        Also, review the sudo permissions for {{ ansible_ssh_user }}
+        Also, review the sudo permissions for the user
         {{sudo_rights.stdout_lines}}
       success_msg: |
-        All assertion passed. The user {{ ansible_ssh_user }} has permission to run tasks as {{item.item['name']}}
+        All assertion passed. The user has permission to run tasks as {{item.item['name']}}
     with_items:
         - "{{ checkuserpriv_status.results }}"
     when: not ansible_check_mode
