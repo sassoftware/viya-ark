@@ -69,6 +69,31 @@
     tags:
       - skipifbelowspecs
       - skipstoragefail
+  
+  - name: Get the user permissions for directories
+    shell: ls -ld "{{ item.item.path }}" | tail -1 | awk '{print $1}'
+    changed_when: False
+    check_mode: no
+    with_items:
+      - "{{directories_exists.results}}"
+    register: permission_result
+  - name: Show the results of the ls command
+    debug: var=permission_result  
+    
+  - name: "Assert that directories have sufficient permissions"
+    assert:
+      that:
+        - (item.stdout) == (item.item.item.permisson)
+      msg: |
+        The directory {{item.item.item.path}} only has {{item.stdout}} permissions.
+        It should have at least {{item.item.item.permisson}}.
+        Edit the storage_list variable if this is a mistake.
+        Or add --skip-tags skipstoragefail to bypass.
+    with_items:
+      - "{{permission_result.results}}"
+    tags:
+      - skipifbelowspecs
+      - skipstoragefail
 
 ##
 ## We need smarter checks:

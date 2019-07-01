@@ -26,15 +26,17 @@ custom_user_list:
 ## storage ##
 storage_list:
   # update as needed.
-  - { path: /, min_storage_mb: 5000, min_io: 2}
-  - { path: /opt/sas, min_storage_mb: 40000, min_io: 2}
+  - { path: /, min_storage_mb: 5000, min_io: 2, permisson: dr-xr-xr-x.}
+  - { path: /opt/sas, min_storage_mb: 40000, min_io: 2, permisson: drwxr-xr-x.}
+  - { path: /var/cache, min_storage_mb: 15000, min_io: 2, permisson: drwxr-xr-x.}
+  - { path: /opt, min_storage_mb: 40000, min_io: 2, permisson: drwxr-xr-x.}
 
   #
   # this line can be added to check on another partition
   #
   #- { path: /sastmp, min_storage_mb: 4000, min_io: 99}
   #
-
+  
 ## Minimum total Memory on each machine
 min_mem_mb: 80000
 
