@@ -27,7 +27,9 @@ custom_user_list:
 storage_list:
   # update as needed.
   - { path: /, min_storage_mb: 5000, min_io: 2}
-  - { path: /opt/sas, min_storage_mb: 40000, min_io: 2}
+  - { path: /opt/sas, min_storage_mb: 40000, min_io: 2, permission: 755}
+  - { path: /var/cache, min_storage_mb: 15000, min_io: 2}
+  - { path: /opt, min_storage_mb: 40000, min_io: 2, permission: 755}
 
   #
   # this line can be added to check on another partition
