@@ -44,6 +44,7 @@
     service: 
       name: cgconfig
       state: started
+      enabled: yes
     when:
       cgconfig_d_dir.stat.exists == true and
       cgconfig_conf_file.stat.exists == true and 
