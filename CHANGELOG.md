@@ -1,6 +1,21 @@
 # Changelog for SAS Viya-ARK
 
 <!-- LATEST RELEASE START -->
+## Viya34-ark-1.5 - July 11, 2019
+
+- **Summary**: 
+    Enhancements around sudo checks & storage checks.  Updates to host group naming.  Documentation changes and Fixes.
+- Issues addressed: 
+    - DEPENB-962 - Sudo user checks
+    - DEPENB-1173 - Storage checks for /opt & /var/cache
+    - DEPENB-1667 - cgconfig service enable set to yes.
+    - DEPENB-1827 - Future Ansible version enhancent
+    - DEPENB-1828 - Main README bad releases link removed.  Access 'releases' link on github repo landing page.
+    - DEPENB-1857 - Host group name references with hyphens changed to underscores.  Future Ansible version compliance.
+- Ansible Support: Ansible 2.5 - Ansible 2.7
+
+<!-- LATEST RELEASE END -->
+
 ## Viya34-ark-1.4 - June 5, 2019
 
 - **Summary**: 
@@ -10,8 +25,6 @@
     - DEPENB-1708 - SUPPORT.md documentation added.
     - DEPENB-1822 - SAS Viya Deployment Assistant for Windows reference added to README.md
 - Ansible Support: Ansible 2.5 - Ansible 2.7
-
-<!-- LATEST RELEASE END -->
 
 ## Viya34-ark-1.3 - May 6, 2019
 
