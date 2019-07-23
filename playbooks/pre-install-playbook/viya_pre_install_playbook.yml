@@ -3,7 +3,7 @@
 ####################################################################
 #### Author: SAS Institute Inc.                                 ####
 ####                                                            ####
-####  WARNING: this playbook only works                         ####
+####  WARNING: This playbook only works                         ####
 ####           with Ansible 2.5 and above.                      ####
 ####                                                            ####
 ####################################################################
@@ -13,22 +13,22 @@
 # This playbook verifies and possibly performs many of the
 # pre-requisites for a generic Viya deployment.
 #
-# to see an index of the things it does, run:
+# To see an index of the things it does, run:
 #        ansible-playbook viya_pre_install_playbook.yml --list-tasks
 #
-# to see how far from the desired state you are, run:
+# To see how far from the desired state you are, run:
 #        ansible-playbook viya_pre_install_playbook.yml --check
 #
-# to let the playbook make all the required changes and bring you
+# To let the playbook make all the required changes and bring you
 # to the desired state, run:
 #        ansible-playbook viya_pre_install_playbook.yml
 #
-# useful tags to know:
+# Useful tags to know:
 #
 #  - skipifbelowspecs: allows the playbook to run even if your
 #    servers do not meet the specs (CPU, Mem, Storage)
 #
-#         If you server(s) fails one of the specs tests, the error
+#         If your server(s) fails one of the specs tests, the error
 #         message will tell you how to bypass that check.
 #
 #  - detectableonly: tasks where we can detect the wrong or right
@@ -43,13 +43,13 @@
   tags:
     - always
 
-# if you want everything to apply to all machines.
+# If you want everything to apply to all machines.
 # using all the default values (from roles/viya-ark.preinstall/defaults/main.yml)
 - hosts: sas_all
   become: yes
   become_user: root
-  ## If you need to override some of the default values (for example, to make it specific to VA), you can do so here
-  ## simply uncomment the vars section below, while respecting the indentation. 
+  ## If you need to override some of the default values (for example, to make it specific to VA), you can do so here.
+  ## Simply uncomment the vars section below, while respecting the indentation. 
   #vars:
     #min_mem_mb: 60000
     #min_cores_num: 4

@@ -46,7 +46,7 @@ To create a report using existing data:
   ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "existing_data_file=<path_to_data_file>"
   ```
 
-To exclude the static web-page and only create the report data:
+To exclude the static web page and only create the report data:
   ```bash
   ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "exclude_html=true"
   ```
