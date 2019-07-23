@@ -5,7 +5,7 @@ This playbook verifies and optionally performs many of the tasks that are requir
 
 Use this playbook to prepare for a deployment of SAS Viya 3.4.
 
-This playbook does not require you to provide the details of your software Order.  It will therefore apply all usual pre-reqs for Visual Analytics, Visual Statistics, and Visual Data Mining and Machine Learning, on all machines, regardless of their role. 
+This playbook does not require you to provide the details of your software order.  It will therefore apply all usual pre-reqs for SAS Visual Analytics, SAS Visual Statistics, and SAS Visual Data Mining and Machine Learning, on all machines, regardless of their role. 
 
 
 ## Prerequisites for Running the Pre-installation Playbook
@@ -13,7 +13,7 @@ Before running this playbook, take the following steps:
 * Install a supported version of Ansible.
 * Verify that the user has sudoers privileges.
 * Be aware that the playbook makes modifications to the system unless it is run with the --check option.
-* The base inventory file that Viya-ARK provides contains only localhost and will only run on the machine where it was installed. 
+* The base inventory file that SAS Viya-ARK provides contains only localhost and will only run on the machine where it was installed. 
 To run the playbook on multiple machines, you can update the inventory file to include additional hosts. See the [Ansible Documentation](http://docs.ansible.com/ansible/latest/intro_inventory.html) for instructions.
 
 ## Running the Playbook
