@@ -15,6 +15,7 @@ Before running this playbook, take the following steps:
 * Be aware that the playbook makes modifications to the system unless it is run with the --check option.
 * The base inventory file that SAS Viya-ARK provides contains only localhost and will only run on the machine where it was installed. 
 To run the playbook on multiple machines, you can update the inventory file to include additional hosts. See the [Ansible Documentation](http://docs.ansible.com/ansible/latest/intro_inventory.html) for instructions.
+* Be aware that roles/viya-ark.preinstall/defaults/main.yml may have default values that differ from your envioronment.  For example, existing group ID may not match the default.  The main.yml file can be edited to match your environment before executing the playbook.
 
 ## Running the Playbook
 To run the playbook, execute the following command:
