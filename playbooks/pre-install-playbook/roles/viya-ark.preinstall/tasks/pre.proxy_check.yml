@@ -1,0 +1,135 @@
+---
+####################################################################
+## proxy Check
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags proxy_check
+#     Add any user in the custom_user_list variable which reside in /default/main.yml file, and set environment variables for proxy settings: https_proxy, http_proxy, no_proxy
+#   make it fail
+#     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags proxy_check
+#     Add any user in the custom_user_list variable which reside in /default/main.yml file, and do not set environment variables for proxy settings: https_proxy, http_proxy, no_proxy
+
+
+- block:
+ 
+  - name: Printing all the environment​ variables in Ansible
+    debug: 
+     msg: "{{ ansible_env }}"
+    tags:
+      - proxy_check
+      
+  - name: Check if env variables are set
+    debug:
+     msg: "{{ lookup('env','https_proxy') }}"
+    register : env_result
+    tags:
+      - proxy_check
+      
+  - name: Show the results of the env command
+    debug: var=env_result
+    tags:
+      - proxy_check
+      
+  - name: set facts for https_proxy
+    set_fact:
+      https_proxy: "{{ lookup('env','https_proxy') }}"
+    become: yes
+    become_user: "{{ item.name }}"
+    become_method: sudo
+    with_items:
+        - "{{ custom_user_list }}"
+        - { name: "root" , uid: 0 ,  group: "root",  groups: "root"}
+    tags:
+      - proxy_check
+      
+  - name: Display https_proxy variables
+    debug:
+      msg: "{{ https_proxy }}"
+    become: yes
+    become_user: "{{ item.name }}"
+    become_method: sudo
+    with_items:
+        - "{{ custom_user_list }}"
+        - { name: "root" , uid: 0 ,  group: "root",  groups: "root"}
+    tags:
+      - proxy_check
+      
+  - name: "Assert that https_proxy is set as environment variable"
+    assert:
+      that:
+        - ("{{ https_proxy }}" != "")
+      msg: |
+        The environment variable "https_proxy" is not set in environment variables
+        It should be set as ex. 
+        export https_proxy=http://user-name:password@internet-proxy-server-FQDN:8080/
+        export http_proxy=http://user-name:password@internet-proxy-server-FQDN:8080/
+    become: yes
+    become_user: "{{ item.name }}"
+    become_method: sudo
+    with_items:
+      - "{{ custom_user_list }}"
+      - { name: "root" , uid: 0 ,  group: "root",  groups: "root"}
+    tags:
+      - proxy_check
+      
+  - name: set facts for http_proxy
+    set_fact:
+      http_proxy: "{{ lookup('env','http_proxy') }}"
+    become: yes
+    become_user: "{{ item.name }}"
+    become_method: sudo
+    with_items:
+        - "{{ custom_user_list }}"
+        - { name: "root" , uid: 0 ,  group: "root",  groups: "root"}
+    tags:
+      - proxy_check
+      
+  - name: "Assert that http_proxy is set as environment variable"
+    assert:
+      that:
+        - ("{{ http_proxy }}" != "")
+      msg: |
+        The environment variable "http_proxy" is not set in environment variables
+        It should be set as ex. 
+        export https_proxy=http://user-name:password@internet-proxy-server-FQDN:8080/
+        export http_proxy=http://user-name:password@internet-proxy-server-FQDN:8080/
+    become: yes
+    become_user: "{{ item.name }}"
+    become_method: sudo
+    with_items:
+      - "{{ custom_user_list }}"
+      - { name: "root" , uid: 0 ,  group: "root",  groups: "root"}
+    tags:
+      - proxy_check    
+      
+  - name: set facts for no_proxy
+    set_fact:
+      no_proxy: "{{ lookup('env','no_proxy') }}"
+    when: (https_proxy != "") and (http_proxy != "")
+    become: yes
+    become_user: "{{ item.name }}"
+    become_method: sudo
+    with_items:
+      - "{{ custom_user_list }}"
+      - { name: "root" , uid: 0 ,  group: "root",  groups: "root"}
+    tags:
+      - proxy_check
+      
+  - name: "Assert that no_proxy is set as environment variable if https_proxy and http_proxy are set"
+    assert:
+      that:
+        - ((("{{ https_proxy }}" != "" ) and ("{{ http_proxy }}" != "" )) and ("{{ no_proxy }}" != ""))
+      msg: |
+        The environment variable "no_proxy" is not set in environment variables
+        It should be set as ex. 
+        export no_proxy="localhost,127.0.0.1,.example.com,10.255.47.131,10.255.47.132"
+    when: (https_proxy != "") and (http_proxy != "")
+    become: yes
+    become_user: "{{ item.name }}"
+    become_method: sudo
+    with_items:
+      - "{{ custom_user_list }}"
+      - { name: "root" , uid: 0 ,  group: "root",  groups: "root"}
+    tags:
+      - proxy_check
