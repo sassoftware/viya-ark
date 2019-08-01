@@ -1,0 +1,143 @@
+---
+
+####################################################################
+## SSL Certificate Check
+####################################################################
+# Test harness:
+#   make it pass
+#     ansible-playbook -i pre-install.inventory.ini viya_pre_install_playbook.yml --tags ssl_cert_check -e '{"ssl_dir_path": [ {  "path": "/etc/httpd" }, {"path": "/etc/apache2"}] }'
+#   make it skip
+#     ansible-playbook -i pre-install.inventory.ini viya_pre_install_playbook.yml --tags ssl_cert_check -e '{"ssl_dir_path": [ {  "path": "/etc/pki/tls/certs" }] }'
+#   make it skip
+#     ansible-playbook -i pre-install.inventory.ini viya_pre_install_playbook.yml --tags ssl_cert_check -e '{"ssl_dir_path": [ {  "path": "/etc/pki/tls/certs" }] }' --check
+#   make it fail only if certificate exists and it is expire
+#     ansible-playbook -i pre-install.inventory.ini viya_pre_install_playbook.yml --tags ssl_cert_check 
+
+- block:
+  - name: "Get status of ssl configuration directories"
+    shell: grep -i -r "^SSLCertificateFile" {{ item.path}}| cut -f2- -d' '
+    become: yes
+    check_mode: no
+    register: "ssl_exists"
+    with_items:
+        - "{{ssl_dir_path}}"
+    tags:
+      - ssl_cert_check
+
+  - name: "Show the status of ssl configuration directories"
+    debug: var=ssl_exists
+    tags:
+      - ssl_cert_check
+
+  - name: "Get stat of Certificate file"
+    stat:
+      path: "{{ item.stdout }}"
+    register: "certfile_exist"
+    with_items:
+       - "{{ssl_exists.results}}"
+    tags:
+      - ssl_cert_check
+
+
+
+  - name: "Filter out the dir which has ssl certificate"
+    set_fact:
+       dir_list:
+         "{{item.stat.path}}"
+    with_items:
+       - "{{certfile_exist.results}}"
+    when: item.stat.exists
+    tags:
+      - ssl_cert_check
+
+  - name: "Show the status of certificate file"
+    debug: var=dir_list
+    tags:
+      - ssl_cert_check
+
+  - name: "Show the status of certificate file"
+    debug: msg="Certificate file exist"
+    when: dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  - name: "Show the status of file"
+    debug: msg="Certificate file does not exist,skipping ssl certificate check"
+    when: dir_list is undefined
+    tags:
+      - ssl_cert_check
+
+  - name: Check the certificate basic constraint
+    shell: openssl x509 -noout -text -in {{ dir_list }}|grep -e "^\\s*CA:\(TRUE\|FALSE\)"|tr -d '[:space:]'|sed 's/CA:\(TRUE\|FALSE\)/\1/'
+    register: ca_status
+    check_mode: no
+    when: dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  - name: Show the basic constraint of the certificate
+    debug: 
+      msg: "basic constraint : {{ca_status.stdout}}"
+    when: dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  - name: Check the dates of the  certificate
+    shell: openssl x509 -noout -dates -in {{ dir_list }} | cut -d= -f 2-
+    register: date_status
+    check_mode: no
+    when: dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  - name: Show the dates of the certificate
+    debug: 
+      msg: "Certificate Start Date and End Date : {{date_status.stdout_lines}}"
+    when: dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  - name: "filter out the start date of the certificate"
+    set_fact:
+       start_date:
+         "{{ date_status.stdout_lines[0]}}"
+    when: dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  - name: "filter out the expiry date of the certificate"
+    set_fact:
+       end_date:
+         "{{ date_status.stdout_lines[1]}}"
+    when: dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  - name: start date of the  certificate in epoch mode
+    shell: date +%s --date "{{start_date}}"
+    register: date_start
+    check_mode: no
+    when: dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  - name: expiry date of the  certificate in epoch mode
+    shell: date +%s --date "{{end_date}}"
+    register: date_end
+    check_mode: no
+    when: dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  - name: Check if the certificate is Valid
+    assert:
+      that:
+        - "{{ansible_date_time.epoch}} > {{date_start.stdout}} and {{ansible_date_time.epoch}} < {{date_end.stdout}}"
+      msg: |
+        Please check the validity of the certificate. The certificate was expired on : {{end_date}}
+    when: not ansible_check_mode and dir_list is defined
+    tags:
+      - ssl_cert_check
+
+  tags:
+    - ssl_check
