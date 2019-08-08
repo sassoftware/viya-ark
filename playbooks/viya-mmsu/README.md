@@ -1,4 +1,4 @@
-# SAS Viya Administration Resource Kit (Viya-ARK) - SAS Viya Multi-Machine Services Utilities Playbooks
+# SAS Viya Administration Resource Kit (SAS Viya ARK) - SAS Viya Multi-Machine Services Utilities Playbooks
 
 ## Introduction
 The SAS Viya Multi-Machine Services Utilities repository contains a set of playbooks to start or stop the SAS Viya services gracefully across the 1 - n machines that are identified in the inventory.ini file.
@@ -6,10 +6,10 @@ The SAS Viya Multi-Machine Services Utilities repository contains a set of playb
 ## Requirements for Running the SAS Viya Multi-Machine Services Utilities Playbooks
 * All services must have an Up status after the deployment has completed.
   See "Running the Playbooks" for instructions on listing the status of SAS Viya services.
-* The SAS Viya Multi-Machine Services Utilities playbooks must be placed under the sas_viya_playbook directory where SAS Viya was deployed. 
-  The directory structure of this project must be preserved. 
+* The SAS Viya Multi-Machine Services Utilities playbooks must be placed under the sas_viya_playbook directory where SAS Viya was deployed.
+  The directory structure of this project must be preserved.
   For example: ```sas_viya_playbook/viya-ark/playbooks/viya-mmsu/```
-* Support Multi-tenant deployment.
+* Support multi-tenant deployment.
 * Verify that the sas-viya-all-services script is exempted from system reboots. This step prevents the script from executing automatically when the machine is restarted.
 
 ## Running the Playbooks
@@ -52,6 +52,5 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restart.yml
 ```
   The user can also modify viya-services-vars.yml file as follows, then rerun the playbook.
 ```
-    enable_stray_cleanup: true 
+    enable_stray_cleanup: true
 ```
-

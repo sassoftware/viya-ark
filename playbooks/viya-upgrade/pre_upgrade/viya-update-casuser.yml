@@ -1,0 +1,82 @@
+####################################################################
+#### viya-update-casuser.yml                                    ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# If the <casuser> is anything other than the default cas
+#
+#   For each machine in the following hostgroups:
+#      sas_casserver_primary
+#      sas_casserver_secondary
+#      sas_casserver_worker
+#   Run the following command:
+#      sudo usermod -G sas <casuser>
+#   Where <casuser> is the casenv_user found in vars.yml 
+#
+####################################################################
+
+---
+- name: Update casuser in inventory files if not default user
+  hosts: localhost
+  vars:
+    vars_file: "{{ playbook_dir }}/../../../../vars.yml"
+  tasks:
+  - name: Check that vars.yml exists
+    stat:
+      path: '{{ vars_file }}'
+    register: stat_result
+
+  - name: Fail if vars.yml not found
+    fail: msg="The file {{ vars_file }} was not found. Exiting"
+    when: stat_result.stat.exists == False
+
+  - name: Get casuser from vars.yml
+    block:
+      - include_vars:
+          file: "{{ vars_file }}"
+          name: varsyml
+      - debug: var=varsyml
+      - set_fact:
+          casuser: "{{ varsyml['casenv_user'] }}"
+        when: varsyml['casenv_user'] is defined
+
+- name: Update casuser if needed
+  hosts: sas_casserver_primary, sas_casserver_secondary, sas_casserver_worker
+  vars:
+    casuser: "{{ hostvars['localhost']['casuser'] }}"
+    sum_msg: 
+  become: true
+  become_user: root
+  tasks: 
+  - name: Run usermod on casuser
+    block:
+      - user:
+          name: "{{ casuser }}"
+          group: "sas"
+      - set_fact: 
+          sum_msg: "The custom casenv user was added to the group SAS"
+    when: casuser != 'cas'
+
+  - name: Set Summary Message
+    set_fact: 
+      sum_msg: "\"The custom CAS user\" action was skipped"
+    when: casuser == 'cas'
+ 
+  - name: Add to Upgrade Summary
+    include_tasks: ../common/add-summary-item-tasks.yml
+    vars:
+     header: "Update Custom CAS User"
+     message: "{{ sum_msg }}"
+
+
+
+
+    
+

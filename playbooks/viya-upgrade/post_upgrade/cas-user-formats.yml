@@ -1,0 +1,50 @@
+---
+- hosts: localhost
+  vars_files:
+  - ../vars.yml
+
+  tasks:
+  - name:  Set empty list of casusermods file.
+    set_fact:
+      CASUSERMODSFILES_LIST: []
+
+- hosts: sas_casserver_primary,sas_casserver_secondary
+  become: yes
+  become_user: root
+  gather_facts: false
+  vars_files:
+    - ../../../../vars.yml
+
+  tasks:
+    - name: Finding all the directories under SASROOT
+      command: bash -c "ls -d {{ SASROOT }}/*/"
+      register: caslua_files
+
+    - include: copy-user-formats-cas.yml
+      with_items:
+        - "{{ caslua_files.stdout_lines }}"
+      loop_control:
+        loop_var: caslua_data
+
+- hosts: localhost
+  gather_facts: true
+
+  tasks: 
+
+    - name: Set Summary Message to indicate task has been skipped
+      set_fact: 
+        msg: "\"Adding user formats from casstartup.lua_*epoch files to casstartup_usermods.lua\" action was skipped."
+        header_msg: "Adding default user formats"
+      when: CASUSERMODSFILES_LIST | length == 0
+
+    - name: Set Summary Message to inform list of casstartup_usermods file changes
+      set_fact:
+        msg: "Added default user formats from casstartup.lua_*epoch files to {{CASUSERMODSFILES_LIST|to_yaml}}" 
+        header_msg: "Adding default user formats"
+      when: CASUSERMODSFILES_LIST | length > 0
+
+    - name: Add to Upgrade Summary
+      include_tasks: ../common/add-summary-item-tasks.yml
+      vars:
+        header: "{{ header_msg }}" 
+        message: "{{ msg }}"

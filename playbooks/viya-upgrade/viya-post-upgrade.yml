@@ -1,0 +1,70 @@
+####################################################################
+#### viya-post-upgrade.yml                                      ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# This playbook will complete the upgrade process, after the upgrade
+# itself has been run.
+#
+# to see an index of the things it does, run:
+#        ansible-playbook viya-post-upgrade.yml --list-tasks
+#
+# To prepare the system for the upgrade, run:
+#        ansible-playbook viya-post-upgrade.yml
+#
+####################################################################
+
+---
+- import_playbook: ../common/handle_hostgroup_hyphens.yml
+  tags:
+    - always
+
+# Run common tasks before playbooks execute
+- import_playbook: common/viya_upgrade_common_init.yml
+  tags:
+    - always
+
+- name: Record the post-upgrade state of installed services and packages
+  import_playbook: common/run_deployment_report.yml
+  when:
+    - "'run-deployment-report' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'run-deployment-report' not in ansible_skip_tags"
+  tags:
+    - run-deployment-report
+
+- name: Copy Default User formats from casstartup.lua_*epoch file to casstartup_usermods.lua
+  import_playbook: post_upgrade/cas-user-formats.yml
+  when: 
+    - "'cas-user-formats' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'cas-user-formats' not in ansible_skip_tags"
+  tags:
+    - cas-user-formats
+
+- name: Update access controls on SAS-created caslibs
+  import_playbook: post_upgrade/add_new_caslib_controls.yml
+  when: 
+    - "'add-new-caslib-controls' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'add-new-caslib-controls' not in ansible_skip_tags"
+  tags:
+    - add-new-caslib-controls
+
+- name: Update guest access authorization rules
+  import_playbook: post_upgrade/update_guest_access_rules.yml
+  when: 
+    - "'update-guest-access-rules' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'update-guest-access-rules' not in ansible_skip_tags"
+  tags:
+    - update-guest-access-rules
+
+# Create Post-Upgrade Summary
+# This should always be called last
+- import_playbook: common/create_upgrade_summary.yml upgrade_stage=post
+  tags:
+    - always

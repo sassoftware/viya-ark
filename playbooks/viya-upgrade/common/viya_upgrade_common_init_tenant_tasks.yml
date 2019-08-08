@@ -1,0 +1,53 @@
+####################################################################
+#### viya_upgrade_common_init_tenant_tasks.yml                  ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# Plays run against each tenant to validate given tenant details
+# and gather additional tenant info.
+#
+####################################################################
+
+---
+# Validate that all the requisite details were provided for the current tenant
+- name: "Validate SAS_TENANT_DETAILS - {{ tenant_details.TENANT_ID }}"
+  assert:
+      that:
+          - tenant_details.TENANT_ID | default('') != ''
+          - tenant_details.TENANT_ADMIN_USERNAME | default('') != ''
+          - tenant_details.TENANT_ADMIN_PASSWORD | default('') != ''
+      msg: "SAS_TENANT_DETAILS for tenant '{{ tenant_details.TENANT_ID }}' is missing required values."
+
+# Get the current url of the httpd service for thie tenant
+- name: "Get the HTTPD URL - {{ tenant_details.TENANT_ID }}"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      {{ SASHOME }}/bin/sas-bootstrap-config catalog serviceurl --wait --tick-seconds 10 --timeout-seconds 300 httpd
+  environment:
+      SASTENANTID: "{{ tenant_details.TENANT_ID }}"
+      SSL_CERT_FILE: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+      CONSUL_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+      VAULT_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+
+  become: yes
+  delegate_to: "{{ groups['consul'] | first }}"
+  register: httpd_catalog_url
+
+# Make sure we have a url-formatted value
+- name: "Check for URL value - {{ tenant_details.TENANT_ID }}"
+  assert:
+      that:
+          - httpd_catalog_url.stdout_lines | length == 1
+          - httpd_catalog_url.stdout is regex('http[s]{0,1}:\/\/.+')
+      msg: "Could not determine the URL for accessing SAS services - {{ tenant_details.TENANT_ID }}."
+
+# Add the URL for the current tenant to the tenant_urls dict
+- set_fact:
+      tenant_facts: "{{ tenant_facts | combine({tenant_details.TENANT_ID:  {'sas_url_httpd': httpd_catalog_url.stdout}})}}"

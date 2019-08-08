@@ -1,0 +1,162 @@
+####################################################################
+#### delete_default_backup_schedule_job_tasks.yml               ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# These tasks will delete the default backup schedule job.  The
+# tasks were broken out from the controls, so that the tasks could
+# be iterated over, if so needed.
+####################################################################
+#
+# The tasks in this file represent the unique actions that need to
+# be run in order to delete the backup scheduling job.
+#
+# These tasks are called by the
+# delete_default_backup_schedule_job_controls.yml playbook
+# which defines the tasks that need to run prior to execution.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#      delete-default-backup-job
+#
+####################################################################
+
+---
+# Validates that a SASAdmin username value is given
+- name: "Check for SASAdministrators username value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_username | default('') != ''"
+      msg: "A SASAdministrator username value must be provided"
+
+# Validates that a SASAdmin password value is given
+- name: "Check for SASAdministrators password value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_password | default('') != ''"
+      msg: "A SASAdministrators password value must be provided"
+
+# Validates that a services url is given
+- name: "Check for SAS HTTPD URL - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_url | default('') != ''"
+      msg: "A SAS HTTPD URL value must be provided"
+
+# Set the profile for the sas-admin CLI calls
+- name: "Set profile endpoint  - {{ tenant_id | default('SAS provider') }}"
+  shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile set-endpoint {{ tenant_url }}"
+
+# Set the output type of sas-admin CLI calls to fulljson
+- name: "Set profile output  - {{ tenant_id | default('SAS provider') }}"
+  shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile set-output fulljson"
+
+# Turn off color in the output of the sas-admin CLI calls
+- name: "Set profile output color - {{ tenant_id | default('SAS provider') }}"
+  shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile toggle-color off"
+
+# Log on to the server.
+- name: "Log on to {{ tenant_id | default('SAS provider') }}."
+  environment: "{{ cli_env }}"
+  shell:
+      cmd:  |
+          echo -e "Log on to {{ tenant_id | default('SAS provider') }} to get security token:\n\n" > {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+          source {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/consul.conf
+          {{ bin_directory }}/sas-admin --profile {{ profile_name }}  auth login -u {{ SAS_ADMIN_USERNAME }} -p {{ SAS_ADMIN_PASSWORD }} >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+
+# Create a temp directory for storing oauth key info for REST calls
+- name: "Create temporary directory - {{ tenant_id | default('SAS provider') }}"
+  tempfile:
+      state: directory
+  delegate_to: localhost
+  become: no
+  register: temp_token_dir
+
+# Update facts to get become user home directory
+- setup:
+      filter: "ansible_env"
+
+# Copy the current oauth key to the temp directory
+- name: "Get current auth information - {{ tenant_id | default('SAS provider') }}"
+  fetch:
+      src: "{{ hostvars[inventory_hostname].ansible_env.HOME }}/.sas/credentials.json"
+      dest: "{{ temp_token_dir.path + '/' }}"
+      flat: yes
+
+# Load oauth info for use in REST calls
+- name: "Get OAuth2 token - {{ tenant_id | default('SAS provider') }}"
+  include_vars:
+      file: "{{ temp_token_dir.path }}/credentials.json"
+      name: sasuser_credentials
+
+# Remove the temp directory and its contents
+- name: "Remove temporary directory - {{ tenant_id | default('SAS provider') }}"
+  file:
+      path: "{{ temp_token_dir.path }}"
+      state: absent
+  delegate_to: localhost
+
+# Get the job schedulers through a REST call
+- name: "Get the scheduler job - {{ tenant_id | default('SAS provider') }}"
+  uri:
+      url: "{{ tenant_url }}jobExecution/jobRequests?filter=eq(name,'{{ default_schedule_job_name }}')"
+      method: GET
+      headers:
+          Accept: application/vnd.sas.collection+json
+          Authorization: "Bearer {{ sasuser_credentials[ profile_name ]['access-token'] }}"
+      body_format: json
+      return_content: yes
+      status_code: 200
+      validate_certs: no
+  register: job_requests_raw
+
+# Get session dict from json response
+- set_fact:
+      job_request: "{{ job_requests_raw.content | from_json }}"
+
+#If we've found the job, delete it.
+- name:  "Delete the default job scheduler"
+  block:
+    - shell:
+        cmd:  |
+            echo -e "\n\nDelete the default scheduler:\n\n" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+            source {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/consul.conf
+            {{ bin_directory }}/sas-admin --profile {{ profile_name }} job requests  delete --id "{{ job_request['items'][0].id }}" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+      environment: "{{ cli_env }}"
+  when:  job_request.count>0
+
+- name:  "Log if delete was skipped."
+  block:
+    - shell:  echo -e "\n\nDefault scheduler not found.  Skipping delete." >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+  when: job_request.count == 0
+
+# Log off the server
+- name: "Log off {{ tenant_id | default('SAS provider') }}"
+  environment: "{{ cli_env }}"
+  shell:
+      cmd:  |
+          echo -e "\n\nLog off ({{ tenant_id | default('SAS provider') }}):\n\n" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+          source {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/consul.conf
+          {{ bin_directory }}/sas-admin --profile {{ profile_name }} auth logout >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+
+# copy the log file to the local output directory
+- name: "Fetch log file with script output - {{ tenant_id | default('SAS provider') }}"
+  fetch:
+      src: "{{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}"
+      dest: "{{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] }}/"
+      flat: yes
+
+# Add the entry to the summary report.
+- include_tasks: ../common/add-summary-item-tasks.yml
+  vars:
+      - header: "Delete the Default Backup Schedule Job - {{ tenant_id | default('SAS provider') }}"
+      - message: >
+          The Delete Default Backup Schedule Job has been deleted or was not present. Please
+          review the log provided in the <b>Additional Information</b> section below for more details.
+      - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"

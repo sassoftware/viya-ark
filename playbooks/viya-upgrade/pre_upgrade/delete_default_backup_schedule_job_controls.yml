@@ -1,0 +1,183 @@
+####################################################################
+#### delete_default_backup_schedule_job_controls.yml            ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# This playbook will delete the default backup schedule job.
+# It is only applicable for Viya 3.3.
+#
+# These tasks will be run for the provider using the credentials
+# provided by the
+#     - SAS_ADMIN_USERNAME (string)
+#     - SAS_ADMIN_PASSWORD (string)
+# variables defined in vars.yml.
+#
+# A log of all changes for a given tenant is copied to the local
+# output directory defined in vars.yml.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     delete-default-backup-job
+#
+####################################################################
+---
+- name:  Delete the Default Backup Schedule Job Controls
+  hosts: CommandLine[0]
+  become:  yes
+
+  vars_files:
+      - "{{ playbook_dir }}/../vars.yml"
+
+  vars:
+      bin_directory:  "{{SASHOME}}/bin"
+      httpd_host:  "localhost"
+      logfile_name:  "delete_default_backup_schedule_job-{{ '%F_%H-%M-%S' | strftime(ansible_date_time.epoch) }}.log"
+      default_schedule_job_name:  "DEFAULT_BACKUP_SCHEDULE"
+      tag_value: 'delete-default-backup-job'
+      profile_name: "{{ '__' + tag_value + '__' }}"
+
+      cli_env:
+          SSL_CERT_FILE: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+          CONSUL_CACERT: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+          VAULT_CACERT: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+
+      delete_fail_msg: >
+          The "Delete Default Backup Schedule" job has been deleted or was not present. To view details in the log, see the <b>Additional Information</b> section.
+          
+      delete_skipped_warn_msg: >
+          The "Delete Default Backup Schedule" job was not deleted because the <em>playbooks/viya-upgrade/vars.yml</em> file is missing the following variables:
+          <ul><li><b>SAS_ADMIN_USERNAME</b></li><li><b>SAS_ADMIN_PASSWORD</b></li></ul>
+          To update the caslib controls, define these variables in <em>playbooks/viya-upgrade/vars.yml</em> file.
+          Then rerun this playbook with the tag <b>{{ tag_value }}</b>.
+
+      play_not_needed_info_msg: >
+          "The Deleting of the DEFAULT_BACKUP_SCHEDULE job" action was skipped.<br><br>
+          The deleting of the DEFAULT_BACKUP_SCHEDULE job was skipped because
+          <ul><li>The sas-deploymentBackup is at version {{ sas_deployment_backup_info.stdout_lines[0] }}.</li>
+          <li>This action is not needed when the level is 2.1 or higher.</li></ul>
+          These actions are not needed for the upgrade process to continue. Review the Ansible log or the
+          <b>Additional Information</b> for more detail.
+
+      unsupported_os_msg: >
+          "The Deleting of the DEFAULT_BACKUP_SCHEDULE job" action was skipped.<br><br>
+          The deleting of the DEFAULT_BACKUP_SCHEDULE job was skipped because
+          <ul><li>The Operating Sytem is {{ ansible_os_family }}.</li>
+          <li>This action is only required on Red Hat operating sytems.</li></ul>
+          These actions are not needed for the upgrade process to continue. Review the Ansible log or the
+          <b>Additional Information</b> for more detail.
+  tasks:
+      # There is no need to run this play, unless the operating system is Red Hat.
+      - block:
+            - debug:
+                  msg: >
+                      Deleting the Default Backup Schedule Job is not required on this operating system.
+
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - header: "Default Backup Schedule Job not deleted"
+                  - message: "{{ unsupported_os_msg }}"
+                  - additional_info_html: "This system is running {{ ansible_os_family}}.  The fix is only required on systems running Red Hat. No further action is required."
+            - meta: end_play
+        when:
+            - "ansible_os_family != 'RedHat'"
+
+      - name: "Check if {{ SAS_CONFIG_ROOT }}/consul.conf exists"
+        stat:
+            path: "{{ SAS_CONFIG_ROOT }}/consul.conf"
+        register: consul_conf_file
+
+      - block:
+          - debug:
+                msg: "The 'Delete the Default Backup Schedule Job Controls' playbook is not needed for the current version of SAS Viya."
+
+          - meta: end_play
+        when: not consul_conf_file.stat.exists
+
+      # Run yum to gather info on installed sas-deploymentBackup package, on the Admin Services Group
+      - shell: "`which yum` -e 1 list installed sas-deploymentBackup | grep  sas-deploymentBackup | awk '{print $2}' | cut -d'-' -f1"
+        delegate_to: "{{ groups['AdminServices'] | first }}"
+        register: sas_deployment_backup_info
+
+      # Create list with sas-deploymentBackup version info
+      - set_fact:
+            sas_deployment_backup_version: "{{ sas_deployment_backup_info.stdout_lines[0].split('.') }}"
+        when:
+            - "sas_deployment_backup_info.stdout_lines | length == 1 and sas_deployment_backup_info.stdout_lines[0] != ''"
+
+      # If the package is already at or above the acceptable minimum, end play and move on.
+      - block:
+            - debug:
+                  msg: >
+                      The SAS Deployment Backup package is already at an appropriate version
+                      ({{ 'sas-deploymentBackup-' + sas_deployment_backup_version | join('.') }}). No further action is required.
+
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - header: "Default Backup Schedule Job not deleted"
+                  - message: "{{ play_not_needed_info_msg }}"
+                  - additional_info_html: "The SAS Deployment Backup package is already at an appropriate version ({{ 'sas-deploymentBackup-' + sas_deployment_backup_version | join('.') }}). No further action is required."
+            - meta: end_play
+        when:
+            - "(sas_deployment_backup_version is defined) and (sas_deployment_backup_version | length == 3) and ((sas_deployment_backup_version[0] | int > 2) or (sas_deployment_backup_version[0] | int == 2 and sas_deployment_backup_version[1] | int >= 1))"
+
+      - block:
+          # create a tmpdir to hold the log files
+          - name: "Create temporary directory"
+            tempfile:
+                state: directory
+                suffix: ".viya_upgrade.delete_backup_controls"
+            register: delete_backup_controls_tmpdir
+
+          # Delete the Default Backup Schedule job on a single tenant.
+          - include_tasks: delete_default_backup_schedule_job_tasks.yml
+            vars:
+                - tenant_admin_username: "{{ SAS_ADMIN_USERNAME }}"
+                - tenant_admin_password: "{{ SAS_ADMIN_PASSWORD }}"
+                - tenant_url: "{{ hostvars['localhost']['sas_viya_upgrade']['sas_url_httpd'] }}"
+
+        # Run these tasks when a failure was encountered during setup or during the provider update
+        rescue:
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ delete_fail_msg }}"
+
+            # Add failure to summary
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'fail'
+                  - header: "Failure enountered deleting the Default Backup Schedule Job"
+                  - message: "{{ delete_fail_msg }}"
+
+        # Always run these tesks whether or not a failure was enountered
+        always:
+            # Remove the temporary directory
+            - name: "Clean up temporary directory"
+              file:
+                  state: absent
+                  path: "{{ delete_backup_controls_tmpdir.path }}"
+              when: delete_backup_controls_tmpdir is defined
+
+        when:
+            - SAS_ADMIN_USERNAME | default('') != ''
+            - SAS_ADMIN_PASSWORD | default('') != ''
+      # If credentials were not provided, log a debug message and add an item to the summary
+      - block:
+
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ delete_skipped_warn_msg }}"
+
+            # if the requisite vars were not set, add a warning to the summary report about how to rerun this play
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'warn'
+                  - header: "Default Backup Schedule Job not deleted"
+                  - message: "{{ delete_skipped_warn_msg }}"
+
+        when: SAS_ADMIN_USERNAME | default('') == '' or SAS_ADMIN_PASSWORD | default('') == ''

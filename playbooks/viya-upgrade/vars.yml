@@ -1,0 +1,22 @@
+---
+# Output directory to hold reports.
+UPGRADE_OUTPUT_DIRECTORY: "{{ playbook_dir }}/../../../../viya_upgrade_output"
+
+# SAS provider details
+# In multi-tenant deployments, these should be valid SAS Administrator credentials for the provider tenant.
+# In non-tenant deployments, these should be valid SAS Administrator credentials for the deployed SAS environment.
+SAS_ADMIN_USERNAME: ''
+SAS_ADMIN_PASSWORD: ''
+
+# Minimum disk space requirements in GB
+OPT_SAS_MIN: 15
+VAR_CACHE_YUM_MIN: 15
+
+# This variable should remain commented unless a multi-tenant environment is being upgraded.
+#SAS_TENANT_DETAILS:
+#  - TENANT_ID: ''
+#    TENANT_ADMIN_USERNAME: ''
+#    TENANT_ADMIN_PASSWORD: ''
+#  - TENANT_ID: ''
+#    TENANT_ADMIN_USERNAME: ''
+#    TENANT_ADMIN_PASSWORD: ''

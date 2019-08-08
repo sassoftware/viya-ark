@@ -1,0 +1,97 @@
+####################################################################
+#### add_new_caslib_controls_tenant_tasks.yml                   ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: these tasks only work                             ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# The tasks in this file represent the unique actions that need to
+# be run for each tenant in a deployment to make the requisite
+# SAS-provided caslib control updates.
+#
+# These tasks are called by the add_new_caslib_controls.yml playbook
+# which defines the tasks that need to run prior to tenant-task
+# execution.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     add_new_caslib_controls
+#
+####################################################################
+
+---
+# Validates that a SASAdministrators username value is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SASAdministrators username value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_username | default('') != ''"
+      msg: "A SASAdministrator username value must be provided"
+
+# Validates that a SASAdministrators password provided is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SASAdministrators password value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_password | default('') != ''"
+      msg: "A SASAdministrators password value must be provided"
+
+# Validates that a URL value is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SAS deployment URL value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_url | default('') != ''"
+      msg: "A SAS deployment URL value must be provided"
+
+# Execute the script with provided credentials
+- name: "Update caslib controls - {{ tenant_id | default('SAS provider') }}"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      ./{{ script_name }} --sas-endpoint {{ tenant_url }} | tee ./{{ tenant_id | default('provider') + '_' + logfile_name }}
+  args:
+      chdir: "{{ new_caslib_controls_tmpdir.path }}"
+  environment:
+      SAS_ADMIN_USER: "{{ tenant_admin_username }}"
+      SAS_ADMIN_PASSWD: "{{ tenant_admin_password }}"
+  register: add_caslib_controls_script_results
+
+# Copy the log file from the command above for this tenant to the local output directory (from vars.yml)
+- name: "Fetch log file with script output - {{ tenant_id | default('SAS provider') }}"
+  fetch:
+      src: "{{ new_caslib_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}"
+      dest: "{{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] }}/"
+      flat: yes
+
+# Add item to the summary report
+- include_tasks: ../common/add-summary-item-tasks.yml
+  vars:
+      - header: "SAS-created caslib controls upgraded - {{ tenant_id | default('SAS provider') }}"
+      - message: "{{ update_success_msg }}"
+      - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"
+  when:
+      - "'ERROR:' not in add_caslib_controls_script_results.stdout"
+      - "'ERROR:' not in add_caslib_controls_script_results.stderr"
+      - "'Login failed' not in add_caslib_controls_script_results.stdout"
+      - "'Login failed' not in add_caslib_controls_script_results.stderr"
+
+- include_tasks: ../common/add-summary-item-tasks.yml
+  vars:
+      - level: 'fail'
+      - header: "Failure upgrading SAS-created caslib controls - {{ tenant_id | default('SAS provider') }}"
+      - message: "{{ update_fail_msg }}"
+      - additional_info_html: >
+            <p><b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}</p>
+            <p><b>Stdout:</b></p>
+            <div class="error-output-display">{{ add_caslib_controls_script_results.stdout }}</div>
+            <p><b>Stderr:</b></p>
+            <div class="error-output-display">{{ add_caslib_controls_script_results.stderr }}</div>
+  when: >
+      ('ERROR:' in add_caslib_controls_script_results.stdout) or
+      ('ERROR:' in add_caslib_controls_script_results.stderr) or
+      ('Login failed' in add_caslib_controls_script_results.stdout) or
+      ('Login failed' in add_caslib_controls_script_results.stderr)

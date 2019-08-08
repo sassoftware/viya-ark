@@ -1,0 +1,51 @@
+####################################################################
+#### create_upgrade_summary.yml                                 ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# This playbook creates an upgrade summary based on the summary
+# items registered by the individual plays in this playbook.
+#
+# An 'upgrade_stage' value is required, either 'pre' or 'post'.
+#
+# This playbook creates a report and places it in the
+# 'UPGRADE_OUTPUT_DIRECTORY' specified in vars.yml with the name
+# viya_{{upgrade_stage}}_upgrade_summary_<timestamp>.html
+#
+####################################################################
+
+---
+- name: "Create Viya Upgrade Summary"
+  hosts: localhost
+
+  tasks:
+    # Validates that a upgrade stage ('pre' or 'post') was provided
+    - name: "Check for Valid Upgrade Stage"
+      assert:
+          that:
+              - "upgrade_stage is defined"
+              - "upgrade_stage|upper == 'PRE' or upgrade_stage|upper == 'POST'"
+          msg: "Valid upgrade stage ('pre' or 'post') was not set"
+
+    # Sets a fact pointing to where the summary output was written
+    - set_fact:
+          sas_viya_upgrade_summary_file: "{{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + 'viya_' + upgrade_stage|lower + '_upgrade_summary_' + '%F_%H-%M-%S'|strftime(ansible_date_time.epoch) + '.html' }}"
+
+    # Creates the html summary in the given output location
+    - name: "Create Viya {{ upgrade_stage | title }}-Upgrade Summary"
+      template:
+          src: ../templates/viya_upgrade_summary.html.j2
+          dest: "{{ sas_viya_upgrade_summary_file }}"
+          mode: 0640
+
+    # Prints the location of the output to console
+    - name: "Viya {{ upgrade_stage | title }}-Upgrade Summary Location"
+      debug:
+          msg: "Created {{ sas_viya_upgrade_summary_file }}"

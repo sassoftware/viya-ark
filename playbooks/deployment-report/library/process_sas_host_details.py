@@ -7,6 +7,7 @@
 ####################################################################
 
 from ansible.module_utils.basic import AnsibleModule
+import ast
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -69,9 +70,9 @@ def main():
     # supports check mode
     module = AnsibleModule(
         argument_spec=dict(
-            hostvars=dict(type=dict, required=True),
+            hostvars=dict(type='raw', required=True),
             report_timestamp=dict(type=str, required=False, default=''),
-            registered_dict_name=dict(type=str, required=False, default="sas_host_details")
+            registered_dict_name=dict(type=str, required=False, default="get_sas_host_details_results")
         ),
         supports_check_mode=True
     )
@@ -80,6 +81,12 @@ def main():
     hostvars = module.params['hostvars']
     report_timestamp = module.params['report_timestamp']
     registered_dict_name = module.params['registered_dict_name']
+
+    # Starting in Ansible 2.8.1, there is the potential for hostvars
+    # to be passed as a byte string, if the dict is too large
+    # This will convert the str back to a dict before proceeding
+    if isinstance(hostvars, str):
+        hostvars = ast.literal_eval(hostvars.decode())
 
     results = dict()
     results['sas_hosts'] = dict()

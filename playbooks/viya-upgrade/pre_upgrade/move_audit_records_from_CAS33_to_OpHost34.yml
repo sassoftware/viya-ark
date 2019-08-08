@@ -1,0 +1,162 @@
+####################################################################
+#### move_audit_records_from_CAS33_to_OpHost34.yml              ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+#
+####################################################################
+#
+#   This playbook will move the audit records located at 
+#   /opt/sas/viya/config/var/cache/auditcli on the CAS
+#   primary host to the same location on the Operations host before
+#   performing a Viya 3.3 to 3.4 upgrade.
+#
+#   In addition, it will ensure that the column names remain 
+#   consistent after the upgrade is complete.
+#
+####################################################################
+---
+
+- hosts: sas_all
+  gather_facts: true
+  
+  vars_files:
+    - "{{ playbook_dir }}/../vars.yml"
+      
+  tasks:
+
+
+
+    # Determine if the Operations host and the sas_casserver_primary both exist in the deployment
+    - name: Determine if the required hostgroups are present
+      set_fact:
+        different_hostgroups: "{{ 'sas_casserver_primary' in groups and 'Operations' in groups }}"
+
+
+    # Determine if the Operations host and the sas_casserver_primary are on different machines
+    - name: Determine the operations host
+      when: different_hostgroups
+      set_fact:
+        operations_host: "{{ hostvars[groups['Operations'][0]]['ansible_fqdn'] }}"
+        casserver_host: "{{ hostvars[groups['sas_casserver_primary'][0]]['ansible_fqdn'] }}"
+
+
+    # Compare hosts name to determine if they are on the same machine, if they both exist
+    - name: Determine if Operations host and sas_casserver_primary host are the same machine
+      when: different_hostgroups
+      set_fact:
+        different_hostgroups: "{{ operations_host is not match (casserver_host) }}"
+
+
+- hosts: sas_casserver_primary
+  become: yes
+  become_user: sas
+  any_errors_fatal: true
+  gather_facts: true
+  
+  vars_files:
+    - "{{ playbook_dir }}/../vars.yml"
+    
+  tasks:
+  
+    # Default file copy operation
+    - name: Default file copy operation
+      set_fact:
+        execute_copy: false
+
+
+    # Copy audit records from sas_casserver_primary host to temp locations if on a different machine than the Operations host
+    - name: Copy audit records from sas_casserver_primary host to temp locations
+      when: different_hostgroups
+      block:
+
+        # See if there are any audit files to copy from the old location
+        - name: Check for existing audit records in source location
+          stat:
+            path: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/var/cache/auditcli/"
+          register: audit_records_source
+
+
+        # Create a list of all the files in /opt/sas/viya/config/var/cache/auditcli/ 
+        - name: Register audit records to be copied
+          shell: "(cd {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/var/cache/auditcli/; find . -maxdepth 1 -type f) | cut -d'/' -f2"
+          register: files_to_copy
+          when: audit_records_source.stat.exists
+
+
+        # Ensure column name consistency
+        - name: Ensure column name consistency
+          shell: "cd {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/var/cache/auditcli/; sed -i 's/Id,TimeStamp,Type,Action,State,Description,User,Application,RemoteAddress,URI/ID,Time Stamp,Type,Action,State,Description,User ID,Application,Remote Address,URI/' {{ item }}"
+          with_items: "{{ files_to_copy.stdout_lines }}"
+          when: audit_records_source.stat.exists and files_to_copy is defined and files_to_copy.stdout != ""
+
+
+        # Register that there are files to be copied
+        - name: Register files to be copied
+          set_fact:
+            execute_copy: true
+          when: audit_records_source.stat.exists and files_to_copy is defined and files_to_copy.stdout != ""
+
+
+        # Copy all the audit records to controller ../../../../viya_upgrade_output/audit_records_backup
+        - name: Copy audit records from [sas_casserver_primary] to temporary location
+          fetch: src={{ SASROOT }}/{{ tenant_id | default('viya') }}/config/var/cache/auditcli/{{ item }} dest={{ UPGRADE_OUTPUT_DIRECTORY }}/audit_records_backup/ flat=true
+          with_items: "{{ files_to_copy.stdout_lines }}"
+          when: execute_copy
+
+
+- hosts: Operations
+  become: yes
+  become_user: sas
+  
+  vars_files:
+    - "{{ playbook_dir }}/../vars.yml"
+    
+  tasks:
+  
+    # Copy audit records from the controller ../../../../viya_upgrade_output/audit_records_backup to Operations host
+    - name: Copy audit records from temp location to Operations host
+      when: hostvars[groups['sas_casserver_primary'][0]]['execute_copy']
+      block:
+
+        # Create target audit records directory on [Operations]
+        - name: Create target audit directory
+          file:
+            path: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/var/cache/auditcli/"
+            state: directory
+            mode: 0755
+
+
+        # Copy audit records from temporary location to final destination
+        - name: Copy audit records from the temporary location to [Operations]
+          copy: force=no src={{ UPGRADE_OUTPUT_DIRECTORY }}/audit_records_backup/ dest={{ SASROOT }}/{{ tenant_id | default('viya') }}/config/var/cache/auditcli/
+
+
+        # Delete the ../../../../viya_upgrade_output/audit_records_backup location
+        - name: Remove the temporary location containing the audit records
+          file:
+            state: absent
+            path: "{{ UPGRADE_OUTPUT_DIRECTORY }}/audit_records_backup/"
+
+
+        # Add successful maintenance information to the deployment report
+        - name: Add file transfer results to pre-upgrade report
+          include_tasks: ../common/add-summary-item-tasks.yml
+          vars:
+            header: "Prepare the Operations Host Group for Upgrade"
+            message: "Audit records were successfully moved from the sas_casserver_primary host to the Operations host."
+
+
+- hosts: localhost
+  gather_facts: true
+  tasks:
+
+    # Add skipped maintenance information to the deployment report
+    - name: Add file transfer results to pre-upgrade report
+      include_tasks: ../common/add-summary-item-tasks.yml
+      when: not hostvars[groups['sas_all'][0]]['different_hostgroups'] or not hostvars[groups['sas_casserver_primary'][0]]['execute_copy']
+      vars:
+        header: "Prepare the Operations Host Group for Upgrade"
+        message: >
+            "Move Audit records" action was skipped.<br><br>
+             Audit records were not moved from the sas_casserver_primary host to the Operations host because they are on the same machine, or they do not exist in the deployment.

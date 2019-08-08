@@ -1,0 +1,294 @@
+####################################################################
+#### save_vta_topics_tables.yml                                 ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# This playbook defines the pre-update tasks for saving SAS Visual
+# Text Analytics topics tables. It is only applicable for Viya
+# 3.3 and newer.
+#
+# For multi-tenant deployments:
+#
+# These tasks will be run for the provider using the credentials
+# provided by the
+#     - SAS_ADMIN_USERNAME (string)
+#     - SAS_ADMIN_PASSWORD (string)
+# variables defined in vars.yml. The tasks will also be run for
+# each tenant defined in the SAS_TENANT_DETAILS (list) variable
+# also in vars.yml.
+#
+# For non-tenant deployments, only the SAS_ADMIN_USERNAME and
+# SAS_ADMIN_PASSWORD varaibles need to be defined.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     save_vta_topics_tables
+#
+####################################################################
+
+---
+- name: "Save SAS Visual Text Analytics Topics Tables"
+  hosts: CommandLine[0]
+  become: yes
+
+  vars_files:
+      - ../vars.yml
+
+  vars:
+      - caslibs_default_limit: 100
+      - tables_default_limit: 10
+      - profile_name: __save-vta-topics-tables__
+      - tag_value: save-vta-topics-tables
+
+      - cli_env:
+            SSL_CERT_FILE: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+            CONSUL_CACERT: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+            VAULT_CACERT: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+
+      - update_fail_msg: >
+            A failure was encountered when saving SAS Visual Text Analytics topics tables. <br>Review
+            the Ansible log for more information.<br><br>The tag <b>{{ tag_value }}</b> can be used when
+            re-running the playbook to limit task execution to include only these tasks.
+
+      - update_skipped_warn_msg: >
+            The "Saving SAS Visual Text Analytics topics tables" action was unable to execute.<br><br>
+            The SAS Visual Text Analytics topics tables were not saved because the <em>playbooks/viya-upgrade/vars.yml</em> file is missing the following variables:
+            <ul><li><b>SAS_ADMIN_USERNAME</b></li><li><b>SAS_ADMIN_PASSWORD</b></li></ul>
+            To update the caslib controls, define these variables in the <em>playbooks/viya-upgrade/vars.yml</em> file.  
+            Then rerun this playbook with the tag <b>{{ tag_value}}</b>.
+
+      - tenant_update_fail_msg: >
+            One or more tenants encountered failures when saving SAS Visual Text Analytics topics tables.<br> Review
+            the Ansible log for more information.<br><br>The tag <b>{{ tag_value }}</b> can be used when
+            re-running the playbook to limit task execution to include only these tasks.
+
+      - tenants_skipped_warn_msg: >
+            The "Saving SAS Visual Text Analytics Tenant Topic tables" action was unable to execute. <br><br>A multi-tenant deployment was detected but no tenant details were provided. To run this playbook
+            against tenants, add the required tenant details to the <b>SAS_TENANT_DETAILS</b> property in <em>playbooks/viya-upgrade/vars.yml</em>
+            and re-run this playbook with the tag <b>{{ tag_value }}</b> to limit task execution to only these tasks.
+
+      - no_cas_servers_warn_msg: >
+            No CAS servers were found in the environment. If none exist, there is no need to re-run this playbook.
+            If CAS servers are expected, make sure they are up and reachable before retrying.<br><br>The tag
+            <b>{{ tag_value }}</b> can be used when re-running the playbook to limit task execution to include only
+            these tasks.
+
+      - version_not_determined_warn_msg: >
+            The version of the installed SAS Text UI Gateway package could not be determined.<br>
+            No topics table saves were performed. If you would like to re-run these actions, the
+            tag <b>{{ tag_value }}</b> can be used to limit playbook execution.
+
+      - play_not_needed_info_msg: >
+            "The Saving of SAS Visual Text Analytics topics tables" action was skipped.<br><br>
+            The Saving of SAS Visual Text Analytics topics tables was skipped because
+            <ul><li>SAS Visual Text Analytics is not installed in this environment.</li>
+            <li>This action is not needed for the installed version of SAS Visual Text Analytics.</li></ul>
+            These actions are not needed for the upgrade process to continue. Review the Ansible log or the
+            <b>Additional Information</b> for more detail.
+
+      - no_hosts_in_group_warn_msg: >
+            The [VisualTextAnalytics] host group is present but does not contain any hosts. <br>
+            If this is correct, there is no need to re-run this play. If not, add the correct host(s) to which SAS Visual Text Analytics
+            is deployed to the [VisualTextAnalytics] host group and re-run the playbook with the <b>{{ tag_value }}</b>
+            tag to limit playbook execution to only these tasks.
+
+  tasks:
+      # If we are not on a RedHat host, then this fix is not applicable, end play and move on
+      - block:
+            - debug:
+                  msg: "The 'Save SAS Visual Text Analytics Topics Tables' playbook is not needed for the current operating system."
+
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - header: "Update SAS Visual Text Analytics"
+                  - message: "{{ play_not_needed_info_msg }}"
+                  - additional_info_html: "The 'Save SAS Visual Text Analytics Topics Tables' playbook is not needed for the current operating system."
+
+            - meta: end_play
+        when: "ansible_os_family != 'RedHat'"
+
+      # If the [VisualTextAnalytics] host group isn't in the inventory, end play and move on
+      - block:
+            - debug:
+                  msg: "The [VisualTextAnalyics] host group is not in the inventory provided for this deployment."
+
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - header: "Update SAS Visual Text Analytics"
+                  - message: "{{ play_not_needed_info_msg }}"
+                  - additional_info_html: "The [VisualTextAnalyics] host group is not in the inventory provided for this deployment."
+
+            - meta: end_play
+        when: "'VisualTextAnalytics' not in groups"
+
+      # Check if consul.conf file exists
+      - name: "Check if {{ SAS_CONFIG_ROOT }}/consul.conf exists"
+        stat:
+            path: "{{ SAS_CONFIG_ROOT }}/consul.conf"
+        register: consul_conf_file
+
+      # If the file does not exist, we're running against Viya 3.2 and this play isn't needed
+      - block:
+            - debug:
+                  msg: "The 'Save SAS Visual Text Analytics Topics Tables' playbook is not needed for the current version of SAS Viya."
+
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - header: "Update SAS Visual Text Analytics"
+                  - message: "{{ play_not_needed_info_msg }}"
+                  - additional_info_html: "The 'Save SAS Visual Text Analytics Topics Tables' playbook is not needed for the current version of SAS Viya."
+
+            - meta: end_play
+        when: not consul_conf_file.stat.exists
+
+      # If no hosts are defined for the [VisualTextAnalytics] group, end play and move on
+      - block:
+            - debug:
+                  msg: "The Visual Text Analytics host group is not in the inventory provided for this deployment."
+
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'warn'
+                  - header: "Update SAS Visual Text Analytics"
+                  - message: "{{ no_hosts_in_group_warn_msg }}"
+
+            - meta: end_play
+        when: "groups['VisualTextAnalytics'] | length == 0"
+
+      # Since we have a [VisualTextAnalytics] host, run yum to gather info on installed sas-text-gateway package
+      - shell: "`which yum` -e 1 list installed sas-text-gateway | grep sas-text-gateway | awk '{print $2}' | cut -d'-' -f1"
+        delegate_to: "{{ groups['VisualTextAnalytics'] | first }}"
+        register: sas_text_gateway_info
+
+      # Create list with sas-text-gateway version info
+      - set_fact:
+            sas_text_gateway_version: "{{ sas_text_gateway_info.stdout_lines[0].split('.') }}"
+        when: "sas_text_gateway_info.stdout_lines | length == 1 and sas_text_gateway_info.stdout_lines[0] != ''"
+
+      # If the package is already at or above the acceptable minimum, end play and move one
+      - block:
+            - debug:
+                  msg: >
+                      The SAS Text UI Gateway package is already at an appropriate version
+                      ({{ 'sas-text-gateway-' + sas_text_gateway_version | join('.') }}). No further action is required.
+
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - header: "Update SAS Visual Text Analytics"
+                  - message: "{{ play_not_needed_info_msg }}"
+                  - additional_info_html: "The SAS Text UI Gateway package is already at an appropriate version ({{ 'sas-text-gateway-' + sas_text_gateway_version | join('.') }}). No further action is required."
+
+            - meta: end_play
+        when:
+            - "(sas_text_gateway_version is defined) and (sas_text_gateway_version | length == 3) and ((sas_text_gateway_version[0] | int > 2) or (sas_text_gateway_version[0] | int <= 2 and sas_text_gateway_version[1] | int > 0) or (sas_text_gateway_version[0] | int <= 2 and sas_text_gateway_version[1] | int == 0 and sas_text_gateway_version[2] | int >= 141))"
+
+      # Write a warning if a package was found, but a version couldn't be determined
+      - block:
+            - debug:
+                  msg: "Could not determine current version of SAS Text UI Gateway."
+
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'warn'
+                  - header: "Update SAS Visual Text Analytics"
+                  - message: "{{ version_not_determined_warn_msg }}"
+
+            - meta: end_play
+        when: "sas_text_gateway_version is not defined or sas_text_gateway_version | length != 3"
+
+      # If none of the pre-play checks ended the play, run the main tasks
+      - block:
+            # Save non-tenant/SAS provider VTA topics tables using the SAS_ADMIN_USERNAME and SAS_ADMIN_PASSWORD
+            # credentials from vars.yml
+            - include_tasks: save_vta_topics_tables_tenant_tasks.yml
+              vars:
+                  - tenant_admin_username: "{{ SAS_ADMIN_USERNAME }}"
+                  - tenant_admin_password: "{{ SAS_ADMIN_PASSWORD }}"
+                  - tenant_url: "{{ hostvars['localhost']['sas_viya_upgrade']['sas_url_httpd'] }}"
+
+            # Save tenant VTA topics tables use credentials defined in SAS_TENANT_DETAILS if sas.multi.tenancy.enabled=true
+            - block:
+                  # Update each tenant
+                  - include_tasks: save_vta_topics_tables_tenant_tasks.yml
+                    vars:
+                        - tenant_id: "{{ item.TENANT_ID }}"
+                        - tenant_admin_username: "{{ item.TENANT_ADMIN_USERNAME }}"
+                        - tenant_admin_password: "{{ item.TENANT_ADMIN_PASSWORD }}"
+                        - tenant_url: "{{ hostvars['localhost']['sas_viya_upgrade']['tenant_facts'][item.TENANT_ID]['sas_url_httpd'] }}"
+                    loop_control:
+                        label: "{{ item.TENANT_ID }}"
+                    loop: "{{ SAS_TENANT_DETAILS | flatten(levels=1) }}"
+              # Run these tasks if a failure was encountered during the tenant caslib update
+              rescue:
+                  # Print to Ansible output
+                  - debug:
+                        msg: "{{ tenant_update_fail_msg }}"
+
+                  # Add failure to summary
+                  - include_tasks: ../common/add-summary-item-tasks.yml
+                    vars:
+                        - level: 'fail'
+                        - header: "Failure encountered saving tenant topics tables"
+                        - message: "{{ tenant_update_fail_msg }}"
+              when:
+                  - hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled
+                  - SAS_TENANT_DETAILS is defined
+                  - SAS_TENANT_DETAILS is not none
+                  - SAS_TENANT_DETAILS | default([]) | length != 0
+
+            # If multi-tenant but no tenant details provided, log a warning
+            - block:
+                  # Print to Ansible output
+                  - debug:
+                        msg: "{{ tenants_skipped_warn_msg }}"
+
+                  # Add warning to summary
+                  - include_tasks: ../common/add-summary-item-tasks.yml
+                    vars:
+                        - level: 'warn'
+                        - header: "Update SAS Visual Text Analytics"
+                        - message: "{{ tenants_skipped_warn_msg }}"
+              when:
+                  - hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled
+                  - SAS_TENANT_DETAILS is not defined or SAS_TENANT_DETAILS is none or SAS_TENANT_DETAILS | default([]) | length == 0
+
+        # Run these tasks when a failure was encountered during setup or during the provider update
+        rescue:
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ update_fail_msg }}"
+
+            # Add failure to summary
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'fail'
+                  - header: "Failure encountered saving topics tables"
+                  - message: "{{ update_fail_msg }}"
+        when:
+            - ansible_os_family == "RedHat"
+            - SAS_ADMIN_USERNAME | default('') != ''
+            - SAS_ADMIN_PASSWORD | default('') != ''
+
+
+
+      # If credentials were not provided, log a debug message and add an item to the summary
+      - block:
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ update_skipped_warn_msg }}"
+
+            # if the requisite vars were not set, add a warning to the summary report about how to rerun this play
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'warn'
+                  - header: "Update SAS Visual Text Analytics"
+                  - message: "{{ update_skipped_warn_msg }}"
+        when:
+            - ansible_os_family == 'RedHat'
+            - SAS_ADMIN_USERNAME | default('') == '' or SAS_ADMIN_PASSWORD | default('') == ''

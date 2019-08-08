@@ -1,0 +1,310 @@
+####################################################################
+#### apply_postgres_cve_2017_7547_patch.yml                     ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+#
+####################################################################
+#
+# This playbook will automatically apply the Postgres CVE-2017-7547
+# security patch to systems with Postgres version 9.4.13 or lower.
+#
+# Please note that this patch will automatically shut down all 
+# services and restart them on successful application of the 
+# patch.
+#
+####################################################################
+---
+
+- name: Apply the CVE-2017-7547 security patch
+  hosts: sas_all
+  tasks:
+    # Set enable_stray_cleanup on all hosts
+    - name: Set enable_stray_cleanup on all hosts
+      set_fact:
+        enable_stray_cleanup: true
+
+
+- hosts: sasdatasvrc
+  become: yes
+  become_user: root
+  any_errors_fatal: true
+  tasks:
+
+    # Retrieve command line postgres version and remove text
+    - name: Retrieve Postgres version
+      shell: "/opt/sas/viya/home/bin/psql --version | sed -e s/[^0-9.]//g"
+      register: sas_postgres_version
+
+
+    # Register security_patch_needed
+    - name: Set security patch execution state
+      set_fact:
+        security_patch_needed: "{{ sas_postgres_version.stdout is version_compare('9.4.13', '<') }}"
+
+
+- hosts: consul
+  become: yes
+  become_user: root
+  any_errors_fatal: true
+  tasks:
+
+    # Register security_patch_needed
+    - name: Set security patch execution state
+      set_fact:
+        security_patch_needed: "{{ hostvars[groups['sasdatasvrc'][0]]['security_patch_needed'] }}"
+
+
+    # Start consul to allow password retrieval
+    - name: Ensure consul is started
+      service:
+        name: sas-viya-consul-default
+        state: started
+      when: security_patch_needed
+
+
+    # Check to see if Consul environment conf exists
+    - name: Check if consul.conf exists
+      stat: 
+        path: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/consul.conf"
+      register: consul_conf_exists
+      when: security_patch_needed
+
+
+    # Retrieve Consul token to allow k/v pair reads
+    - name: Retrieve Consul token
+      become: yes
+      become_user: root
+      shell: "sudo cat {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/tokens/consul/default/client.token"
+      register: consul_token
+      when: security_patch_needed
+
+
+    # Retrieve dbmsowner password from Consul in Viya 3.3 or later
+    - name: Retrieve dbmsowner password in Viya 3.3 or later
+      become: yes
+      become_user: root
+      shell: "source {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/consul.conf; {{ SASROOT }}/{{ tenant_id | default('viya') }}/home/bin/sas-bootstrap-config kv read config/application/sas/database/postgres/password"
+      register: dbmsowner_password
+      environment:
+        CONSUL_TOKEN: "{{ consul_token.stdout }}"
+      when: security_patch_needed and "{{ consul_conf_exists.stat.exists }}" == "True"
+      no_log: true
+
+
+    # Retrieve dbmsowner password from Consul in Viya 3.2 or earlier
+    - name: Retrieve dbmsowner password in Viya 3.2 or earlier
+      become: yes
+      become_user: root
+      shell: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/home/bin/sas-bootstrap-config kv read config/application/sas/database/postgres/password"
+      register: dbmsowner_password
+      environment:
+        CONSUL_TOKEN: "{{ consul_token.stdout }}"
+      when: security_patch_needed and "{{ consul_conf_exists.stat.exists }}" == "False"
+      no_log: true
+
+
+# Stop all services before applying patch
+- import_playbook: ../../viya-mmsu/viya-services-stop.yml
+  when: hostvars[groups['sasdatasvrc'][0]]['security_patch_needed']
+
+
+- hosts: consul
+  become: yes
+  become_user: root
+  gather_facts: true
+  any_errors_fatal: true
+  tasks:
+
+    - name: Start required services
+      when: security_patch_needed
+      block:
+
+        # Start Consul
+        - name: Ensure consul is started
+          service:
+            name: sas-viya-consul-default
+            state: started
+
+        # Find the vault service
+        - name: Check if Service Exists
+          stat: 
+            path: /etc/init.d/sas-viya-vault-default
+          register: service_status
+
+
+        # Start Vault
+        - name: Ensure Vault is started
+          service:
+            name: sas-viya-vault-default
+            state: started
+          when: service_status.stat.exists
+
+
+- hosts: sasdatasvrc
+  become: yes
+  become_user: root
+  gather_facts: true
+  any_errors_fatal: true
+  tasks:
+
+    - name: Start required services
+      when: security_patch_needed
+      block:
+
+        # Start Consul
+        - name: Ensure consul is started
+          service:
+            name: sas-viya-consul-default
+            state: started
+
+
+        # Find the vault service
+        - name: Check if Service Exists
+          stat: 
+            path: /etc/init.d/sas-viya-vault-default
+          register: service_status
+
+
+        # Start Vault
+        - name: Ensure Vault is started
+          service:
+            name: sas-viya-vault-default
+            state: started
+          when: service_status.stat.exists
+
+
+        # Start sasdatasvrc
+        - name: Start SAS Infrastructure Data Server service which might take a while
+          script: ../../viya-mmsu/viya-svs.sh start sas-viya-sasdatasvrc-postgres
+          any_errors_fatal: true
+
+
+# Execute the maintenance patch on the SAS Infrastructure Data Server
+- hosts: sasdatasvrc
+  become: yes
+  become_user: root
+  gather_facts: true
+  any_errors_fatal: true
+  tasks:
+
+    - name: Execute Postgres CVE-2017-7547 maintenance patch
+      when: security_patch_needed
+      block:
+
+        # Register password
+        - name: Set dbmsowner password
+          set_fact:
+            dbmsowner_password: "{{ hostvars[groups['consul'][0]]['dbmsowner_password']['stdout'] }}"
+          no_log: true
+
+
+        # Copy the maintenance script
+        - name: Copy maintenance script
+          copy:
+            remote_src: true
+            src: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/home/libexec/sasdatasvrc/script/maintenance/CVE-2017-7547.sh"
+            dest: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/home/libexec/sasdatasvrc/script/maintenance/CVE-2017-7547_altered.sh"
+            mode: 0777
+
+
+        # Remove prompting from the maintenance script
+        - name: Remove password prompting from the maintenance script
+          lineinfile:
+            path: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/home/libexec/sasdatasvrc/script/maintenance/CVE-2017-7547_altered.sh"
+            regexp: 'read -s MYPASS'
+            line: 'MYPASS=$DBMSPASS'
+
+
+        # Change default log location for maintenance script
+        - name: Change default log location for maintenance script
+          lineinfile:
+            path: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/home/libexec/sasdatasvrc/script/maintenance/CVE-2017-7547_altered.sh"
+            regexp: '^LOGFILE=\${*'
+            line: 'LOGFILE=${LOGFILE:-"CVE-2017-7547.log"}'
+
+
+        # Remove input prompting from the maintenance script
+        - name: Remove keyboard scans from maintenance script
+          lineinfile:
+            path: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/home/libexec/sasdatasvrc/script/maintenance/CVE-2017-7547_altered.sh"
+            regexp: 'read -p*'
+            state: absent
+
+
+        # Execute the maintenance patch script
+        - name: Execute maintenance script
+          become: yes
+          become_user: root
+          shell: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/home/libexec/sasdatasvrc/script/maintenance/CVE-2017-7547_altered.sh"
+          environment:
+            DBMSPASS: "{{ dbmsowner_password }}"
+
+
+        # Copy the maintenance script log to the controller
+        - name: Copy the CVE maintenance script log to the controller
+          fetch: src=CVE-2017-7547.log dest=../../../../viya_upgrade_output/ flat=true
+
+
+        # Delete log from working location after copying
+        - name: Remove local CVE maintenance script log
+          file:
+            state: absent
+            path: "CVE-2017-7547.log"
+
+
+        # Check for existence of pg_user_mappings artifact from maintenance script
+        - name: Check war files in release
+          stat: 
+            path: "pg_user_mappings.sql"
+          register: pg_user_mappings_exists
+
+
+        # Copy pg_user_mappings.sql to the controller if exists
+        - name: Copy pg_user_mappings.sql output to the controller if it exists
+          fetch: src=pg_user_mappings.sql dest=../../../../viya_upgrade_output/ flat=true
+          when: pg_user_mappings_exists.stat.exists == true
+
+
+        # Delete pg_user_mappings.sql from working location after copying
+        - name: Remove local pg_user_mappings.sql maintenance artifact
+          file:
+            state: absent
+            path: "pg_user_mappings.sql"
+
+
+        # Stop sasdatasvrc
+        - name: Stop SAS Infrastructure Data Server service which might take a while
+          script: ../../viya-mmsu/viya-svs.sh stop sas-viya-sasdatasvrc-postgres
+          any_errors_fatal: true
+
+
+# Restart all services
+- import_playbook: ../../viya-mmsu/viya-services-start.yml
+  when: hostvars[groups['sasdatasvrc'][0]]['security_patch_needed']
+
+
+# Add results to the deployment report
+- hosts: sasdatasvrc
+  become: yes
+  become_user: root
+  gather_facts: true
+  any_errors_fatal: true
+  tasks:
+
+    # Add maintenance information to the deployment report
+    - include_tasks: ../common/add-summary-item-tasks.yml
+      vars:
+        header: "Applied PostgreSQL CVE-2017-7547 Security Patch"
+        message: "The PostgreSQL security patch CVE-2017-7547 for SAS Infrastructure Data Server has been applied and all services restarted."
+      when: security_patch_needed 
+
+
+    # Add maintenance information to the deployment report
+    - include_tasks: ../common/add-summary-item-tasks.yml
+      vars:
+        header: "PostgreSQL CVE-2017-7547 Security Patch"
+        message: "\"The PostgreSQL security patch CVE-2017-7547\" action was skipped.<br>
+                 The PostgreSQL security patch CVE-2017-7547 for SAS Infrastructure Data Server was not applied because the PostgreSQL version is already >= 9.4.14 ({{ sas_postgres_version.stdout }} detected.)"
+      when: not security_patch_needed
+

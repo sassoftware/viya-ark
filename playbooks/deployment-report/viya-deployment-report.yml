@@ -21,7 +21,6 @@
 
 - name: "Viya Deployment Report"
   hosts: sas_all
-  become: true
 
   vars:
     # These variables can be safely overridden on the commandline
@@ -30,8 +29,6 @@
     exclude_html: false
     report_file_name: "viya_deployment_report"
     report_data_file_name: "{{ report_file_name + '_data' }}"
-
-    # These variables should not be overridden
     output_dir: "{{ playbook_dir + '/../../..' }}"
 
   tasks:
@@ -48,26 +45,22 @@
         file: "{{ existing_data_file }}"
         name: sas_deployment_details
       delegate_to: localhost
+      delegate_facts: true
       run_once: true
       when: existing_data_file != "" and data.stat.exists
-
-    - set_fact:
-        sas_viya_deployment_report_created_ts: "{{ lookup('pipe','date +\"%A, %B %d, %Y %I:%M%p\"') }}"
-        sas_viya_deployment_report_file_ts: "{{ lookup('pipe','date +%F_%H-%M-%S') }}"
-      delegate_to: localhost
-      run_once: true
 
     - name: "Get SAS host details"
       get_sas_host_details:
         hostvars: "{{ hostvars[inventory_hostname] }}"
         include_package_files: "{{ include_package_files }}"
+      become: true
       when: existing_data_file == "" or not data.stat.exists
       register: get_sas_host_details_results
 
     - name: "Process SAS host details"
       process_sas_host_details:
         hostvars: "{{ hostvars }}"
-        report_timestamp: "{{ sas_viya_deployment_report_created_ts }}"
+        report_timestamp: "{{ '%A, %B %d, %Y %I:%M%p'|strftime(ansible_date_time.epoch) }}"
         registered_dict_name: 'get_sas_host_details_results'
       delegate_to: localhost
       run_once: true
@@ -77,37 +70,37 @@
     - set_fact:
         sas_deployment_details: "{{ process_sas_host_details_results.processed_host_details }}"
       delegate_to: localhost
+      delegate_facts: true
       run_once: true
       when: existing_data_file == "" or not data.stat.exists
 
     - set_fact:
-        sas_viya_deployment_report_file: "{{ report_file_name + '_' + sas_viya_deployment_report_file_ts + '.html' }}"
-        sas_viya_deployment_report_data_file: "{{ report_data_file_name + '_' + sas_viya_deployment_report_file_ts + '.yml' }}"
+        sas_viya_deployment_report_file: "{{ output_dir | realpath }}/{{ report_file_name + '_' + '%F_%H-%M-%S'|strftime(ansible_date_time.epoch) + '.html' }}"
+        sas_viya_deployment_report_data_file: "{{ output_dir | realpath }}/{{ report_data_file_name + '_' + '%F_%H-%M-%S'|strftime(ansible_date_time.epoch) + '.yml' }}"
       delegate_to: localhost
+      delegate_facts: true
       run_once: true
 
     - name: "Create Viya Deployment Report data file"
-      become: no
-      local_action:
-        module: copy
-        content: "{{ sas_deployment_details | to_nice_yaml }}"
-        dest: "{{ output_dir + '/' + sas_viya_deployment_report_data_file }}"
+      copy:
+        content: "{{ hostvars['localhost']['sas_deployment_details'] | to_nice_yaml }}"
+        dest: "{{ hostvars['localhost']['sas_viya_deployment_report_data_file'] }}"
         mode: 0640
+      delegate_to: localhost
       run_once: true
       when: existing_data_file == "" or not data.stat.exists
 
     - name: "Viya Deployment Report Data location"
       debug:
-        msg: "Created {{ output_dir | realpath }}/{{ sas_viya_deployment_report_data_file }}"
+        msg: "Created {{ hostvars['localhost']['sas_viya_deployment_report_data_file'] }}"
       delegate_to: localhost
       run_once: true
       when: existing_data_file == "" or not data.stat.exists
 
     - name: "Create Viya Deployment HTML Report"
-      become: no
       template:
         src: templates/viya_deployment_report.html.j2
-        dest: "{{ output_dir + '/' +  sas_viya_deployment_report_file }}"
+        dest: "{{ hostvars['localhost']['sas_viya_deployment_report_file'] }}"
         mode: 0640
       delegate_to: localhost
       run_once: true
@@ -115,7 +108,7 @@
 
     - name: "Viya Deployment Report location"
       debug:
-        msg: "Created {{ output_dir | realpath }}/{{ sas_viya_deployment_report_file }}"
+        msg: "Created {{ hostvars['localhost']['sas_viya_deployment_report_file'] }}"
       delegate_to: localhost
       run_once: true
       when: not exclude_html

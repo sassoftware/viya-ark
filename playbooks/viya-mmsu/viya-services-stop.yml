@@ -17,7 +17,8 @@
 
   tasks:
     - name: Check any SAS process running
-      shell: "{{sasps_cmd}}|tail -1"
+      #shell: "{{sasps_cmd}}|tail -1"
+      script: viya-svs.sh checkps -1
       register: psflag
       ignore_errors: true
       check_mode: no
@@ -45,8 +46,8 @@
         script: viya-svs.sh stopmt
 
       - name: Stop SAS all services on a single machine deployment
+        script: viya-svs.sh stop sas-viya-all-services
         any_errors_fatal: true
-        shell: /etc/init.d/sas-viya-all-services stop
         when: deployhostnum | int == 1
 
       any_errors_fatal: true
@@ -56,9 +57,9 @@
   become: yes
   become_user: root
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     - name: Stop SAS HTTP proxy service
-      any_errors_fatal: true
       script: viya-svs.sh stop sas-viya-httpproxy-default
       when: psflag.stdout != "" and deployhostnum | int != 1
 
@@ -66,48 +67,50 @@
   become: yes
   become_user: root
   gather_facts: false
+  any_errors_fatal: true
   tasks:
     - name: Stop SAS CAS server
-      any_errors_fatal: true
       script: viya-svs.sh stopcas
       when: psflag.stdout != "" and deployhostnum | int != 1
 
-- hosts: pgpoolc
+- hosts: sas_all
   become: yes
   become_user: root
-  vars_files:
-    - ../../../vars.yml
-  tasks:
-    - name: Stop SAS Infrastructure Data Server
-      any_errors_fatal: true
-      script: viya-svs.sh stop sas-viya-sasdatasvrc-{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME'] }}{{item}}
-      with_items:
-        - ''
-        - '-pgpool0-ct-pool_hba'
-        - '-pgpool0-ct-pgpool'
-        - '-pgpool0-ct-pcp'
-      when: psflag.stdout != "" and deployhostnum | int != 1
-
-- hosts: sasdatasvrc
-  become: yes
-  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
   vars_files:
     - ../../../vars.yml
   tasks:
     - block:
-      - name: Stop SAS Infrastructure Data Server Consul Template
-        script: viya-svs.sh stop sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-postgresql
-        any_errors_fatal: true
-        with_items:
-          - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
+      - name: Stop SAS Infrastructure Data Server
+        include_tasks: viya-db.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: "stopdb"
+        when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined
 
       - name: Stop SAS Infrastructure Data Server Consul Template
-        any_errors_fatal: true
-        script: viya-svs.sh stop sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-pg_hba
-        with_items:
-          - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
+        include_tasks: viya-dbct.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: stopdbct
+        when: INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] is defined
 
-      when: psflag.stdout != "" and deployhostnum | int != 1
+      - name: Stop SAS Infrastructure Data Server
+        include_tasks: viya-db.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: "stopdb"
+        when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined
+
+      - name: Stop SAS Infrastructure Data Server Consul Template
+        include_tasks: viya-dbct.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: stopdbct
+        when: INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'] is defined
+
+      when: psflag.stdout != "" and deployhostnum | int != 1 and INVOCATION_VARIABLES[inventory_hostname] is defined
 
 - hosts: rabbitmq
   become: yes
@@ -149,24 +152,10 @@
   become_user: root
   gather_facts: false
   tasks:
-    - block:
-
-      - name: Check SAS compsrv child processes
-        shell: ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/'| grep compsrv|grep -v grep| awk '{print $2}'
-        register: cleancompsrv
-        check_mode: no
-
-      - name: Display the process info
-        debug: var=cleancompsrv
-        check_mode: no
 
       - name: Clean up SAS compsrv child processes
-        shell: "kill -KILL {{item}}"
-        ignore_errors: true
-        with_items: "{{cleancompsrv.stdout_lines|list}}"
+        script: viya-svs.sh cleancomp
         when: not ansible_check_mode
-
-      when: psflag.stdout != ""
 
 - hosts: sas_all
   become: yes
@@ -182,7 +171,7 @@
 
     - block:
       - name: Capture SAS stray processes
-        shell: "{{sasps_cmd}}"
+        script: viya-svs.sh checkps
         register: stray_processes
         changed_when: false
         check_mode: no
@@ -203,6 +192,8 @@
         check_mode: no
         any_errors_fatal: true
         with_items: "{{stray_processes.stdout_lines}}"
+        loop_control:
+          label: "{{ item.split()[1] }}"
 
       - name: Display SAS cleanup stray processes
         debug:

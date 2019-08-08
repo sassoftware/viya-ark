@@ -1,4 +1,7 @@
 ---
+- import_playbook: ../common/handle_hostgroup_hyphens.yml
+  tags:
+    - always
 
 ## -done- can we access LDAP?
 ## -done- do we get the number of users and groups we expect

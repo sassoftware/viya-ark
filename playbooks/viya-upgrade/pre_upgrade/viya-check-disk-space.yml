@@ -1,0 +1,125 @@
+####################################################################
+#### viya-check-disk-space.yml                                  ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# For each machine in a deployment:
+#
+#   Test for available disk space in /opt/sas and /var/yum/cache
+#   Inform the user if there is less space than needed.
+#   Otherwise report that there is enough space. 
+#
+####################################################################
+
+---
+- name: Check on disk space for /opt/sas and /var/cache/yum
+  hosts: all
+  vars_files:
+    - ../vars.yml
+
+  vars:
+
+    - good_space_message: >
+       The available disk space is adequate for this upgrade
+
+    - warning_message: > 
+       WARNING - The available disk space might not be adequate for this upgrade.
+
+    - detail_message: > 
+       /opt/sas on {{ opt_sas_partition }} has {{ opt_sas_avail }}G available disk space. The minimum recommended 
+       disk space for /opt/sas is {{ OPT_SAS_MIN }}G. <p>/var/cache/yum on {{ var_cache_partition }} has {{ var_cache_avail }}G 
+       available disk space. The minimum recommended disk space for /var/cache/yum is {{ VAR_CACHE_YUM_MIN }}G. 
+
+    - varcache_location: >
+       /var/cache/yum
+
+  tasks:
+  - name: test for available disk space in /opt/sas
+    command: df -BG /opt/sas
+    register: opt_sas_result
+
+  - name: Check for results of df command
+    assert:
+      that:
+        - opt_sas_result.stdout
+      msg: "The command df -BG /opt/sas did not work"
+
+  - name: Get available disk space and partition from /opt/sas
+    set_fact:
+      opt_sas_avail: "{{ opt_sas_result.stdout.split()[10].rstrip('G')|trim|int }}"
+      opt_sas_partition: "{{ opt_sas_result.stdout.split()[7]|trim }}"
+
+  - name: Check for SLES OS
+    set_fact:
+      varcache_location: "/var/cache/zypp"
+    when: ansible_distribution == "SLES"
+
+  - name: test for available disk space in {{ varcache_location }}
+    command: df -BG {{ varcache_location }}
+    register: var_cache_result
+
+  - name: Check for results of df command
+    assert:
+      that:
+        - var_cache_result.stdout
+      msg: "The command df -BG {{ varcache_location }} did not work"
+
+  - name: Get available disk space and partition from {{ varcache_location }} 
+    set_fact:
+      var_cache_avail: "{{ var_cache_result.stdout.split()[10].rstrip('G')|trim|int }}"
+      var_cache_partition: "{{ var_cache_result.stdout.split()[7]|trim }}"
+
+  - name: Report space is okay on same partition
+    vars:
+      total_mem_needed: "{{ OPT_SAS_MIN|int + VAR_CACHE_YUM_MIN|int }}"
+    set_fact:
+      sum_msg: "{{ good_space_message }}"
+      det_msg: "{{ detail_message }}"
+    when: (opt_sas_partition == var_cache_partition) and (opt_sas_avail|int >= total_mem_needed|int)
+
+  - name: Report space need on same partition
+    vars:
+      total_mem_needed: "{{ OPT_SAS_MIN|int + VAR_CACHE_YUM_MIN|int }}"
+    set_fact:
+      sum_msg: "{{ warning_message }}"
+      det_msg: "{{ detail_message }}"
+    when: (opt_sas_partition == var_cache_partition) and (opt_sas_avail|int < total_mem_needed|int) 
+
+  - name: Report space okay on both partitions
+    vars:
+      total_mem_needed: "{{ OPT_SAS_MIN|int + VAR_CACHE_YUM_MIN|int }}"
+    set_fact:
+      sum_msg: "{{ good_space_message }}"
+      det_msg: "{{ detail_message }}"
+    when: (opt_sas_partition != var_cache_partition) and (OPT_SAS_MIN|int <= opt_sas_avail|int) and (VAR_CACHE_YUM_MIN|int <= var_cache_avail|int)
+
+  - name: Report space need on a partition
+    set_fact:
+      sum_msg: "{{ warning_message }}"
+      det_msg: "{{ detail_message }}"
+    when: (opt_sas_partition != var_cache_partition) and ((OPT_SAS_MIN|int > opt_sas_avail|int) or (VAR_CACHE_YUM_MIN|int > var_cache_avail|int))
+
+- name: Output disk space status
+  hosts: localhost
+  vars:
+    all_messages: ''
+  tasks:
+  - name: Gather all the memory results for reporting
+    with_items: "{{ groups['all'] }}"
+    set_fact:
+      all_messages: "{{ all_messages + '<p><b><details><summary>HOST ' + item + ':</b> ' + hostvars[item]['sum_msg'] + '</summary></p>' + hostvars[item]['det_msg'] + '</details></p>' }}"
+
+  - name: Add Memory information to Upgrade Summary
+    include_tasks: ../common/add-summary-item-tasks.yml
+    vars:
+     header: "Disk Space Considerations"
+     message: "{{ all_messages }}"
+
+

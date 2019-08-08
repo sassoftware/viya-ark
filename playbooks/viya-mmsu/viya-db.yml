@@ -1,0 +1,30 @@
+####################################################################
+#### viya-db.yml                                                ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+
+- name: SAS Infrastructure Data Server - {{dbname}}
+  script: "viya-svs.sh {{dbaction}} {{dbname}}"
+  when: not ansible_check_mode
+
+- block:
+  - name: Check SAS Infrastructure Data Server status - {{dbname}}
+    script: "viya-svs.sh checkdb {{dbname}}"
+    changed_when: false
+    register: dbrc
+    check_mode: no
+
+  - name: Display SAS Infrastructure Data Server status - {{dbname}}
+    debug: var=dbrc.stdout_lines
+    when: ansible_check_mode
+
+  - name: Fail task if DB is not running - {{dbname}}
+    fail:
+      msg:
+        - "ERROR: PGPool is not running"
+        - "This issue needs to be addressed before rerun the playbook."
+    when: not ansible_check_mode and dbrc.stdout|search('PGPool is not running')
+
+  when: dbaction == 'startdb'
+

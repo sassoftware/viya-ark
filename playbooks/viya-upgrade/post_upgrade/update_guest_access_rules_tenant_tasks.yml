@@ -1,0 +1,122 @@
+####################################################################
+#### update_guest_access_rules_tenant_tasks.yml                 ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: these tasks only work                             ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# The tasks in this file represent the unique actions that need to
+# be run for each tenant in a deployment to make the requisite
+# guest access authorization rule updates.
+#
+# These tasks are called by the update_guest_access_rules.yml
+# playbook which defines the tasks that need to run prior to
+# tenant-task execution.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     update_guest_access_rules
+#
+####################################################################
+
+---
+# Validates that a SASAdministrators username value is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SASAdministrators username value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_username | default('') != ''"
+      msg: "A SASAdministrator username value must be provided"
+
+# Validates that a SASAdministrators password provided is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SASAdministrators password value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_password | default('') != ''"
+      msg: "A SASAdministrators password value must be provided"
+
+# Validates that a URL value is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SAS deployment URL value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_url | default('') != ''"
+      msg: "A SAS deployment URL value must be provided"
+
+# Determine if current deployment is has multi-tenancy enabled
+- name: "Check if guest access is enabled - {{ teant_id | default('SAS Provider') }}"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      {{ SASHOME }}/bin/sas-bootstrap-config \
+      --token-file {{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/tokens/consul/{{ INSTANCE_ID }}/client.token \
+      kv read config/SASLogon/{% if tenant_id | default('') != '' %}tenants/{{ tenant_id }}/{% endif %}sas.logon.provider.guest/enabled
+  become: yes
+  register: sas_guest_enabled_result
+
+- block:
+      - set_fact:
+            sas_guest_enabled: "{{ sas_guest_enabled_result.stdout | default('false') | bool }}"
+  rescue:
+      - set_fact:
+            sas_guest_enabled: false
+
+# Re-enable guest access when guest access enabled
+- block:
+      # Set the profile for the sas-admin CLI calls
+      - name: "Set profile endpoint  - {{ tenant_id | default('SAS provider') }}"
+        shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile set-endpoint {{ tenant_url }}"
+
+      # Set the output type of sas-admin CLI calls to fulljson
+      - name: "Set profile output  - {{ tenant_id | default('SAS provider') }}"
+        shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile set-output json"
+
+      # Turn off color in the output of the sas-admin CLI calls
+      - name: "Set profile output color - {{ tenant_id | default('SAS provider') }}"
+        shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile toggle-color off"
+
+      # Log into the sas-admin CLI
+      - name: "Log in as SAS Administrator - {{ tenant_id | default('SAS provider') }}"
+        shell: |
+            source {{ SAS_CONFIG_ROOT }}/consul.conf
+            {{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} auth login \
+            --user {{ tenant_admin_username }} --password {{ tenant_admin_password }}
+        register: login_cmd
+        failed_when: "'Login failed' in login_cmd.stdout"
+        no_log: yes
+
+      - name: "Update guest access authorization rules - {{ tenant_id | default('SAS Provider') }}"
+        shell: |
+            source {{ SAS_CONFIG_ROOT }}/consul.conf
+            {{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} authorization facilitate-guest
+        register: facilitate_guest_result
+
+      # Log out of the sas-admin CLI
+      - name: "Log out as SAS Administrator - {{ tenant_id | default('SAS provider') }}"
+        shell: |
+            source {{ SAS_CONFIG_ROOT }}/consul.conf
+            {{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} auth logout
+
+      # Add result to summary
+      - include_tasks: ../common/add-summary-item-tasks.yml
+        vars:
+            - header: "Guest access authorization rules updated - {{ tenant_id | default('SAS Provider') }}"
+            - message: "{{ success_msg }}"
+            - additional_info_html: "<p><b>Stdout:</b></p><div class='info-output-display'>{{ facilitate_guest_result.stdout }}</div>"
+
+  when:
+      - sas_guest_enabled
+
+# Print a message when guest access is not enabled
+- block:
+      # Add result to summary (this skip case should not be a warning)
+      - include_tasks: ../common/add-summary-item-tasks.yml
+        vars:
+            - header: "Guest access authorization rule updates skipped - {{ tenant_id | default('SAS Provider') }}"
+            - message: "{{ update_skipped_info_msg }}"
+  when:
+      - not sas_guest_enabled

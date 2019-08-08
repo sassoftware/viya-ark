@@ -1,0 +1,100 @@
+####################################################################
+#### viya-pre-upgrade.yml                                       ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# This playbook will prepare a system to be upgraded.
+#
+# to see an index of the things it does, run:
+#        ansible-playbook viya-pre-upgrade.yml --list-tasks
+#
+# To prepare the system for the upgrade, run:
+#        ansible-playbook viya-pre-upgrade.yml
+#
+####################################################################
+---
+- import_playbook: ../common/handle_hostgroup_hyphens.yml
+  tags:
+    - always
+
+# Run common tasks before playbooks execute
+- import_playbook: common/viya_upgrade_common_init.yml
+  tags:
+    - always
+
+- name: Record the pre-upgrade state of installed services and packages
+  import_playbook: common/run_deployment_report.yml
+  when: 
+    - "'run-deployment-report' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'run-deployment-report' not in ansible_skip_tags"
+  tags:
+    - run-deployment-report
+    
+- name: Check disk space prior to upgrade
+  import_playbook: pre_upgrade/viya-check-disk-space.yml
+  when: 
+    - "'check-disk-space' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'check-disk-space' not in ansible_skip_tags"
+  tags: 
+    - check-disk-space
+
+- name: Verify health of the postgres data server
+  import_playbook: pre_upgrade/verify-postgres-server.yml
+  when: 
+    - "'verify-postgres-server' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'verify-postgres-server' not in ansible_skip_tags"
+  tags:
+    - verify-postgres-server
+
+- name: Move audit records from 3.3 CAS host to 3.4 Operations host
+  import_playbook: pre_upgrade/move_audit_records_from_CAS33_to_OpHost34.yml
+  when: 
+    - "'move-audit-records' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'move-audit-records' not in ansible_skip_tags"
+  tags:
+    - move-audit-records
+
+- name: Add a non-default casenv_user to the sas group
+  import_playbook: pre_upgrade/viya-update-casuser.yml
+  when: 
+    - "'update-casuser' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'update-casuser' not in ansible_skip_tags"
+  tags:
+    - update-casuser
+
+- name: Delete the default backup schedule job
+  import_playbook: pre_upgrade/delete_default_backup_schedule_job_controls.yml
+  when: 
+    - "'delete-default-backup-job' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'delete-default-backup-job' not in ansible_skip_tags"
+  tags:
+    - delete-default-backup-job
+
+- name: Save SAS Visual Text Analytics topics tables
+  import_playbook: pre_upgrade/save_vta_topics_tables.yml
+  when:
+    - "'save-vta-topics-tables' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'save-vta-topics-tables' not in ansible_skip_tags"
+  tags:
+    - save-vta-topics-tables
+
+- name: Stop all tenant services
+  import_playbook: pre_upgrade/stop-services-mt.yml
+  when:
+    - "'stop-tenant-services' in ansible_run_tags or 'all' in ansible_run_tags"
+    - "'stop-tenant-services' not in ansible_skip_tags"
+  tags:
+    - stop-tenant-services
+
+# Create Pre-Upgrade Summary
+# This should always be called last
+- import_playbook: common/create_upgrade_summary.yml upgrade_stage=pre
+  tags:
+    - always
