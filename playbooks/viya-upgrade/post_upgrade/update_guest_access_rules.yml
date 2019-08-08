@@ -1,0 +1,177 @@
+####################################################################
+#### update_guest_access_rules.yml                              ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# This playbook defines the post-update tasks for updating guest
+# access rules after an upgrade.
+#
+# For multi-tenant deployments:
+#
+# These tasks will be run for the provider using the credentials
+# provided by the
+#     - SAS_ADMIN_USERNAME (string)
+#     - SAS_ADMIN_PASSWORD (string)
+# variables defined in vars.yml. The tasks will also be run for
+# each tenant defined in the SAS_TENANT_DETAILS (list) variable
+# also in vars.yml.
+#
+# For non-tenant deployments, only the SAS_ADMIN_USERNAME and
+# SAS_ADMIN_PASSWORD varaibles need to be defined.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     update_guest_access_rules
+#
+####################################################################
+
+---
+- name: "Update Guest Access Authorization Rules If Enabled Pre-Upgrade"
+  hosts: CommandLine[0]
+  become: yes
+
+  vars_files:
+      - ../vars.yml
+
+  vars:
+      - tag_value: 'update-guest-access-rules'
+      - profile_name: "{{ '__' + tag_value + '__' }}"
+
+      - success_msg: >
+            Guest-access authorization rules have been updated to match new requirements.
+
+      - update_skipped_info_msg: >
+            "Enabling Guest Access" action was skipped.<br><br>
+            Guest access is not enabled for this environment, so Guest-access authorization rules were not updated.
+
+      - update_fail_msg: >
+            A failure was encountered while updating guest access authorization rules. <br>
+            Review the Ansible log for more information.<br><br>The tag <b>{{ tag_value }}</b> can be used when
+            re-running the playbook to limit task execution to include only these tasks.
+
+      - update_skipped_warn_msg: >
+            "Enabling Guest Access" action was unable to execute. <br><br>
+            Guest access authorization rules were not updated because the <em>playbooks/viya-upgrade/vars.yml</em>
+            file is missing the following variables: <ul><li><b>SAS_ADMIN_USERNAME</b></li><li><b>SAS_ADMIN_PASSWORD</b></li></ul>
+            
+            To update guest-access authorization rules, define these variables in <em>playbooks/viya-upgrade/vars.yml</em> file.
+            Then rerun this playbook with the tag <b>{{ tag_value }}</b>.
+
+      - tenant_update_fail_msg: >
+            One or more tenants failed while updating guest access authorization rules.<br> Review
+            the Ansible log for more information.<br><br>The tag <b>{{ tag_value }}</b> can be used when
+            re-running the playbook to limit task execution to include only these tasks.
+
+      - tenants_skipped_warn_msg: >
+            "Enabling Guest Access" action was unable to execute.<br><br>
+            A multi-tenant deployment was detected but no tenant details were provided. To update tenants guest access
+            authorization rules, add the required tenant details to the <b>SAS_TENANT_DETAILS</b> property in <em>playbooks/viya-upgrade/vars.yml</em>
+            and re-run this playbook with the tag <b>{{ tag_value }}</b> to limit task execution to only these tasks.
+
+  tasks:
+      # Run these tasks only if credentials are provided
+      - block:
+
+            # Update non-tenant/SAS provider guest access rules using the SAS_ADMIN_USERNAME and SAS_ADMIN_PASSWORD
+            # credentials from vars.yml
+            - include_tasks: update_guest_access_rules_tenant_tasks.yml
+              vars:
+                  - tenant_admin_username: "{{ SAS_ADMIN_USERNAME }}"
+                  - tenant_admin_password: "{{ SAS_ADMIN_PASSWORD }}"
+                  - tenant_url: "{{ hostvars['localhost']['sas_viya_upgrade']['sas_url_httpd'] }}"
+
+            # Update tenants defined in SAS_TENANT_DETAILS if sas.multi.tenancy.enabled=true
+            - block:
+
+                  # Update each tenant
+                  - include_tasks: update_guest_access_rules_tenant_tasks.yml
+                    vars:
+                        - tenant_id: "{{ item.TENANT_ID }}"
+                        - tenant_admin_username: "{{ item.TENANT_ADMIN_USERNAME }}"
+                        - tenant_admin_password: "{{ item.TENANT_ADMIN_PASSWORD }}"
+                        - tenant_url: "{{ hostvars['localhost']['sas_viya_upgrade']['tenant_facts'][item.TENANT_ID]['sas_url_httpd'] }}"
+                    loop_control:
+                        label: "{{ item.TENANT_ID }}"
+                    loop: "{{ SAS_TENANT_DETAILS | flatten(levels=1) }}"
+
+              # Run these tasks if a failure was encountered during the tenant guest rules update
+              rescue:
+
+                  # Print to Ansible output
+                  - debug:
+                        msg: "{{ tenant_update_fail_msg }}"
+
+                  # Add failure to summary
+                  - include_tasks: ../common/add-summary-item-tasks.yml
+                    vars:
+                        - level: 'fail'
+                        - header: "Failure enountered updating tenant guest access authorization rules"
+                        - message: "{{ tenant_update_fail_msg }}"
+
+              when:
+                  - hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled
+                  - SAS_TENANT_DETAILS is defined
+                  - SAS_TENANT_DETAILS is not none
+                  - SAS_TENANT_DETAILS | default([]) | length != 0
+
+            # If multi-tenant but no tenant details provided, log a warning
+            - block:
+
+                  # Print to Ansible output
+                  - debug:
+                        msg: "{{ tenants_skipped_warn_msg }}"
+
+                  # Add warning to summary
+                  - include_tasks: ../common/add-summary-item-tasks.yml
+                    vars:
+                        - level: 'warn'
+                        - header: "Tenant guest access authorization rule updates"
+                        - message: "{{ tenants_skipped_warn_msg }}"
+
+              when:
+                  - hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled
+                  - SAS_TENANT_DETAILS is not defined or SAS_TENANT_DETAILS is none or SAS_TENANT_DETAILS | default([]) | length == 0
+
+        # Run these tasks when a failure was encountered during setup or during the provider update
+        rescue:
+
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ update_fail_msg }}"
+
+            # Add failure to summary
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'fail'
+                  - header: "Failure enountered updating tenant guest access authorization rules"
+                  - message: "{{ update_fail_msg }}"
+
+        when:
+            - SAS_ADMIN_USERNAME | default('') != ''
+            - SAS_ADMIN_PASSWORD | default('') != ''
+
+
+
+
+
+      # If credentials were not provided, log a debug message and add an item to the summary
+      - block:
+
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ update_skipped_warn_msg }}"
+
+            # if the requisite vars were not set, add a warning to the summary report about how to rerun this play
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'warn'
+                  - header: "Enabling guest access"
+                  - message: "{{ update_skipped_warn_msg }}"
+
+        when: SAS_ADMIN_USERNAME | default('') == '' or SAS_ADMIN_PASSWORD | default('') == ''

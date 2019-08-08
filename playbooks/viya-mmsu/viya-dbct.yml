@@ -1,0 +1,9 @@
+####################################################################
+#### viya-dbct.yml                                              ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+
+- name: SAS Infrastructure Data Server Consul Template - {{dbname}}
+  script: "viya-svs.sh {{dbaction}} {{dbname}}"
+  when: not ansible_check_mode

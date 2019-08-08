@@ -20,7 +20,7 @@
 #        ansible-playbook viya_pre_install_playbook.yml --check
 #
 # To let the playbook make all the required changes and bring you
-# to the desired state, run:
+# To the desired state, run:
 #        ansible-playbook viya_pre_install_playbook.yml
 #
 # Useful tags to know:
@@ -49,7 +49,7 @@
   become: yes
   become_user: root
   ## If you need to override some of the default values (for example, to make it specific to VA), you can do so here.
-  ## Simply uncomment the vars section below, while respecting the indentation. 
+  ## Simply uncomment the vars section below, while respecting the indentation.
   #vars:
     #min_mem_mb: 60000
     #min_cores_num: 4

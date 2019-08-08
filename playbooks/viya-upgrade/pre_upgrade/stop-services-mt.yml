@@ -1,0 +1,25 @@
+# Add results to the deployment report
+- hosts: sas_all
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - block:
+      - name: Stop all tenants services
+        any_errors_fatal: true
+        script: ../../viya-mmsu/viya-svs.sh stopmt
+
+      - include_tasks: ../common/add-summary-item-tasks.yml
+        vars:
+          header: "Shut Down All Tenant Services"
+          message: "Multi-tenants services have stopped."
+
+      when:
+        - hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled
+
+    - include_tasks: ../common/add-summary-item-tasks.yml
+      vars:
+        header: "Shut Down All Tenant Services"
+        message: "Not a multi-tenant setup, \"services stop\" action skipped."
+      when: not hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled

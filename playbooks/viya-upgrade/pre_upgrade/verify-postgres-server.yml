@@ -1,0 +1,213 @@
+####################################################################
+#### verify-postgres-server.yml                                 ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+####################################################################
+
+####################################################################
+####                                                           #####
+# This playplay verifies the health of the SAS Viya PostgreSQl #####
+# Infrastructure Data Server.                                  #####
+####                                                           #####
+####################################################################
+---
+- name: Load vars.yml
+  hosts: sasdatasvrc
+  any_errors_fatal: true
+  gather_facts: true
+  become: false
+
+  vars_files:
+    - "{{ playbook_dir }}/../../../../vars.yml"
+
+  vars:
+      - postgres_version_11: "This play does not support the current PostgreSQL database (version 11). Run the PostgreSQL cluster validation tasks manually before you run the upgrade that is in process."
+      - postgres_cluster_unhealthy: "The status of the PostgreSQL cluster node is unhealthy. All nodes in the PostgreSQL cluster must have a healthy status."
+      - sasdatasvrc_hostname_unmatched: "Host names for sasdatasvrc do not match between the inventory file and vars.yml"
+      - pgpoolc_hostname_unmatched: "Host names for pgpoolc do not match between the inventory file and vars.yml"
+      - primary_node_type_unmatched: "Node_Type for primary sasdatasvrc values do not match between the PostgreSQL cluster check output and vars.yml. You must correct the hostname(s) of nodes in the PostgreSQL cluster."
+      - secondary_node_type_unmatched: "Node_Type for secondary sasdatasvrc values do not match between the PostgreSQL cluster check output and vars.yml. You must correct the hostname(s) of nodes in the PostgreSQL cluster."
+      - hostname_unmatched_postgres_output: "Host names in the output from the PostgreSQL cluster check and in the inventory file do not match. You must correct the host name(s) of nodes in the PostgreSQL cluster."
+      - pgpoolc_not_running_msg: "PostgreSQL cluster is not running. You must start the PostgreSQL cluster and its status must be running."
+
+  tasks:
+    - name: Check for /opt/sas/viya/home/postgresql11/bin/pg_ctl
+      stat: path=/opt/sas/viya/home/postgresql11/bin/pg_ctl
+      register: postgres11found
+
+    - block:
+        - debug:
+            msg: "{{ postgres_version_11 }}"
+        - include_tasks: ../common/add-summary-item-tasks.yml
+          vars:
+              - level: 'warn'
+              - header: "Verify the Health of the SAS Infrastructure Data Server"
+              - message: "{{ postgres_version_11 }}"
+        - meta: end_play
+      when: postgres11found.stat.exists
+
+    - name: Report the version number of the installed PostgreSQL on this host
+      shell: /opt/sas/viya/home/bin/psql --version
+      become: yes
+      become_user: root
+      register: psql_version
+
+    - debug:
+        msg: "The version of the installed SAS Viya PostgreSQL Data is {{ psql_version.stdout }}."
+
+    - name: Check for /etc/init.d/sas-viya-sasdatasvrc-postgres
+      stat: path=/opt/sas/viya/config/etc/sasdatasvrc/postgres/pgpool0/pool.cdf
+      register: pool_cdf
+      become: yes
+      become_user: root
+
+    - name: Check whether if all of the PostgreSQL cluster node is healthy
+      lineinfile:
+        path: /opt/sas/viya/config/etc/sasdatasvrc/postgres/pgpool0/pool.cdf
+        regexp: '=unhealthy'
+        state: absent
+      become: yes
+      become_user: root
+      register: check_postgres_sever_node_unhealthy
+      check_mode: yes
+      failed_when: false
+
+    - name: Verify that all of the PostgreSQL nodes is healthy
+      assert:
+        that: check_postgres_sever_node_unhealthy.found == 0
+        msg: "{{ postgres_cluster_unhealthy }}"
+      when: pool_cdf.stat.exists
+      register: assert_postgres_nodes
+
+    - name: Retrieve the sasdatasvrc host names from the inventory file
+      set_fact: 
+        sasdatasvrc_host: "{{ groups['sasdatasvrc'] }}"
+
+    - name: Retrieve the pgpoolc host name from the inventory file
+      set_fact: 
+        pgpoolc_host: "{{ groups['pgpoolc'] }}"
+
+    - name: Retrieve the sasdatasvrc host name from the vars.yml file
+      set_fact: 
+        vars_sasdatasvrc_host: "{{ INVOCATION_VARIABLES }}"
+
+    - name: Compare the inventory host names for sasdatasvrc that are defined in vars.yml
+      assert:
+        that: item in vars_sasdatasvrc_host
+        msg: "{{ sasdatasvrc_hostname_unmatched }}"
+      with_items:
+      - "{{ sasdatasvrc_host }}"
+      register: assert_sasdatasvrc_host
+
+    - name: Check for /etc/init.d/sas-viya-sasdatasvrc-postgres
+      stat: path=/etc/init.d/sas-viya-sasdatasvrc-postgres
+      register: postgresinit
+
+    - name: Retrieve the pgpoolc host name from the vars.yml file
+      set_fact: 
+        vars_pgpoolc_host: "{{ INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] }}"
+      when: postgresinit.stat.exists
+
+    - name: Compare the inventory host names for pgpoolc that are defined in the inventory file and in vars.yml
+      assert:
+        that: item in vars_sasdatasvrc_host
+        msg: "{{ pgpoolc_hostname_unmatched }}"
+      with_items:
+      - "{{ pgpoolc_host }}"
+      when: postgresinit.stat.exists
+      register: assert_pgpoolc_host
+
+    - name: Retrieve the NODE_NUMBER value from the vars.yml file
+      set_fact: 
+        sasdatasvrc_number: "{{ item.NODE_NUMBER }}"
+      with_items:
+      - "{{ INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] }}"
+      when: item.NODE_TYPE == "P"
+
+    - name: Retrieve the NODE_TYPE value from the vars.yml file
+      set_fact: 
+        sasdatasvrc_type: "{{ item.NODE_TYPE }}"
+      with_items:
+      - "{{ INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] }}"
+
+    - name: Obtain the status of the PostgreSQL cluster
+      shell: '/etc/init.d/sas-viya-sasdatasvrc-postgres status'
+      become: yes
+      become_user: root
+      register: obtain_postgres_sever_status
+      when: postgresinit.stat.exists
+
+    - name: Create a temporary directory
+      tempfile:
+        state: directory
+        suffix: build
+      register: tempdir
+
+    - name: Writing output to a temporary file in tempdir
+      copy:
+         content: "{{ obtain_postgres_sever_status.stdout }}"
+         dest: "{{ tempdir.path }}/postgres_status.out"
+      when: postgresinit.stat.exists
+  
+    - name: Check if PostgresQL is up and running
+      shell: "cat {{ tempdir.path }}/postgres_status.out | grep 'PGPool is not running'"
+      register: obtain_postgres_status
+      failed_when: false
+      ignore_errors: true
+      when: postgresinit.stat.exists
+ 
+    - name: Make sure SAS Viya PostgreSQL cluster is up and running
+      assert:
+        that: obtain_postgres_status.rc != 0
+        msg: "{{ pgpoolc_not_running_msg }}"
+      register: pgpool_is_not_running
+      when: postgresinit.stat.exists
+      
+    - name: Retrieve host names from the ouput of the PostgreSQL status check
+      shell: "cat {{ tempdir.path }}/postgres_status.out | awk -F'|' '{print $2}'|awk '{print $1}'|grep -v hostname | awk NF"
+      register: obtain_postgres_hostname
+      when: postgresinit.stat.exists
+
+    - name: Retrieve primary host names from the output of the PostgreSQL status check
+      shell: "cat {{ tempdir.path }}/postgres_status.out | grep primary | awk '{ print $3 }'"
+      register: obtain_postgres_primary_hostname
+      when: postgresinit.stat.exists
+
+    - name: Compare the primary node_type between the output from the PostgreSQL status check and vars.yml
+      assert:
+        that: obtain_postgres_primary_hostname.stdout == ansible_fqdn
+        msg: "{{ primary_node_type_unmatched }}"
+      when: 'postgresinit.stat.exists and sasdatasvrc_type == "P"'
+      register: assert_primary_host
+
+    - name: Retrieve secondary host names from the output of the PostgreSQL status check
+      shell: "cat {{ tempdir.path }}/postgres_status.out | grep standby | awk '{ print $3 }'"
+      register: obtain_postgres_secondary_hostname
+      when: postgresinit.stat.exists
+
+    - name: Compare the secondary node_type between the PostgreSQL check output and vars.yml
+      assert:
+        that: ansible_fqdn in obtain_postgres_secondary_hostname.stdout
+        msg: "{{ secondary_node_type_unmatched }}"
+      when: 'postgresinit.stat.exists and sasdatasvrc_type == "S"'
+      register: assert_secondary_host
+
+    - name: Compare the host names from the PostgreSQL check with the host names in the inventory file
+      assert:
+        that: ansible_fqdn in obtain_postgres_hostname.stdout
+        msg: "{{ hostname_unmatched_postgres_output }}"
+      when: postgresinit.stat.exists
+      register: assert_hostnames
+
+    - name: Remove the file postgres_status.out from the temporary folder
+      file:
+        path: "{{ tempdir.path }}"
+        state: 'absent'
+
+    - name: Add to Upgrade Summary
+      include_tasks: ../common/add-summary-item-tasks.yml
+      vars:
+         header: "Verify the Health of the SAS Infrastructure Data Server"
+         message: "The PostgreSQL cluster was verified to be healthy, and the upgrade configuration information for PostgreSQL cluster is set correctly."
+...

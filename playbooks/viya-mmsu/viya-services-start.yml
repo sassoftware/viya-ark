@@ -53,54 +53,44 @@
     - name: Start SAS Message Broker (RabbitMQ)
       script: viya-svs.sh start sas-viya-rabbitmq-server-default
 
-- hosts: sasdatasvrc
+- hosts: sas_all
   become: yes
   become_user: root
+  gather_facts: false
   any_errors_fatal: true
   vars_files:
     - ../../../vars.yml
   tasks:
-    - name: Start SAS Infrastructure Data Server Consul Template
-      script: viya-svs.sh start sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-pg_hba
-      with_items:
-        - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
+    - block:
+      - name: Start SAS Infrastructure Data Server Consul Template
+        include_tasks: viya-dbct.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: startdbct
+        when: INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] is defined
 
-    - name: Start SAS Infrastructure Data Server Consul Template
-      script: viya-svs.sh start sas-viya-sasdatasvrc-{{item.SERVICE_NAME}}-node{{item.NODE_NUMBER}}-ct-postgresql
-      with_items:
-        - '{{ INVOCATION_VARIABLES[inventory_hostname][''sasdatasvrc''] }}'
+      - name: Start SAS Infrastructure Data Server Consul Template
+        include_tasks: viya-dbct.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: startdbct
+        when: INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'] is defined
 
-- hosts: pgpoolc
-  become: yes
-  become_user: root
-  any_errors_fatal: true
-  vars_files:
-    - ../../../vars.yml
-  tasks:
-    - name: Start SAS Infrastructure Data Server
-      script: viya-svs.sh start sas-viya-sasdatasvrc-{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME'] }}{{item}}
-      with_items:
-        - '-pgpool0-ct-pcp'
-        - '-pgpool0-ct-pgpool'
-        - '-pgpool0-ct-pool_hba'
-        - ''
+      - name: Start SAS Infrastructure Data Server
+        include_tasks: viya-db.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: startdb
+        when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined
 
-    - name: Check SAS Infrastructure Data Server status
-      script: viya-svs.sh checkdb
-      changed_when: false
-      register: dbrc
-      check_mode: no
+      - name: Start SAS Infrastructure Data Server
+        include_tasks: viya-db.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: startdb
+        when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined
 
-    - name: Display SAS Infrastructure Data Server status
-      debug: var=dbrc.stdout_lines
-      when: ansible_check_mode
-
-    - name: Fail task if DB is not running
-      fail:
-        msg:
-         - "ERROR: PGPool is not running"
-         - "This issue needs to be addressed before rerun the playbook."
-      when: not ansible_check_mode and dbrc.stdout|search('PGPool is not running')
+      when: INVOCATION_VARIABLES[inventory_hostname] is defined
 
 - hosts: httpproxy
   become: yes
@@ -121,7 +111,7 @@
     - name: Start SAS CAS servers
       script: viya-svs.sh startcas
 
-- hosts: sas_all
+- hosts: ComputeServer:sas_casserver_*:programming
   become: yes
   become_user: root
   gather_facts: false
@@ -135,8 +125,6 @@
   become_user: root
   gather_facts: false
   any_errors_fatal: true
-  vars_files:
-    - viya-services-vars.yml
   tasks:
     - name: Check SAS svas command existence
       stat:
@@ -153,8 +141,6 @@
   become_user: root
   gather_facts: false
   any_errors_fatal: true
-  vars_files:
-    - viya-services-vars.yml
   tasks:
     - name: Check SAS svas command existence
       stat:

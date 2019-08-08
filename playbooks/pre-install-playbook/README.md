@@ -1,21 +1,22 @@
-# SAS Viya Administration Resource Kit (Viya-ARK) - Pre-installation Playbook
+# SAS Viya Administration Resource Kit (SAS Viya ARK) - Pre-installation Playbook
 
 ## Introduction
 This playbook verifies and optionally performs many of the tasks that are required to prepare the environment for a typical SAS Viya deployment.
 
 Use this playbook to prepare for a deployment of SAS Viya 3.4.
 
-This playbook does not require you to provide the details of your software order.  It will therefore apply all usual pre-reqs for SAS Visual Analytics, SAS Visual Statistics, and SAS Visual Data Mining and Machine Learning, on all machines, regardless of their role. 
+This playbook does not require you to provide the details of your software order.  It will therefore apply all usual pre-reqs for SAS Visual Analytics, SAS Visual Statistics, and SAS Visual Data Mining and Machine Learning, on all machines, regardless of their role.
 
 
 ## Prerequisites for Running the Pre-installation Playbook
-Before running this playbook, take the following steps:
+Before running this playbook, perform the following steps:
 * Install a supported version of Ansible.
 * Verify that the user has sudoers privileges.
 * Be aware that the playbook makes modifications to the system unless it is run with the --check option.
-* The base inventory file that SAS Viya-ARK provides contains only localhost and will only run on the machine where it was installed. 
+* The base inventory file that SAS Viya ARK provides contains only localhost and will only run on the machine where it was installed.
+* The machine memory check is based on a single-machine deployment.  If you have a multi-machine deployment with machines containing less than 80.0 GB of RAM, add the --skip-tags skipmemfail argument to the command line to bypass the check.
 To run the playbook on multiple machines, you can update the inventory file to include additional hosts. See the [Ansible Documentation](http://docs.ansible.com/ansible/latest/intro_inventory.html) for instructions.
-* Be aware that roles/viya-ark.preinstall/defaults/main.yml may have default values that differ from your envioronment.  For example, existing group ID may not match the default.  The main.yml file can be edited to match your environment before executing the playbook.
+* Be aware that roles/viya-ark.preinstall/defaults/main.yml may have default values that differ from your environment. For example, existing group ID may not match the default. The main.yml file can be edited to match your environment before executing the playbook.
 
 ## Running the Playbook
 To run the playbook, execute the following command:

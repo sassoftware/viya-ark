@@ -63,12 +63,17 @@ do_start_common()
 do_ps_common()
 {
 	ACTION=$1
+
+        if ! [[ $LIST = *[!\ ]* ]]; then
+                return 0
+        fi
+
 	for p in $LIST
 	do
-		if [[ "${SYSTYPE}" == "systemd" ]]; then
-			systemctl $ACTION $p &
+		if [[ $p =~ -all-services ]]; then
+			/etc/init.d/$p $ACTION &
 		else
-			service $p $ACTION &
+			do_service $p
 		fi
 	done
 
@@ -78,6 +83,22 @@ do_ps_common()
 			wait $job || let "FAIL+=1"
 		fi
 	done
+
+	if [[ $FAIL -gt 0 ]]; then
+		echo "ERROR: service $ACTION failed"
+		return $FAIL
+	fi
+}
+
+do_service()
+{
+	service=$*
+
+	if [[ "${SYSTYPE}" == "systemd" ]]; then
+		systemctl $ACTION $service &
+	else
+		service $service $ACTION &
+	fi
 }
 
 do_svastatus()
@@ -96,7 +117,7 @@ do_svastatus()
 			echo "Consul is down - unable to obtain status"
 			return
 		else
-			echo $info
+			echo "$info"
 			exit $rc
 		fi
 	fi
@@ -109,20 +130,67 @@ do_svastatus()
 	done
 }
 
-checkdb()
+do_checkdb()
 {
-	CMD=/etc/init.d/sas-viya-sasdatasvrc-postgres
+	CMD=/etc/init.d/sas-viya-sasdatasvrc-${dbname}
 	if [[ ! -x $CMD ]]; then
-		echo "ERROR: Could not find the service $CMD"
-		exit 2
+		#echo "ERROR: Could not find the service $CMD"
+		#exit 2
+		continue
 	fi
 
 	info=$($CMD status 2>&1)
 	rc=$?
-	echo $info
+	echo "$info"
 	if [[ $rc != 0 ]]; then
 		exit $rc
 	fi
+}
+
+do_startdb()
+{
+	cd /etc/init.d
+	if [[ -f "sas-viya-sasdatasvrc-${dbname}" ]]; then
+		LIST="
+		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pcp
+		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pgpool
+		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pool_hba
+		sas-viya-sasdatasvrc-${dbname}
+		"
+	fi
+
+	do_ps_common start
+}
+
+do_stopdb()
+{
+	cd /etc/init.d
+	if [[ -f "sas-viya-sasdatasvrc-${dbname}" ]]; then
+		LIST="
+		sas-viya-sasdatasvrc-${dbname}
+		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pool_hba
+		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pgpool
+		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pcp
+		"
+	fi
+
+	do_ps_common stop
+}
+
+do_startdbct()
+{
+	cd /etc/init.d
+	LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c3-)
+
+	do_ps_common start
+}
+
+do_stopdbct()
+{
+	cd /etc/init.d
+	LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c 3-)
+
+	do_ps_common stop
 }
 
 checkspace()
@@ -139,16 +207,37 @@ checkspace()
 	fi
 }
 
-dolist_start()
+do_cleancomp()
 {
-	echo "start"
-	do_start_common
+	LIST=$(ps -o "user pid ppid cmd" |grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep compsrv)
+	echo "$LIST"
+	NLIST=$(echo "$LIST"|awk '{print $2}')
+
+	for p in $NLIST
+	do
+		echo "kill -KILL $p 2>/dev/null"
+		kill -KILL $p 2>/dev/null
+	done
+	return 0
 }
 
-dolist_stop()
+do_geturls()
 {
-	echo "stop"
+	FILE=
+	host=$(hostname -f)
+	if [[ -f /etc/httpd/conf.d/proxy.conf ]]; then
+		FILE=/etc/httpd/conf.d/proxy.conf
+	elif [[ -f /etc/apache2/conf.d/proxy.conf ]]; then
+		FILE=/etc/apache2/conf.d/proxy.conf
+	fi
+	if [[ "$FILE" == "" ]]; then
+		echo "No SAS Viya URLs found"
+	else
+		cat $FILE|grep ProxyPass|grep -e "/SAS"|awk "{print \$2}"|sort|uniq|sed "s/^/http:\/\/"$host"/"
+	fi
+	return 0
 }
+
 ######
 # main
 ######
@@ -158,16 +247,46 @@ OPT=$1
 case "$OPT" in
 	stopms|stopmt|startmt|startcas|stopcas|svastatus)
 		FAIL=0; do_$OPT; exit $FAIL ;;
+	startdbct|startdb|stopdb|stopdbct)
+		shift 1
+		dbname=$1
+		FAIL=0; do_$OPT; exit $FAIL ;;
 	checkdb)
-		$OPT; exit $? ;;
+		shift 1
+		dbname=$1
+		do_$OPT; exit $? ;;
 	start|stop)
 		shift 1
-		LIST=$*
+		TLIST=$*
+		LIST=
+		for l in $TLIST
+		do
+			if [[ -x "/etc/init.d/$l" ]]; then
+				LIST="$l $LIST"
+			fi
+		done
+
 		do_ps_common $OPT
+		;;
+	cleancomp)
+		do_$OPT
 		;;
 	checkspace)
 		DIR=$2; SIZE=$3
 		$OPT; exit $? ;;
+	geturls)
+		do_$OPT
+		;;
+	checkps)
+		shift 1
+		CNT=$*
+		if [[ "$CNT" != "" ]]; then
+			ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool'|grep -v grep|tail $CNT
+		else
+			ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool'|grep -v grep|awk '{print}'
+		fi
+		exit 0
+		;;
 	*)
 		do_usage; exit 1 ;;
 esac

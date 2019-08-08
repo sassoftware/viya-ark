@@ -1,0 +1,96 @@
+####################################################################
+#### save_vta_topics_tables_tenant_caslib_tasks.yml             ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: these tasks only work                             ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# The tasks in this file represent the unique actions that need to
+# be run for each tenant Analytics_Project_ caslib in a deployment
+# to save SAS Visual Text Analytics topics tables.
+#
+# These tasks are called by the save_vta_topics_tables.yml playbook
+# which defines the tasks that need to run prior to tenant-task
+# execution.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     save_vta_topics_tables
+#
+####################################################################
+
+---
+# Find tables in the current caslibs, up to the default limit
+- name: "Get a list of all topics tables in caslib {{ anslytics_project_caslib.name }} on CAS server {{ cas_server.name }} - {{ tenant_id | default('SAS provider') }}"
+  uri:
+      url: "{{ tenant_url }}/casManagement/servers/{{ cas_server.name }}/caslibs/{{ anslytics_project_caslib.name }}/tables?filter=or(endsWith(name,'TOPICS_INCREMENT'),endsWith(name,'TOPICS_TERMS_INCREMENT'))&excludeItemLinks=true&limit={{ tables_default_limit }}&sessionId={{ cas_session.id }}"
+      method: GET
+      headers:
+          Accept: application/vnd.sas.collection+json
+          Authorization: "Bearer {{ sasuser_credentials[profile_name]['access-token'] }}"
+      return_content: yes
+      status_code: 200
+      validate_certs: no
+  register: topics_tables_raw
+
+# Get tables dict from json response
+- set_fact:
+    topics_tables: "{{ topics_tables_raw.content | from_json }}"
+
+# Make a second call with the full limit to find tables in the current caslibs if the caslib contains more than the default limit
+- name: "Get a complete list of all topics tables in caslib {{ anslytics_project_caslib.name }} on CAS server {{ cas_server.name }}, if more than {{ tables_default_limit }} exist - {{ tenant_id | default('SAS provider') }}"
+  uri:
+      url: "{{ tenant_url }}/casManagement/servers/{{ cas_server.name }}/caslibs/{{ anslytics_project_caslib.name }}/tables?filter=or(endsWith(name,'TOPICS_INCREMENT'),endsWith(name,'TOPICS_TERMS_INCREMENT'))&excludeItemLinks=true&limit={{ topics_tables.count }}&sessionId={{ cas_session.id }}"
+      method: GET
+      headers:
+          Accept: application/vnd.sas.collection+json
+          Authorization: "Bearer {{ sasuser_credentials[profile_name]['access-token'] }}"
+      return_content: yes
+      status_code: 200
+      validate_certs: no
+  register: topics_tables_raw
+  when: topics_tables.count > tables_default_limit
+
+# Get the full tables dict from the json repsonse
+- set_fact:
+    topics_tables: "{{ topics_tables_raw.content | from_json }}"
+  when: topics_tables.count > tables_default_limit
+
+# ======== BEGIN: tasks if tables exist ======== #
+- block:
+      # Save tables
+      - name: "Save topics tables in caslib {{ anslytics_project_caslib.name }} on CAS server {{ cas_server.name }} - {{ tenant_id | default('SAS provider') }}"
+        uri:
+            url: "{{ tenant_url }}/casManagement/servers/{{ cas_server.name }}/caslibs/{{ table.caslibName }}/tables/{{ table.name }}?sessionId={{ cas_session.id }}"
+            method: POST
+            headers:
+                Content-Type: application/vnd.sas.cas.table.save.request+json
+                Accept: application/json
+                Authorization: "Bearer {{ sasuser_credentials[profile_name]['access-token'] }}"
+            body:
+                tableName: "{% if '_TOPICS_INCREMENT' in table.name %}{{ table.name|replace('_TOPICS_INCREMENT','')|lower + '_TOPICS_INCREMENT' }}{% elif '_TOPICS_TERMS_INCREMENT' in table.name %}{{ table.name|replace('_TOPICS_TERMS_INCREMENT','')|lower + '_TOPICS_TERMS_INCREMENT' }}{% endif %}"
+                format: sashdat
+                replace: true
+                compress: false
+            body_format: json
+            return_content: yes
+            status_code: 201
+            validate_certs: no
+        loop_control:
+            loop_var: table
+            label: "{{ table.name }}"
+        loop: "{{ topics_tables['items'] | flatten(levels=1) }}"
+        when: table.rowCount | default(0) > 0
+
+      # Add tables to summary
+      - set_fact:
+            tenant_table_summary: "{{ {tenant_id|default('provider'): topics_tables['items']} }}"
+
+      - set_fact:
+            topics_tables_summary: "{{ topics_tables_summary | combine( tenant_table_summary ) }}"
+# ======== END: tasks if tables exist ======== #
+  when: topics_tables.count > 0

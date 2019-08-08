@@ -1,0 +1,115 @@
+####################################################################
+#### save_vta_topics_tables_tenant_server_tasks.yml             ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: these tasks only work                             ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# The tasks in this file represent the unique actions that need to
+# be run for each tenant CAS server in a deployment to save SAS
+# Visual Text Analytics topics tables.
+#
+# These tasks are called by the save_vta_topics_tables.yml playbook
+# which defines the tasks that need to run prior to tenant-task
+# execution.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     save_vta_topics_tables
+#
+####################################################################
+
+---
+# Create a session on this server for REST calls
+- name: "Create session on CAS server {{ cas_server.name }}  - {{ tenant_id | default('SAS provider') }}"
+  uri:
+      url: "{{ tenant_url }}/casManagement/servers/{{ cas_server.name }}/sessions"
+      method: POST
+      headers:
+          Content-Type: application/vnd.sas.cas.session+json
+          Accept: application/vnd.sas.cas.session+json
+          Authorization: "Bearer {{ sasuser_credentials[profile_name]['access-token'] }}"
+      body:
+          name: "sas_orchestration: save_vta_topics_tables"
+      body_format: json
+      return_content: yes
+      status_code: 201,304
+      validate_certs: no
+  register: cas_session_raw
+
+# Get session dict from json response
+- set_fact:
+      cas_session: "{{ cas_session_raw.content | from_json }}"
+
+# Assume superuser
+- name: "Assume SuperUser privileges on CAS server {{ cas_server.name }}"
+  uri:
+      url: "{{ tenant_url }}/casAccessManagement/servers/{{ cas_server.name }}/admUser/assumeRole/superUser?sessionId={{ cas_session.id }}"
+      method: POST
+      headers:
+          Content-Type: application/json
+          Accept: application/json
+          Authorization: "Bearer {{ sasuser_credentials[profile_name]['access-token'] }}"
+      status_code: 200
+      validate_certs: no
+
+# Get any 'Analytics_Project_*' caslibs for this server, up to the default limit
+- name: "Get a list of 'Analytics_Project' caslibs on CAS server {{ cas_server.name }}"
+  uri:
+      url: "{{ tenant_url }}/casManagement/servers/{{ cas_server.name }}/caslibs?filter=startsWith(name,'Analytics_Project_')&includeHidden=true&excludeItemLinks=true&limit={{ caslibs_default_limit }}&sessionId={{ cas_session.id }}"
+      method: GET
+      headers:
+          Accept: application/vnd.sas.collection+json
+          Authorization: "Bearer {{ sasuser_credentials[profile_name]['access-token'] }}"
+      return_content: yes
+      status_code: 200
+      validate_certs: no
+  register: analytics_projects_caslibs_raw
+
+# Get Analytics_Project_ calib dict from json output
+- set_fact:
+      analytics_projects_caslibs: "{{ analytics_projects_caslibs_raw.content | from_json }}"
+
+# ======== BEGIN: tasks if caslibs exist ======== #
+- block:
+      # Make a second call with the full limit if the CAS server contains more than the default limt of caslibs
+      - name: "Get a complete list of 'Analytics_Project' caslibs on CAS server {{ cas_server.name }}, if more than {{ caslibs_default_limit }} exist"
+        uri:
+            url: "{{ tenant_url }}/casManagement/servers/{{ cas_server.name }}/caslibs?filter=startsWith(name,'Analytics_Project_')&includeHidden=true&excludeItemLinks=true&limit={{ caslibs.count }}&sessionId={{ cas_session.id }}"
+            method: GET
+            headers:
+                Accept: application/vnd.sas.collection+json
+                Authorization: "Bearer {{ sasuser_credentials[profile_name]['access-token'] }}"
+            return_content: yes
+            status_code: 200
+            validate_certs: no
+        register: analytics_projects_caslibs_raw
+        when: analytics_projects_caslibs.count > caslibs_default_limit
+
+      # Get the full dict with all caslibs from json output
+      - set_fact:
+            analytics_projects_caslibs: "{{ analytics_projects_caslibs_raw.content | from_json }}"
+        when: analytics_projects_caslibs.count > caslibs_default_limit
+
+      # Perform common actions for each caslib
+      - name: "Perform caslib tasks - {{ tenant_id | default('SAS provider') }}"
+        include_tasks: save_vta_topics_tables_tenant_caslib_tasks.yml
+        loop_control:
+            loop_var: anslytics_project_caslib
+            label: "{{ anslytics_project_caslib.name }}"
+        loop: "{{ analytics_projects_caslibs['items'] | flatten(levels=1) }}"
+# ======== END: tasks if caslibs exist ======== #
+  when:
+      - analytics_projects_caslibs.count > 0
+
+# delete cas session
+- name: "Delete cas session {{ cas_session.name }} on CAS server {{ cas_server.name }} - {{ tenant_id | default('SAS provider') }}"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      {{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} cas sessions delete --force --server {{ cas_server.name }} --session-id {{ cas_session.id }} --superuser
+  environment: "{{ cli_env }}"
+  register: delete_session

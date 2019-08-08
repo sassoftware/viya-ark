@@ -11,6 +11,7 @@ import datetime
 import glob
 import subprocess
 import re
+import ast
 from ansible.module_utils.basic import AnsibleModule
 
 ANSIBLE_METADATA = {
@@ -888,7 +889,7 @@ def main():
     # args/params passed to the execution, as well as if the module
     # supports check mode
     module = AnsibleModule(
-        argument_spec={_ModuleParamKeys.HOSTVARS: dict(type=dict, required=True),
+        argument_spec={_ModuleParamKeys.HOSTVARS: dict(type='raw', required=True),
                        _ModuleParamKeys.INCL_PKG_FILES: dict(type=bool, default=False, required=False)},
         supports_check_mode=True
     )
@@ -896,6 +897,12 @@ def main():
     # get module parameters
     hostvars = module.params[_ModuleParamKeys.HOSTVARS]
     include_package_files = module.params[_ModuleParamKeys.INCL_PKG_FILES]
+
+    # Starting in Ansible 2.8.1, there is the potential for hostvars
+    # to be passed as a byte string, if the dict is too large
+    # This will convert the str back to a dict before proceeding
+    if isinstance(hostvars, str):
+        hostvars = ast.literal_eval(hostvars.decode())
 
     # get dict of ansible_facts
     ansible_facts = hostvars.get(_HostvarsKeys.ANSIBLE_FACTS)
@@ -1015,7 +1022,7 @@ def _get_filesystems_info(module):
     }
 
     # execute the command to retrieve filesystem information
-    cmd_stdout = _execute_command("df --print-type", module)
+    cmd_stdout = _execute_command("df -P --print-type", module)
 
     # split stdout by each line
     all_filesystems = cmd_stdout.split('\n')[1:]
@@ -1180,7 +1187,7 @@ def _get_sas_root_info(module):
         root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.SIZE] = _bytesHumanReadable(root_size)
         root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.PATH] = root_du[1]
 
-    root_df_stdout = _execute_command("df --print-type " + SAS_ROOT_PATH, module)
+    root_df_stdout = _execute_command("df -P --print-type " + SAS_ROOT_PATH, module)
     root_df = root_df_stdout.split("\n")[1:]
 
     fs_size = ''
@@ -1535,7 +1542,7 @@ def _get_sas_package_update_info_yum(module):
     # by default, _execute_command check for a return code of 0 for success
     # if packages are found with available updates, the command will return 100
     # so 100 is provided as an additional success scenario (0 or 100)
-    info_cmd_stdout = _execute_command("yum -q check-updates 'sas-*'", module, 100)
+    info_cmd_stdout = _execute_command("yum -q check-update 'sas-*'", module, 100)
 
     # split stdout into an array by line, containing update info per package on each line
     all_update_info = info_cmd_stdout.split("\n")
@@ -1558,6 +1565,7 @@ def _get_sas_package_update_info_yum(module):
             update_attrs = dict()
 
             package_name = attr[0].replace(".x86_64", "")
+            package_name = package_name.replace(".noarch", "")
             update_attrs[_HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.AVAIL] = True
             update_attrs[_HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.FROM_REPO] = attr[2]
             update_attrs[_HostDetailsKeys.SASPackageKeys.PackageUpdateStatusKeys.VERSION] = attr[1]

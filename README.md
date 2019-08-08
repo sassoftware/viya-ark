@@ -1,20 +1,20 @@
-# SAS Viya Administration Resource Kit (SAS Viya-ARK)
+# SAS Viya Administration Resource Kit (SAS Viya ARK)
 
-SAS Viya-ARK provides interoperating tools and utilities to help SAS customers prepare for a SAS(R) Viya(R) deployment.
+SAS Viya ARK provides interoperating tools and utilities to help SAS customers prepare for a SAS(R) Viya(R) deployment.
 
 ## Introduction
-SAS Viya-ARK is a collection of resources to automate and streamline tasks that are required to prepare an environment for a SAS Viya deployment.
+SAS Viya ARK is a collection of resources to automate and streamline tasks that are required to prepare an environment for a SAS Viya deployment.
 
 The master branch supports the latest release of SAS Viya.   Visit the releases page for specific information about SAS Viya-ARK and related SAS Viya product releases.
 
-SAS Viya-ARK provides the following types of assistance:
+SAS Viya ARK provides the following types of assistance:
 
   * Pre-deployment assessment and optional configuration
-  * Post-deployment automation
-  * Post-deployment utilitites
+  * Post-deployment automation and utilities
+  * Upgrade task automation
   * Infrastructure templates
 
-## Prerequisites for SAS Viya-ARK
+## Prerequisites for SAS Viya ARK
 Each item that is included in the resource kit provides a document that describes its specific prerequisites and functionality.
 
 For example, a functioning [Ansible Controller](http://docs.ansible.com/ansible/latest/intro_installation.html) is required to run  the Ansible playbooks that are included below in the [Pre-installation Playbook](playbooks/pre-install-playbook) section. A list of the available playbooks is provided.
@@ -22,14 +22,16 @@ For example, a functioning [Ansible Controller](http://docs.ansible.com/ansible/
 ## Index of Tools
 Tool support for the latest release of SAS Viya:
 
-* [Pre-installation Playbook](playbooks/pre-install-playbook)
-* [Home Directory Creator Playbook](playbooks/home-directory-createor)
+* [Pre-installation of SAS Viya System Requirements](playbooks/pre-install-playbook)
+* [SAS Viya Deployment Report](playbooks/deployment-report)
+* [SAS Viya Multi-Machine Services Utilities](playbooks/viya-mmsu)
+* [SAS Viya Upgrade Task Playbooks](playbooks/viya-upgrade)
+* [Merge SAS Viya Deployment Files](playbooks/merge-playbook)
+* [Home Directory Creator](playbooks/home-directory-creator)
 * [SAS Data Server Utility Script](utilities/postgres/viya)
-* [Viya Multi-Machine Services Utilities](playbooks/viya-mmsu)
-* [Deployment Report Playbook](playbooks/deployment-report)
 
-Related Tools Not Contained in SAS Viya-ARK:
-* SAS Viya-ARK only supports Linux.  For Windows supporting tools, go to [SAS Viya Deployment Assistant for Windows](https://support.sas.com/en/documentation/install-center/viya/deployment-tools/34/deployment-assistant-windows.html).
+Related Tools Not Contained in SAS Viya ARK:
+* SAS Viya ARK only supports Linux.  For Windows supporting tools, go to [SAS Viya Deployment Assistant for Windows](https://support.sas.com/en/documentation/install-center/viya/deployment-tools/34/deployment-assistant-windows.html).
 
 ## License
 

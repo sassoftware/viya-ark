@@ -1,0 +1,178 @@
+####################################################################
+#### save_vta_topics_tables_tenant_tasks.yml                    ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: these tasks only work                             ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# The tasks in this file represent the unique actions that need to
+# be run for each tenant in a deployment to save SAS Visual Text
+# Analytics topics tables.
+#
+# These tasks are called by the save_vta_topics_tables.yml playbook
+# which defines the tasks that need to run prior to tenant-task
+# execution.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     save_vta_topics_tables
+#
+####################################################################
+
+---
+# Validates that a SASAdministrators username value is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SASAdministrators username value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_username | default('') != ''"
+      msg: "A SASAdministrator username value must be provided"
+
+# Validates that a SASAdministrators password provided is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SASAdministrators password value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_password | default('') != ''"
+      msg: "A SASAdministrators password value must be provided"
+
+# Validates that a URL value is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SAS deployment URL value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_url | default('') != ''"
+      msg: "A SAS deployment URL value must be provided"
+
+# Set the profile for the sas-admin CLI calls
+- name: "Set profile endpoint  - {{ tenant_id | default('SAS provider') }}"
+  shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile set-endpoint {{ tenant_url }}"
+
+# Set the output type of sas-admin CLI calls to fulljson
+- name: "Set profile output  - {{ tenant_id | default('SAS provider') }}"
+  shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile set-output fulljson"
+
+# Turn off color in the output of the sas-admin CLI calls
+- name: "Set profile output color - {{ tenant_id | default('SAS provider') }}"
+  shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile toggle-color off"
+
+# Log into the sas-admin CLI
+- name: "Log in as SAS Administrator - {{ tenant_id | default('SAS provider') }}"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      {{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} auth login \
+      --user {{ tenant_admin_username }} --password {{ tenant_admin_password }}
+  environment: "{{ cli_env }}"
+  register: login_cmd
+  failed_when: "'Login failed' in login_cmd.stdout"
+  no_log: yes
+
+# Create a temp directory for storing oauth key info for REST calls
+- name: "Create temporary directory - {{ tenant_id | default('SAS provider') }}"
+  tempfile:
+      state: directory
+  delegate_to: localhost
+  become: no
+  register: temp_token_dir
+
+# Update facts to get become user home directory
+- setup:
+      filter: "ansible_env"
+
+# Copy the current oauth key to the temp directory
+- name: "Get current auth information - {{ tenant_id | default('SAS provider') }}"
+  fetch:
+      src: "{{ hostvars[inventory_hostname].ansible_env.HOME }}/.sas/credentials.json"
+      dest: "{{ temp_token_dir.path + '/' }}"
+      flat: yes
+
+# Load oauth info for use in REST calls
+- name: "Get OAuth2 token - {{ tenant_id | default('SAS provider') }}"
+  include_vars:
+      file: "{{ temp_token_dir.path }}/credentials.json"
+      name: sasuser_credentials
+
+# Remove the temp directory and its contents
+- name: "Remove temporary directory - {{ tenant_id | default('SAS provider') }}"
+  file:
+      path: "{{ temp_token_dir.path }}"
+      state: absent
+  delegate_to: localhost
+
+# Get a list of all CAS servers for this tenant
+- name: "Get a list of CAS servers - {{ tenant_id | default('SAS provider') }}"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      {{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} cas servers list --all
+  environment: "{{ cli_env }}"
+  register: cas_servers_raw
+  failed_when: cas_servers_raw.rc == 2 and 'no CAS servers defined' not in cas_servers_raw.stdout
+
+# If there are not CAS servers returned for this tenant, write a warning and end play
+- block:
+      # Print to Ansible output
+      - debug:
+            msg: "{{ tenants_skipped_warn_msg }}"
+
+      # Add warning to summary
+      - include_tasks: ../common/add-summary-item-tasks.yml
+        vars:
+            - level: 'warn'
+            - header: "No CAS servers found in the environment - {{ tenant_id | default('SAS provider') }}"
+            - message: "{{ no_cas_servers_warn_msg }}"
+
+      - name: "No CAS servers available"
+        debug:
+            msg: "{{ no_cas_servers_warn_msg }}"
+
+      - meta: end_play
+  when: cas_servers_raw.rc == 2 and 'no CAS servers defined' in cas_servers_raw.stdout
+
+# Get the CAS servers dict from the json returned by the CLI
+- set_fact:
+      cas_servers: "{{ cas_servers_raw.stdout | from_json }}"
+      topics_tables_summary: {}
+
+# Perform commons actions for each CAS server
+- name: "Perform CAS server tasks - {{ tenant_id | default('SAS provider') }}"
+  include: save_vta_topics_tables_tenant_server_tasks.yml
+  loop_control:
+      loop_var: cas_server
+      label: "{{ cas_server.name }}"
+  loop: "{{ cas_servers['items'] | flatten(levels=1) }}"
+
+- block:
+      - set_fact:
+            tables_summary_message: "{{ tables_summary_message | default('') + '<li><b>' + table.name + '</b> on CAS server <b>' + table.serverName + '</b></li>' }}"
+        loop_control:
+            loop_var: table
+            label: "{{ table.name }}"
+        loop: "{{ topics_tables_summary[tenant_id|default('provider')] | flatten(levels=1) }}"
+
+      - include_tasks: ../common/add-summary-item-tasks.yml
+        vars:
+            - header: "Update SAS Visual Text Analytics: Topics tables saved - {{ tenant_id | default('SAS Provider') }}"
+            - message: "The following tables were saved: <ul>{{ tables_summary_message }}</li>"
+  when: "topics_tables_summary[tenant_id|default('provider')] | default([]) | length > 0"
+
+- block:
+      - include_tasks: ../common/add-summary-item-tasks.yml
+        vars:
+            - header: "Update SAS Visual Text Analytics: Saving topics tables skipped - {{ tenant_id | default('SAS Provider') }}"
+            - message: "{{ play_not_needed_info_msg }}"
+            - additional_info_html: "No SAS Visual Text Analytics topics tables were found in this environment."
+  when: "topics_tables_summary[tenant_id|default('provider')] | default([]) | length == 0"
+
+- set_fact:
+      tables_summary_message: ''
+
+# Log out of the sas-admin CLI
+- name: "Log out as SAS Administrator - {{ tenant_id | default('SAS provider') }}"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      {{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} auth logout
+  environment: "{{ cli_env }}"

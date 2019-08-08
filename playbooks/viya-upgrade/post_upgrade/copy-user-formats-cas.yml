@@ -1,0 +1,69 @@
+- name: Finding all the casstartup.lua_timestamp files
+  find:
+    paths: "{{ caslua_data }}/config/etc/cas/default/"
+    patterns: "casstartup.lua_*"
+  register: caslua_files
+
+- name: Collect all user defined formats from casstartup.lua_timestamp files
+  command: bash -c "sed  -n '/Default User formats/,/-- Process/{/-- Process/!p;}' {{ caslua_data }}/config/etc/cas/default/casstartup.lua_*|uniq"
+  register: output
+  when: caslua_files.matched|int != 0
+
+- name: Check if cas_usermods.lua file exists
+  stat:
+     path: "{{ caslua_data }}/config/etc/cas/default/casstartup_usermods.lua"
+  register: usermods
+
+- name: Retreive the file ownership of cas_startup.lua 
+  stat:
+     path: "{{ caslua_data }}/config/etc/cas/default/casstartup.lua"
+  register: casperms 
+
+- name: Create casstartup_usermods.lua if it does not exists
+  file :
+     path: "{{ caslua_data }}/config/etc/cas/default/casstartup_usermods.lua"
+     state: touch
+     owner: "{{ casperms.stat.pw_name }}"
+     group: "{{ casperms.stat.gr_name }}"
+     mode: 0400
+  when:  casperms is defined and casperms.stat.exists and usermods is defined and usermods.stat.exists == false and caslua_files.matched|int != 0 and output.changed
+
+- name: Get Md5 checksum for casstartup_usermods.lua
+  stat:
+     path: "{{ caslua_data }}/config/etc/cas/default/casstartup_usermods.lua"
+     get_md5: yes
+  register: before
+  when: caslua_files.matched|int != 0
+
+- name: Add user defined formats to casstartup_usermods.lua
+  lineinfile:
+    dest: "{{ caslua_data }}/config/etc/cas/default/casstartup_usermods.lua"
+    line: "{{ item }}"
+    state: present
+  with_items:
+    - "{{ output.stdout_lines }}"
+  when: caslua_files.matched|int != 0 and before is defined and before.stat.exists 
+
+- name: Get Md5 checksum for casstartup_usermods.lua after adding user formats
+  stat:
+     path: "{{ caslua_data }}/config/etc/cas/default/casstartup_usermods.lua"
+     get_md5: yes
+  register: after
+  when: caslua_files.matched|int != 0
+
+- name: Add casstartup_usermods.lua file to CASUSERMODSFILES_LIST
+  set_fact:
+    CASUSERMODSFILES_LIST: "{{ hostvars['localhost']['CASUSERMODSFILES_LIST'] }} + ['{{ caslua_data }}/config/etc/cas/default/casstartup_usermods.lua']"
+  delegate_to: localhost
+  delegate_facts: true 
+  when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.md5 != after.stat.md5 
+
+- name: Stop SAS CAS server
+  any_errors_fatal: true
+  script: ../../viya-mmsu/viya-svs.sh stopcas
+  when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.md5 != after.stat.md5
+
+- name: Start SAS CAS server
+  any_errors_fatal: true
+  script: ../../viya-mmsu/viya-svs.sh startcas
+  when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.md5 != after.stat.md5 

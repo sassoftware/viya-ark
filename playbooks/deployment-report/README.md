@@ -1,8 +1,8 @@
-# SAS Viya Administration Resource Kit (Viya-ARK) - Viya Deployment Report Playbook
+# SAS Viya Administration Resource Kit (SAS Viya ARK) - SAS Viya Deployment Report Playbook
 
 ## Introduction
 This playbook gathers information about SAS Viya software and the hosts where it is deployed.
-The data gathered is then written to disk as a YAML-formatted data file and a static web-page for
+The data gathered is then written to disk as a YAML-formatted data file and a static web page for
 easily viewing the data. 
 
 Deployment attributes in the report include:

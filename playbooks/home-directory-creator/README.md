@@ -1,4 +1,4 @@
-# SAS Viya Administration Resource Kit (Viya-ARK) - Home Directory Creator Playbook
+# SAS Viya Administration Resource Kit (SAS Viya ARK) - Home Directory Creator Playbook
 
 ## Introduction
 This playbook enables the automatic creation of user home directories in SAS 9.x and SAS Viya environments. Home directories are required for users of multiple SAS Viya products, including SAS Studio and SAS Visual Data Mining and Machine Learning. They are also required for users of multiple SAS 9 applications.

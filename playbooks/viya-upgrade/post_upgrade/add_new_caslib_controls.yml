@@ -1,0 +1,212 @@
+####################################################################
+#### add_new_caslib_controls.yml                                ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# This playbook defines the post-update tasks for updating the
+# access controls on SAS-provided caslibs.
+#
+# For multi-tenant deployments:
+#
+# These tasks will be run for the provider using the credentials
+# provided by the
+#     - SAS_ADMIN_USERNAME (string)
+#     - SAS_ADMIN_PASSWORD (string)
+# variables defined in vars.yml. The tasks will also be run for
+# each tenant defined in the SAS_TENANT_DETAILS (list) variable
+# also in vars.yml.
+#
+# For non-tenant deployments, only the SAS_ADMIN_USERNAME and
+# SAS_ADMIN_PASSWORD varaibles need to be defined.
+#
+# A log of all changes for a given tenant is copied to the local
+# output directory defined in vars.yml.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     add_new_caslib_controls
+#
+####################################################################
+
+---
+- name: "Add New SAS-Created Caslib Controls"
+  hosts: CommandLine[0]
+  become: yes
+
+  vars_files:
+      - ../vars.yml
+
+  vars:
+      # Value defined in 'vars' SHOULD NOT be overridden
+      script_name: 'add_new_caslib_controls.sh'
+      logfile_name: "add_new_caslib_controls-{{ '%F_%H-%M-%S' | strftime(ansible_date_time.epoch) }}.log"
+      tag_value: 'add-new-caslib-controls'
+
+      update_success_msg: >
+          Required updates to the access controls for SAS-created caslibs have been made. Review the
+          log provided in the <b>Additional Information</b> section below to verify new access controls have been
+          granted. If the log contains any errors, these plays can be re-run using the <b>{{ tag_value }}</b> tag.
+
+      update_fail_msg: >
+          A failure was encountered when applying the updated access controls to SAS-created caslibs.<br>
+          Review the Ansible log for more information.<br><br>The tag <b>{{ tag_value }}</b> can be used when
+          re-running the playbook to limit task execution to include only these tasks.
+
+      update_skipped_warn_msg: >
+          "Access Controls for SAS-created caslibs" action was unable to execute.<br><br>
+          The access controls for SAS caslibs were not updated because the <em>playbooks/viya-upgrade/vars.yml</em> 
+          file is missing the following variables:
+          <ul><li><b>SAS_ADMIN_USERNAME</b></li><li><b>SAS_ADMIN_PASSWORD</b></li></ul>
+          To add these variables to the caslib controls, define the variables in the <em>playbooks/viya-upgrade/vars.yml</em>
+          file and rerun this playbook with the tag <b>{{ tag_value }}</b>.
+
+      tenant_update_fail_msg: >
+          One or more tenants failed when applying the updated access controls to SAS-created caslibs. <br>
+          Review the Ansible log for more information.<br><br>The tag <b>{{ tag_value }}</b> can be used when
+          re-running the playbook to limit task execution to include only these tasks.
+
+      tenants_skipped_warn_msg: >
+          "Access Controls for SAS-created caslibs" action was unable to execute.<br><br>
+          A multi-tenant deployment was detected but no tenant details were provided. To update tenants,
+          add the required tenant details to the <b>SAS_TENANT_DETAILS</b> property in <em>playbooks/viya-upgrade/vars.yml</em> and re-run
+          this playbook with the tag <b>{{ tag_value }}</b> to limit task execution to only these tasks.
+
+  tasks:
+      # Update the caslib controls only if credentials are provided
+      - block:
+
+            # Create a tmpdir to hold temp files on remote machine
+            - name: "Create temporary directory"
+              tempfile:
+                  state: directory
+                  suffix: ".viya_upgrade.add_new_caslib_controls"
+              register: new_caslib_controls_tmpdir
+
+            # Copy installed add_new_caslib_controls.sh script to tmpdir for preparation
+            - name: "Copy add_new_caslib_controls.sh to temporary directory"
+              copy:
+                  src: "{{ SASHOME + '/share/deployment/' + script_name }}"
+                  remote_src: yes
+                  dest: "{{ new_caslib_controls_tmpdir.path }}"
+
+            # Update add_new_caslib_controls.sh to allow non-interactive login
+            - name: "Prepare add_new_caslib_controls.sh"
+              lineinfile:
+                  path: "{{ new_caslib_controls_tmpdir.path + '/' + script_name }}"
+                  regexp: "^_login=\\$\\( \\${sas_admin_cmd} auth login \\| tee >\\(cat ->&5 \\)\\)"
+                  line: "_login=$( ${sas_admin_cmd} auth login -u ${SAS_ADMIN_USER} -p ${SAS_ADMIN_PASSWD} | tee >(cat ->&5 ))"
+                  mode: "u+rwx"
+
+            # Update non-tenant/SAS provider caslibs using the SAS_ADMIN_USERNAME and SAS_ADMIN_PASSWORD
+            # credentials from vars.yml
+            - include_tasks: add_new_caslib_controls_tenant_tasks.yml
+              vars:
+                  - tenant_admin_username: "{{ SAS_ADMIN_USERNAME }}"
+                  - tenant_admin_password: "{{ SAS_ADMIN_PASSWORD }}"
+                  - tenant_url: "{{ hostvars['localhost']['sas_viya_upgrade']['sas_url_httpd'] }}"
+
+            # Update tenants defined in SAS_TENANT_DETAILS if sas.multi.tenancy.enabled=true
+            - block:
+
+                  # Update each tenant
+                  - include_tasks: add_new_caslib_controls_tenant_tasks.yml
+                    vars:
+                        - tenant_id: "{{ item.TENANT_ID }}"
+                        - tenant_admin_username: "{{ item.TENANT_ADMIN_USERNAME }}"
+                        - tenant_admin_password: "{{ item.TENANT_ADMIN_PASSWORD }}"
+                        - tenant_url: "{{ hostvars['localhost']['sas_viya_upgrade']['tenant_facts'][item.TENANT_ID]['sas_url_httpd'] }}"
+                    loop_control:
+                        label: "{{ item.TENANT_ID }}"
+                    loop: "{{ SAS_TENANT_DETAILS | flatten(levels=1) }}"
+
+              # Run these tasks if a failure was encountered during the tenant caslib update
+              rescue:
+
+                  # Print to Ansible output
+                  - debug:
+                        msg: "{{ tenant_update_fail_msg }}"
+
+                  # Add failure to summary
+                  - include_tasks: ../common/add-summary-item-tasks.yml
+                    vars:
+                        - level: 'fail'
+                        - header: "Failure enountered updating access controls for SAS-created tenant caslibs"
+                        - message: "{{ tenant_update_fail_msg }}"
+
+              when:
+                  - hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled
+                  - SAS_TENANT_DETAILS is defined
+                  - SAS_TENANT_DETAILS is not none
+                  - SAS_TENANT_DETAILS | default([]) | length != 0
+
+            # If multi-tenant but no tenant details provided, log a warning
+            - block:
+
+                  # Print to Ansible output
+                  - debug:
+                        msg: "{{ tenants_skipped_warn_msg }}"
+
+                  # Add warning to summary
+                  - include_tasks: ../common/add-summary-item-tasks.yml
+                    vars:
+                        - level: 'warn'
+                        - header: "Access controls for SAS-created caslibs"
+                        - message: "{{ tenants_skipped_warn_msg }}"
+
+              when:
+                  - hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled
+                  - SAS_TENANT_DETAILS is not defined or SAS_TENANT_DETAILS is none or SAS_TENANT_DETAILS | default([]) | length == 0
+
+        # Run these tasks when a failure was encountered during setup or during the provider update
+        rescue:
+
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ update_fail_msg }}"
+
+            # Add failure to summary
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'fail'
+                  - header: "Failure enountered updating access controls for SAS-created caslibs"
+                  - message: "{{ update_fail_msg }}"
+
+        # Always run these tesks whether or not a failure was enountered
+        always:
+
+            # Remove the temporary directory
+            - name: "Clean up temporary directory"
+              file:
+                  state: absent
+                  path: "{{ new_caslib_controls_tmpdir.path }}"
+              when: add_new_caslib_controls_tmpdir is defined
+
+        when:
+            - SAS_ADMIN_USERNAME | default('') != ''
+            - SAS_ADMIN_PASSWORD | default('') != ''
+
+
+
+
+
+      # If credentials were not provided, log a debug message and add an item to the summary
+      - block:
+
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ update_skipped_warn_msg }}"
+
+            # if the requisite vars were not set, add a warning to the summary report about how to rerun this play
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'warn'
+                  - header: "Access controls for SAS-created caslibs"
+                  - message: "{{ update_skipped_warn_msg }}"
+
+        when: SAS_ADMIN_USERNAME | default('') == '' or SAS_ADMIN_PASSWORD | default('') == ''

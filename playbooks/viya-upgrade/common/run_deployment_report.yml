@@ -1,0 +1,74 @@
+####################################################################
+#### run_deployment_report.yml                                  ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# Run the viya-deployment-report, which gathers information from
+# all hosts about the OS, memory, installed packages, installed 
+# services, and their current state.
+# 
+# If successful, copy these reports to the designated upgrade 
+# output directory. 
+#
+####################################################################
+
+---
+- name: Generate viya-deployment-report
+  import_playbook: "../../deployment-report/viya-deployment-report.yml"
+
+- name: Copy generated viya-deployment-report
+  hosts: localhost
+  vars: 
+    deployment_report: "{{ hostvars['localhost']['sas_viya_deployment_report_file'] }}"
+    deployment_report_data: "{{ hostvars['localhost']['sas_viya_deployment_report_data_file'] }}"
+
+  tasks:
+
+  - name: Ensure that report exists
+    stat:
+      path: "{{ deployment_report }}"
+    register: stat_results
+
+  - name: Report Failure if report not found
+    fail: msg="No deployment report generated"
+    when: stat_results.stat.exists == false
+
+  - name: Move the deployment report
+    block:
+    - name: Copy the deployment report
+      copy: 
+        src: "{{ deployment_report }}"
+        dest: "{{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] }}"
+      register: report_copy_results
+    - name: Remove extra copy of deployment report
+      file:
+        path: "{{ deployment_report }}"
+        state: absent
+
+  - name: Move the deployment data report
+    block:
+    - name: Copy the deployment report
+      copy: 
+        src: "{{ deployment_report_data }}"
+        dest: "{{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] }}"
+      register: data_copy_results
+    - name: Remove extra copy of deployment data report
+      file:
+        path: "{{ deployment_report_data }}"
+        state: absent
+
+  - name: Add Deployment Report to Upgrade Summary
+    include_tasks: ../common/add-summary-item-tasks.yml
+    vars:
+     header: "Run Deployment Report"
+     message: "The state of this deployment has been recorded in {{ report_copy_results.dest }} and {{ data_copy_results.dest }}"
+
+
+

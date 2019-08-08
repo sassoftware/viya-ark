@@ -1,0 +1,487 @@
+####################################################################
+#### merge-viya-deployment-files.yml                            ####
+####################################################################
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+####################################################################
+####################################################################
+#
+# This playbook compares the configuration files that were used
+# in the previous SAS Viya deployment with files that will be used  
+# in the SAS Viya upgrade process and merges the user-modified values  
+# into the newer configuration files.
+#
+# The configuration files that this playbook handles are ansible.cfg, 
+# vars.yml, tenantID_vars.yml, and inventory.ini.
+#
+# To see an index of the tasks that this playbook performs, run:
+#      ansible-playbook merge-viya-deployment-files.yml --list-tasks
+#
+# To enable the playbook to make all the required changes and bring you
+# to the desired state, run:
+#        ansible-playbook merge-viya-deployment-files.yml
+#
+# with the following two options:
+# -e "current_inventory_file=/viya3.3/sas_viya_playbook/myinventory.ini"
+#
+# The vars.yml and ansible.cfg deployment files must exist in the 
+# same directory.
+#
+# Optional: The tenantID_vars.yml files can be merged. Run:
+# -e "tenantID_list=administration,cargo,maintenance"
+#
+#
+####################################################################
+---
+- import_playbook: ../common/handle_hostgroup_hyphens.yml
+  tags:
+    - always
+
+- name: Merge SAS Viya deployment files
+  hosts: localhost
+  gather_facts: no
+
+  vars_files:
+    - "{{ playbook_dir }}/../../../vars.yml"
+
+  vars_prompt:
+  - name: "current_inventory_file"
+    prompt: "Specify the path to the current inventory file to merge with new deployment files"
+    private: no
+
+  tasks:
+    - name: Generate the backup extension
+      local_action: command date +%Y%m%d-%H%M%S
+      register: timestamp
+
+    - debug:
+        msg: "{{ playbook_dir }}"
+
+    - name: Define a variable for the merged_files folder
+      set_fact:
+        merged_folder: "{{ playbook_dir }}/merged_files/{{ timestamp.stdout }}"
+
+    - name: Set a new Ansible configuration file variable
+      set_fact:
+        new_ansible_cfg: "{{ merged_folder }}/ansible.cfg"
+
+    - name: Set an current_files_dir variable
+      set_fact: 
+        current_files_dir: "{{ current_inventory_file | dirname }}"
+
+    - name: Set an current ansible.cfg file variable
+      set_fact:
+        current_ansible_cfg: "{{ current_files_dir }}/ansible.cfg"
+
+    - name: Set a tenant ID list variable
+      set_fact:
+        tenant_id_string: "{{ tenantID_list }}"
+      register: tenant_id_supplied
+      when: tenantID_list is defined and tenantID_list|length>0
+
+    - name: Convert the supplied tenantID_list string to an array list
+      set_fact:
+        tenant_id_list_array: "{{ tenant_id_string.split(',') }}" 
+      when: tenantID_list is defined
+
+    - debug:
+        msg: "{{ tenant_id_list_array }}"
+      when: tenantID_list is defined
+
+    - name: Verify that the current tenant_id_vars.yml file exists for the specified tenant ID
+      stat:
+        path: "{{ current_files_dir }}/{{ item }}_vars.yml"
+      with_items: "{{ tenant_id_list_array }}"
+      register: found_tenant_cfg
+      when: tenantID_list is defined
+
+    - debug:
+        msg:
+      with_items: "{{ found_tenant_cfg.results }}"
+      when: tenantID_list is defined
+
+    - name: Stop when the current tenant_vars.yml is not found in the directory where the current inventory file is saved
+      fail:
+         msg: |
+           "The tenant_vars.yml was not found in the directory where the current inventory file is saved."
+      with_items: "{{ found_tenant_cfg.results }}"
+      when: tenantID_list is defined and item.stat.exists is defined and not item.stat.exists
+
+    - name: Verify that the current Ansible configuration file exists
+      stat:
+        path: "{{ current_ansible_cfg }}"
+      register: found_cfg
+
+    - name: Stop when the current ansible.cfg is not found in the directory where the current inventory file is saved
+      fail:
+         msg: |
+           "The current Ansible configuration file ansible.cfg was not found in the directory where the current inventory file is saved."
+      when: (found_cfg.stat.exists == False)
+
+    - name: Set vars.yml file variable
+      set_fact:
+        current_vars_yml: "{{ current_files_dir }}/vars.yml"
+
+    - name: "Verify that the current vars.yml exists"
+      stat:
+        path: "{{ current_vars_yml }}"
+      register: found_vars
+
+    - name: Stop when the current vars.yml is not found in the directory where the current inventory file is saved
+      fail:
+         msg: |
+           "The current vars.yml was not found in the folder where the current inventory file is saved."
+      when: (found_vars.stat.exists == False)
+
+    - name: Verify that the merged_folder directory exists
+      stat:
+        path: "{{ merged_folder }}"
+      register: merged_folder_path
+
+    - name: Create a folder where all the configuration files, log files, and diff text will be saved
+      file:
+        path: "{{ merged_folder }}"
+        state: directory
+        mode: "0755"
+      when: merged_folder_path.stat.exists is defined and merged_folder_path.stat.exists | bool == false
+
+    - name: Copy inventory.ini, ansible.cfg, and vars.yml to the merged_folder directory
+      copy:
+        src: "{{ playbook_dir }}/../../../{{ item }}"
+        dest: "{{ merged_folder }}/"
+      with_items:
+        - inventory.ini
+        - ansible.cfg
+        - vars.yml
+
+    - name: Set the original invenotry file name variable
+      set_fact:
+        temp_current_inventory_file: "{{ merged_folder }}/{{ current_inventory_file | basename + '_org' }}"
+
+    - name: Copy the original inventory file to the merged_folder directory
+      copy:
+        src: "{{ current_inventory_file }}"
+        dest: "{{ temp_current_inventory_file }}"
+
+    - name: Copy sample_tenant_vars.yml to the merged_folder directory
+      copy:
+        src: "{{ playbook_dir }}/../../../samples/sample_tenant_vars.yml"
+        dest: "{{ merged_folder }}/{{ item }}_vars.yml"
+      with_items: "{{ tenant_id_list_array }}"
+      when: tenantID_list is defined
+
+    - name: Verify user Write permissions on Ansible configuration file
+      file:
+        path: "{{ new_ansible_cfg }}"
+        mode: "u+w"
+
+    - name: Check Ansible configuration file permissions
+      stat:
+        path: "{{ new_ansible_cfg }}"
+      register: new_ansible_cfg_stat
+
+    - name: Assert Write permissions on Ansible configuration file
+      assert:
+        that:
+          - new_ansible_cfg_stat.stat.writeable
+        msg: "Write permissions required on {{ new_ansible_cfg }}"
+
+    - name: Check whether the host group name includes a hyphen (-) in the new inventory file
+      lineinfile:
+        path: "{{ playbook_dir }}/../../../samples/inventory.ini"
+        regexp: 'sas-all:children'
+        state: absent
+      register: hyphen_in_new_host_group
+      check_mode: yes
+      failed_when: false
+
+    - name: Check whether the host group name includes a hyphen (-) in the current inventory file
+      lineinfile:
+        path: "{{ current_inventory_file }}"
+        regexp: 'sas-all:children'
+        state: absent
+      register: hyphen_in_old_host_group
+      check_mode: yes
+      failed_when: false
+
+    - name: Make sure three casseerver host groups include an underscore instead of a hyphen in a temporary file
+      replace:
+        path: "{{ temp_current_inventory_file }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.line }}"
+      with_items:
+        - regexp: 'sas-casserver-primary'
+          line: 'sas_casserver_primary'
+        - regexp: 'sas-casserver-worker'
+          line: 'sas_casserver_worker'
+        - regexp: 'sas-casserver-secondary'
+          line: 'sas_casserver_secondary'
+      when: hyphen_in_new_host_group.changed == False 
+
+    - name: Generate a cat vars.yml stdout
+      command: cat "{{ current_vars_yml }}"
+      register: catout
+
+    - set_fact:
+       merged_vars_yml: "{{ merged_folder }}/vars.yml"
+
+    - name: Uncomment out the vars.yml properties in the merged folder if they are activated in the current vars.yml
+      replace:
+        path: "{{ merged_vars_yml }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.line }}"
+      when: catout.stdout | regex_search ("(?<!#)\\" + item.line)
+      with_items:
+        - { regexp: '#appserver', line: 'appserver' }
+        - { regexp: '#CAS_DISK_CACHE', line: 'CAS_DISK_CACHE' }
+        - { regexp: '#CAS_SETTINGS', line: 'CAS_SETTINGS' }
+        - { regexp: '#CAS_VIRTUAL_HOST', line: 'CAS_VIRTUAL_HOST' }
+        - { regexp: '#CAS_VIRTUAL_PROTO', line: 'CAS_VIRTUAL_PROTO' }
+        - { regexp: '#CAS_VIRTUAL_PORT', line: 'CAS_VIRTUAL_PORT' }
+        - { regexp: '#casenv_admin_user', line: 'casenv_admin_user' }
+        - { regexp: '#colocation', line: 'colocation' }
+        - { regexp: '#FOUNDATION_CONFIGURATION', line: 'FOUNDATION_CONFIGURATION' }
+        - { regexp: '#gcport', line: 'gcport' }
+        - { regexp: '#httpport', line: 'httpport' }
+        - { regexp: '#init', line: 'init' }
+        - { regexp: '#port', line: 'port' }
+        - { regexp: '#sasenv_cas_host', line: 'sasenv_cas_host' }
+        - { regexp: '#sasenv_cas_port', line: 'sasenv_cas_port' }
+        - { regexp: '#sasenv_connect_mgmt_port', line: 'sasenv_connect_mgmt_port' }
+        - { regexp: '#sasenv_connect_port', line: 'sasenv_connect_port' }
+        - { regexp: '#sasPort', line: 'sasPort' }
+        - { regexp: '#sasstudio.appserver.https.port', line: 'sasstudio.appserver.https.port' }
+        - { regexp: '#sasstudio.appserver.port', line: 'sasstudio.appserver.port' }
+        - { regexp: '#SASV9_CONFIGURATION', line: 'SASV9_CONFIGURATION' }
+        - { regexp: '#SERVICESBASEURL', line: 'SERVICESBASEURL' }
+        - { regexp: '#SPAWNER_CONFIGURATION', line: 'SPAWNER_CONFIGURATION' }
+        - { regexp: '#STUDIO_CONFIGURATION', line: 'STUDIO_CONFIGURATION' }
+        - { regexp: '#webdms.workspaceServer.hostName', line: 'webdms.workspaceServer.hostName' }
+        - { regexp: '#webdms.workspaceServer.port', line: 'webdms.workspaceServer.port' }
+        - { regexp: '#WORKSPACESERVER_CONFIGURATION', line: 'WORKSPACESERVER_CONFIGURATION' }
+
+    - name: Uncomment the vars.yml properties temporarily in the merged folder to save the comments
+      replace:
+        path: "{{ merged_vars_yml }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.line }}"
+      when: catout.stdout | regex_search ( item.regexp)
+      with_items:
+        - { regexp: '#sasenv_cas_host', line: 'sasenv_cas_host' }
+        - { regexp: '#sasenv_cas_port', line: 'sasenv_cas_port' }
+        - { regexp: '#sasenv_connect_mgmt_port', line: 'sasenv_connect_mgmt_port' }
+        - { regexp: '#sasenv_connect_port', line: 'sasenv_connect_port' }
+
+    - name: Uncomment the #5: LD_LIBRARY_PATH properties temporarily in the merged folder to save the comments
+      replace:
+        path: "{{ merged_vars_yml }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.line }}"
+      when: catout.stdout | regex_search ( item.regexp) and catout.stdout | regex_search ( "(?<!#)\\CAS_SETTINGS:")
+      with_items:
+        - { regexp: '#5: LD_LIBRARY_PATH', line: '5: LD_LIBRARY_PATH' }
+
+    - name: Uncomment the #SERVICESBASEURL properties temporarily in the merged folder to save the comments
+      replace:
+        path: "{{ merged_vars_yml }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.line }}"
+      when: catout.stdout | regex_search ( item.regexp) and catout.stdout | regex_search ( "(?<!#)\\CAS_CONFIGURATION:") and catout.stdout | regex_search ( "(?<!#)\\cfg:")
+      with_items:
+        - { regexp: '#SERVICESBASEURL', line: 'SERVICESBASEURL' }
+
+    - name: Remove the SASV9_CONFIGURATION lines from the vars.yml file
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        line: "{{ item }}"
+        state: absent
+      when: catout.stdout | regex_search ("#SASV9_CONFIGURATION")
+      with_items:
+      - "# Creates a workspaceserver sasv9_deployment.cfg file"
+      - "#SASV9_CONFIGURATION:"
+      - "  #1: '/* Comment about OPTION */'"
+      - "  #2: 'OPTION value'"
+
+    - name: Remove the FOUNDATION_CONFIGURATION comments from the vars.yml file
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        line: "{{ item }}"
+        state: absent
+      when: catout.stdout | regex_search ("(?<!#)\\FOUNDATION_CONFIGURATION")
+      with_items:
+      - "  #1: '# Comment about KEY'"
+      - "  #2: KEY=value"
+
+    - name: Detect if backward merging is attempted
+      assert:
+        that: hyphen_in_new_host_group.changed == False
+        msg: "Going backward from the host group with an underscore (_) in its name to the host group with a hyphen (-) in its name is not allowed."
+      when: hyphen_in_old_host_group.changed == False and hyphen_in_new_host_group.changed == True 
+
+    - name: Perform deployment file merges
+      merge_viya_deployment_files:
+        hostvars: "{{ hostvars | to_json }}"
+        current_inventory_file: "{{ temp_current_inventory_file }}"
+        current_files_dir: "{{ current_files_dir }}"
+        log_file_name: "{{ merged_folder }}/merge_viya_deployment_files.log"
+        tenant_id_string: "{{ tenant_id_string if tenantID_list is defined | default(false) else omit }}"
+      register: merge_result
+
+    - name: Remove the --- line in the vars.yml file
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        line: '---'
+        state: absent
+
+    - name: Insert the FOUNDATION_CONFIGURATION comments back to the vars.yml file
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        line: "{{ item }}"
+        insertafter: 'FOUNDATION_CONFIGURATION:'
+      when: catout.stdout | regex_search ("(?<!#)\\FOUNDATION_CONFIGURATION")
+      with_items:
+      - "  #2: KEY=value"
+      - "  #1: '# Comment about KEY'"
+
+    - name: Insert the CAS_SETTINGS comments back to the vars.yml file
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        line: "{{ item }}"
+        insertafter: 'CAS_SETTINGS:'
+      when: catout.stdout | regex_search ("(?<!#)\\CAS_SETTINGS")
+      with_items:
+      - "   #5: LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME/lib:$JAVA_HOME/lib/amd64/server:$ODBCHOME/lib"
+      - "   #4: JAVA_HOME=/usr/lib/jvm/jre-1.8.0"
+      - "   #3: ORACLE_HOME=Oracle home directory"
+      - "   #2: ODBCINI=$ODBCHOME/odbc.ini"
+      - "   #1: ODBCHOME=ODBC home directory"
+
+    - name: Generate a cat merged_vars_yml stdout
+      command: cat "{{ merged_vars_yml }}"
+      register: catmergedout
+
+    - name: Insert the CAS_CONFIGURATION cfg section back to the vars.yml file
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        line: "{{ item.line }}"
+        insertafter: '   cfg:'
+      when: item.prop | string not in catmergedout
+      with_items:
+      - { prop: "SERVICESBASEURL:", line: "     #SERVICESBASEURL: 'https://loadbalancer.company.com'" }
+      - { prop: "colocation:", line: "     #colocation: 'none'" }
+      - { prop: "port:", line: "     #port: 5570" }
+      - { prop: "httpport:", line: "     #httpport: 8777" }
+      - { prop: "gcport:", line: "     #gcport: 0" }
+
+    - name: Insert the SASV9_CONFIGURATION lines in the vars.yml file if they don' exist
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        line: "{{ item }}"
+        insertafter: EOF
+      when: #SASV9_CONFIGURATION | string not in catmergedout
+      with_items:
+      - "# Creates a workspaceserver sasv9_deployment.cfg file"
+      - "#SASV9_CONFIGURATION:"
+      - "  #1: '/* Comment about OPTION */'"
+      - "  #2: 'OPTION value'"
+
+    - name: Comment out the temporarily uncommented vars.yml properties in the merged folder
+      replace:
+        path: "{{ merged_vars_yml }}"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.line }}"
+      when: catout.stdout | regex_search ( item.regexp)
+      with_items:
+        - { regexp: 'sasenv_cas_host:', line: '#sasenv_cas_host:' }
+        - { regexp: 'sasenv_cas_port:', line: '#sasenv_cas_port:' }
+        - { regexp: 'sasenv_connect_mgmt_port:', line: '#sasenv_connect_mgmt_port:' }
+        - { regexp: 'sasenv_connect_port:', line: '#sasenv_connect_port:' }
+
+    - name: Insert the CAS_SETTINGS comments back to the vars.yml file
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        line: "{{ item }}"
+        insertbefore: '#sasenv_cas_host:'
+      when: ## Foundation Configuration | string not in catmergedout
+      with_items:
+      - "\n##########################################################"
+      - "## Foundation Configuration"
+      - "##########################################################\n"
+
+    - name: Remove the original inventory file from the merged_folder directory
+      file:
+        path: "{{ temp_current_inventory_file }}"
+        state: 'absent'
+
+    - name: Show the differences between the original and new configuration files
+      shell: diff -y -B --ignore-blank-lines "{{ item.current }}" "{{ item.new }}" > "{{ merged_folder }}/{{ item.filename }}"
+      register: show_difference
+      ignore_errors: true
+      failed_when: false
+      with_items:
+        - { current: "{{ current_inventory_file }}", new: "{{ merged_folder }}/inventory.ini", filename: inventory_diff.txt }
+        - { current: "{{ current_ansible_cfg }}", new: "{{ merged_folder }}/ansible.cfg", filename: ansible_cfg_diff.txt }
+        - { current: "{{ current_vars_yml }}", new: "{{ merged_vars_yml }}", filename: vars_yml_diff.txt }
+
+    - name: Find the CommonPlanningService Invocation variables
+      set_fact:
+        cps_invocation: "{{ INVOCATION_VARIABLES['deployTarget']['cpspgpoolc'] | default([]) }}"
+
+    - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
+      blockinfile:
+        path: "{{ merged_vars_yml }}"
+        marker: "<!-- {mark} Modify the deploymentTarget name -->"
+        insertafter: "INVOCATION_VARIABLES"
+        block: |3
+              ? choose-target-host:
+                 cpsdatasvrc:
+                 - NODE_NUMBER: '0'
+                   NODE_TYPE: P
+                   PG_PORT: '5442'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+                 cpspgpoolc:
+                 - PCP_PORT: '5440'
+                   PGPOOL_PORT: '5441'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+      when: cps_invocation|length > 0 
+
+    - name: Make sure all host groups include an underscore instead of a hyphen
+      replace:
+        path: "{{ merged_folder }}/inventory.ini"
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.line }}"
+      with_items:
+        - regexp: 'sas-all:children'
+          line: 'sas_all:children'
+        - regexp: 'sas-casserver-primary'
+          line: 'sas_casserver_primary'
+        - regexp: 'sas-casserver-worker'
+          line: 'sas_casserver_worker'
+        - regexp: 'sas-casserver-secondary'
+          line: 'sas_casserver_secondary'
+      when: hyphen_in_new_host_group.changed == False 
+
+    - name: Show the differences between the original and new tenant configuration files
+      shell: diff -y -B --ignore-blank-lines "{{ current_files_dir }}/{{ item }}_vars.yml" "{{ merged_folder }}/{{ item }}_vars.yml" > "{{ merged_folder }}/{{ item }}_vars_yml_diff.txt"
+      register: show_difference
+      ignore_errors: true
+      failed_when: false
+      with_items: "{{ tenant_id_list_array }}"
+      when: tenantID_list is defined
+
+    - debug:
+        msg: "To review the differences between the original and new configuration files, open the files named filename_diff.txt in {{ merged_folder }}."
+
+    - name: Check whether user action is needed
+      command: grep '^[^#]*?' "{{ merged_folder }}/inventory.ini"
+      register: user_action_required
+      ignore_errors: true
+      failed_when: false
+      no_log: true
+
+    - debug:
+        msg: "[Warning] The inventory.ini file has been merged. However, you must select the target host. Be sure to edit the target host correctly in the {{ merged_folder }}/inventory.ini file before you run the playbook again. Locate the string '? choose-target-host' in the merged file, and substitute the name of a valid host that will be the target for the installation."
+      when: user_action_required.rc == 0

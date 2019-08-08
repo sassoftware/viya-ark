@@ -16,17 +16,8 @@
   vars_files:
     - viya-services-vars.yml
   tasks:
-    - name: Get SAS Viya Services
-      shell: "{{list_svas_cmd}}"
-      changed_when: false
-      register: svas_list_full
-
-    - name: Convert results to ansible variable
-      set_fact:
-        svas_list: "{{ svas_list_full.stdout_lines }}"
-
     - name: Capture all SAS services status from Consul
-      script: "viya-svs.sh svastatus"
+      script: viya-svs.sh svastatus
       changed_when: false
       register: svas_status
 
@@ -44,25 +35,15 @@
 - hosts: httpproxy
   become: yes
   become_user: root
-  gather_facts: true
+  gather_facts: false
   check_mode: no
   vars_files:
     - viya-services-vars.yml
   tasks:
     - block:
 
-      - name: Get url_scraping_cmd command
-        set_fact:
-          url_scraping_cmd: "{{sles_url_scraping_cmd}}"
-        when: ansible_os_family == 'Suse'
-
-      - name: Get url_scraping_cmd command
-        set_fact:
-          url_scraping_cmd: "{{rhel_url_scraping_cmd}}"
-        when: ansible_os_family == 'RedHat'
-
       - name: Capture SAS Viya URLs from the Apache HTTP Proxy
-        shell: "{{url_scraping_cmd}}"
+        script: viya-svs.sh geturls
         check_mode: no
         changed_when: false
         register: url_list

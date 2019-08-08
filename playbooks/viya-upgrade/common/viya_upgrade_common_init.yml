@@ -1,0 +1,200 @@
+####################################################################
+#### viya_upgrade_common_init.yml                               ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# This playbook performs common tasks and validation as well as sets
+# common facts before the viya-pre-upgrade or viya-post-upgrade
+# playbooks are run. Facts set by this playbook will be available
+# via the dict 'sas_viya_upgrade' in the localhost 'hostvars' dict.
+#
+####################################################################
+
+---
+- name: "Viya Upgrade Common Init"
+  hosts: localhost
+
+  vars_files:
+      - ../vars.yml
+
+  vars:
+      - cli_env:
+            SSL_CERT_FILE: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+            CONSUL_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+            VAULT_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+
+      - no_tenants_defined_fail_msg: >
+            Multi-tenancy was detected as enabled for this environment but no tenant details were provided. To provide
+            tenant details, uncomment and add entries in the SAS_TENANT_DETAILS list (in playbooks/viya-upgrade/vars.yml)
+            for all tenants in the environment.
+
+  tasks:
+      # Add output directory to facts
+      - name: "Set the output directory"
+        set_fact:
+            UPGRADE_OUTPUT_DIRECTORY: "{{ UPGRADE_OUTPUT_DIRECTORY | realpath }}"
+
+      # Look for --check in command line
+      - name: "Verify check mode is not specified"
+        assert:
+          that: 
+            - not ansible_check_mode
+          msg: "Error: --check is not supported for pre-upgrade and post-upgrade playbooks. Exiting."
+
+      # Create the output directory
+      - name: "Create Upgrade Output Directory"
+        file:
+            path: "{{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] }}"
+            state: directory
+
+      # Create sas_viya_upgrade dict in hostvars
+      - set_fact:
+            sas_viya_upgrade: "{{ sas_viya_upgrade | default({}) }}"
+
+      # Check if the consul.conf file exists. If not, this is Viya 3.2 or earlier
+      - name: "Check if  {{ SAS_CONFIG_ROOT }}/consul.conf exists"
+        stat:
+            path: "{{ SAS_CONFIG_ROOT }}/consul.conf"
+        become: yes
+        delegate_to: "{{ groups['consul'] | first }}"
+        register: consul_conf_file
+
+      # Viya 3.3 and newer scenario
+      - block:
+            # Get the current url of the httpd service for the provider
+            - name: "Get the HTTPD URL"
+              shell: |
+                  source {{ SAS_CONFIG_ROOT }}/consul.conf
+                  {{ SASHOME }}/bin/sas-bootstrap-config catalog serviceurl --wait --tick-seconds 10 --timeout-seconds 300 httpd
+              environment: "{{ cli_env }}"
+              become: yes
+              delegate_to: "{{ groups['consul'] | first }}"
+              register: httpd_catalog_url
+
+            # set fact
+            - set_fact:
+                  sas_httpd_url: "{{ httpd_catalog_url.stdout }}"
+        when: consul_conf_file.stat.exists
+
+      # Viya 3.2
+      - block:
+            # Get HTTPD protocol
+            - block:
+                  - name: "Get HTTPD protocol"
+                    shell: |
+                        {{ SASHOME }}/bin/sas-bootstrap-config \
+                        --token-file {{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/tokens/consul/{{ INSTANCE_ID }}/client.token \
+                        kv read config/application/sas.ssl.enabled
+                    become: yes
+                    delegate_to: "{{ groups['consul'] | first }}"
+                    register: ssl_enabled_value
+
+                  - set_fact:
+                        sas_ssl_enabled: "{{ ssl_enabled_value.stdout | bool }}"
+              rescue:
+                  - set_fact:
+                        sas_ssl_enabled: false
+
+            # Get HTTPD hostname
+            - name: "Get HTTPD domain name"
+              shell: "hostname -f"
+              become: yes
+              delegate_to: "{{ groups['httpproxy'] | first }}"
+              register: httpproxy_hostname_result
+
+            # Get HTTPD port
+            - name: "Get HTTPD port"
+              shell: |
+                  {{ SASHOME }}/bin/sas-bootstrap-config \
+                  --token-file {{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/tokens/consul/{{ INSTANCE_ID }}/client.token \
+                  agent service list
+              become: yes
+              delegate_to: "{{ groups['consul'] | first }}"
+              register: consul_service_list_result
+
+            # Set result as dict
+            - set_fact:
+                consul_service_list: "{{ consul_service_list_result.stdout | from_json }}"
+
+            # Set full URL
+            - set_fact:
+                  sas_httpd_url: "{% if sas_ssl_enabled %}https{% else %}http{% endif %}://{{ httpproxy_hostname_result.stdout }}:{{ consul_service_list['httpd']['Port'] }}"
+        when: not consul_conf_file.stat.exists
+
+      # Make sure we have a url-formatted value
+      - name: "Check for URL value"
+        assert:
+            that:
+                - sas_httpd_url is regex('http[s]{0,1}:\/\/.+')
+            msg: "Could not determine the URL for accessing SAS services."
+
+      # Add sas_url_httpd value to sas_viya_upgrade dict
+      - set_fact:
+            sas_viya_upgrade: "{{ sas_viya_upgrade | combine( {'sas_url_httpd': sas_httpd_url} ) }}"
+
+      # Check for multi-tenancy if Viya 3.3 or later
+      - block:
+            # Determine if current deployment is has multi-tenancy enabled
+            - name: "Check if deployment is multi-tenancy enabled"
+              shell: |
+                  source {{ SAS_CONFIG_ROOT }}/consul.conf
+                  {{ SASHOME }}/bin/sas-bootstrap-config \
+                  --token-file {{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/tokens/consul/{{ INSTANCE_ID }}/client.token \
+                  kv read config/application/sas.multi.tenancy.enabled
+              environment: "{{ cli_env }}"
+              become: yes
+              delegate_to: "{{ groups['consul'] | first }}"
+              register: sas_multi_tenancy_key
+
+            # Set multi-tenancy fact
+            - block:
+                  - set_fact:
+                        sas_viya_upgrade: "{{ sas_viya_upgrade | combine({'multi_tenant_enabled': sas_multi_tenancy_key.stdout | bool}) }}"
+              rescue:
+                  - set_fact:
+                        sas_viya_upgrade: "{{ sas_viya_upgrade | combine({'multi_tenant_enabled': false}) }}"
+        when: consul_conf_file.stat.exists
+
+      # Set multi-tenancy to false if consul.conf doesn't exist
+      - block:
+            - set_fact:
+                  sas_viya_upgrade: "{{ sas_viya_upgrade | combine({'multi_tenant_enabled': false}) }}"
+        when: not consul_conf_file.stat.exists
+
+      # If multi-tenant and tenant details were provided, make sure everything look ok
+      - block:
+            # Create dict to hold tenant facts
+            - set_fact:
+                  tenant_facts: "{{ tenant_facts | default({}) }}"
+
+            # Validate and gather tenant details
+            - name: "Validate and gather tenant details"
+              include_tasks: viya_upgrade_common_init_tenant_tasks.yml
+              loop_control:
+                  loop_var: tenant_details
+                  label: "{{ tenant_details.TENANT_ID }}"
+              loop: "{{ SAS_TENANT_DETAILS | flatten(levels=1) }}"
+
+            # Add tenant_urls dict to sas_viya_upgrade dict
+            - set_fact:
+                  sas_viya_upgrade: "{{ sas_viya_upgrade | combine({'tenant_facts': tenant_facts}) }}"
+        when:
+            - sas_viya_upgrade.multi_tenant_enabled
+            - SAS_TENANT_DETAILS is defined
+            - SAS_TENANT_DETAILS is not none
+            - SAS_TENANT_DETAILS | default([]) | length > 0
+
+      # If multi-tenant and tenant details were not defined, fail the playbook
+      - block:
+            - fail:
+                msg: "{{ no_tenants_defined_fail_msg }}"
+        when:
+          - sas_viya_upgrade.multi_tenant_enabled
+          - SAS_TENANT_DETAILS is not defined
