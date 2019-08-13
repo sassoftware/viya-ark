@@ -1,6 +1,16 @@
 # Changelog for SAS Viya-ARK
 
 <!-- LATEST RELEASE START -->
+## Viya34-ark-1.6 - August 13, 2019
+
+- **Summary**:
+    Temporary workaround for issues related to updating systemd to latest (currently version 219-67)
+- Issues addressed:
+    - DEPENB-2009 - Do not update systemd on RHEL7 with pre-install playbook. 
+- Ansible Support: Ansible 2.5 - Ansible 2.7
+
+<!-- LATEST RELEASE END -->
+
 ## Viya34-ark-1.5 - July 11, 2019
 
 - **Summary**: 
@@ -13,8 +23,6 @@
     - DEPENB-1828 - Main README bad releases link removed.  Access 'releases' link on github repo landing page.
     - DEPENB-1857 - Host group name references with hyphens changed to underscores.  Future Ansible version compliance.
 - Ansible Support: Ansible 2.5 - Ansible 2.7
-
-<!-- LATEST RELEASE END -->
 
 ## Viya34-ark-1.4 - June 5, 2019
 
