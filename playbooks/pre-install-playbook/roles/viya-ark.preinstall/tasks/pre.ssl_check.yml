@@ -56,13 +56,13 @@
       - ssl_cert_check
 
   - name: "Show the status of certificate file"
-    debug: msg="Certificate file exist"
+    debug: msg="Certificate file exists"
     when: dir_list is defined and (dir_list | trim != '')
     tags:
       - ssl_cert_check
 
   - name: "Show the status of file"
-    debug: msg="Certificate file does not exist,skipping ssl certificate check"
+    debug: msg="Certificate file does not exist, skipping ssl certificate check"
     when: dir_list is undefined and (dir_list | trim != '')
     tags:
       - ssl_cert_check
