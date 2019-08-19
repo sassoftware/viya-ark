@@ -65,13 +65,13 @@
   ## we need systemd to be above 219-30
   ## try to make sure we have the latest one.
   ##
-  - name: Ensures systemd package is the most recent
-    package:
-      name: systemd
-      state: latest
-    when: ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '7'
-    tags:
-      - packages
+  #- name: Ensures systemd package is the most recent
+  #  package:
+  #    name: systemd
+  #    state: latest
+  #  when: ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '7'
+  #  tags:
+  #    - packages
 
   - name: Ensures "nice to have" packages are present
     package:
