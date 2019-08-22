@@ -12,8 +12,6 @@
     - DEPENB-1619 - Provide playbook to assist merging deployment files.
 - Ansible Support: Ansible 2.5 - Ansible 2.8
 
-<!-- LATEST RELEASE END -->
-
 ## Viya34-ark-1.6 - August 13, 2019
 
 - **Summary**:
@@ -21,6 +19,8 @@
 - Issues addressed:
     - DEPENB-2009 - Do not update systemd on RHEL7 with pre-install playbook. 
 - Ansible Support: Ansible 2.5 - Ansible 2.7
+
+<!-- LATEST RELEASE END -->
 
 ## Viya34-ark-1.5 - July 11, 2019
 
