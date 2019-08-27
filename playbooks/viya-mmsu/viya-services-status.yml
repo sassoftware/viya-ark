@@ -43,7 +43,7 @@
     - block:
 
       - name: Capture SAS Viya URLs from the Apache HTTP Proxy
-        script: viya-svs.sh geturls
+        script: viya-svs.sh geturls {{url_link}}
         check_mode: no
         changed_when: false
         register: url_list
