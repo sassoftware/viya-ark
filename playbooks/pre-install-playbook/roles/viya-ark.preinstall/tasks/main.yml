@@ -1,5 +1,6 @@
 ---
 - import_tasks: pre.pause.yml
+- import_tasks: pre.shell_check.yml
 - import_tasks: pre.os_version_check.yml
 - import_tasks: pre.third_party_check.yml
 - import_tasks: pre.memory_check.yml
