@@ -41,7 +41,14 @@ $( function() {
     $( ".machines-accordion" ).accordion({
         icons: { "header": "ui-icon-circle-triangle-e", "activeHeader": "ui-icon-circle-triangle-s" }
     });
+    $( ".hotfix-accordion" ).accordion({
+        icons: { "header": "ui-icon-circle-triangle-e", "activeHeader": "ui-icon-circle-triangle-s" }
+    });
+
     $( ".machine-details-accordion" ).accordion({
+        icons: { "header": "ui-icon-folder-collapsed", "activeHeader": "ui-icon-folder-open" }
+    });
+    $( ".hotfix-details-accordion" ).accordion({
         icons: { "header": "ui-icon-folder-collapsed", "activeHeader": "ui-icon-folder-open" }
     });
 });
@@ -250,6 +257,155 @@ div.error-output-display {
 
 <!-- content -->
 <div class="content">
+
+{% if hostvars['localhost']['sas_deployment_details']['include_hotfix_report'] %}
+    <h1>Hotfixes </h1>
+
+{% if not hostvars['localhost']['sas_deployment_details']['contact_hotfix_website'] %}
+        <h2> Unable to access Hot Fix Web site: <br><font color="red"><b>{{ hostvars['localhost']['sas_deployment_details']['master_website'] }}</b></font><br> Hotfix report skipped.</h2>
+{% else %}
+        <!-- available hotfix accordion -->
+        <div class="accordion hotfix-accordian available-hotfix-accordion">
+        <h2 id="available-hotfix-accordion-header">Available Hotfixes  (<b>total</b>: {{  hostvars['localhost']['sas_deployment_details']['available_hotfixes'] | length }}) <span class="ui-icon ui-icon-circle-arrow-n inline-icon"></span></h2>
+            <div>
+{% for hotfix in hostvars['localhost']['sas_deployment_details']['available_hotfixes'] | dictsort %}
+                <div class="accordion hotfix-details-accordion" id="{{ hotfix[0] }}--hotfix-details-accordion">
+                <h3 id="hotfix-details-{{ hotfix[0] }}-accordion-header">{{ hotfix[0] }} <span class="ui-icon ui-icon-circle-arrow-n inline-icon"></span></h3>
+                    <div>
+                        <h4>Release Date: {{ hotfix[1].release_date}}</h4>
+
+                        <!-- Packages Accordion  {{ hotfix[0] }} -->
+                        <div class="accordion packages-accordion" id="{{ hotfix[0]}}-packages-accordion">
+                        <h4 id="{{ hotfix[0] }}-hotfix-details-accordion-packages-header">Packages (<b>total</b>: {{ hotfix[1].packages | length }}) <span class="ui-icon ui-icon-circle-arrow-n inline-icon"></span></h4>
+                            <div>
+                                <table>
+                                    <tr>
+                                        <th>Host</th>
+                                        <th>Package</th>
+                                        <th>Installed Version</th>
+                                        <th>Hotfix Version</th>
+                                    </tr>
+{% for current_package in hotfix[1].packages %}
+                                    <tr>
+                                        <td>{{ current_package['hostname'] }}</td>
+                                        <td>{{ current_package['package'] }}</td>
+                                        <td>{{ current_package['installed_version'] }}</td>
+{% if current_package['up_to_date'] %}
+                                        <td>{{ current_package['hotfix_version'] }}</td>
+{% else %}
+                                        <td><font color="red">{{ current_package['hotfix_version'] }}</font></td>
+{% endif %}
+                                    </tr>
+{% endfor %}
+                                </table>
+                            <!-- End {{ hotfix[0] }} Package Details Table -->
+                            </div>
+                        <!-- End {{ hotfix[0] }} Package Details accordion  -->
+                        </div>
+
+                        <!-- SAS Notes Accordion {{ hotfix[0]  }} -->
+                        <div class="accordion sasnotes-accordion" id="{{ hotfix[0] }}-sasnotes-accordion">
+                        <h3 id="{{ hotfix[0] }}-hotfix-details-accordion-sasnotes-header">SASNotes (<b>total</b>: {{ hotfix[1].sas_notes | length }})</h3>
+                            <div>
+                                <table>
+                                    <tr>
+                                        <th>Number</th>
+                                        <th>Title</th>
+                                    </tr>
+{% for current_sasnote in hotfix[1].sas_notes | dictsort %}
+                                    <tr>
+                                        <td>{{ current_sasnote[0] }}</td>
+                                        <td>{{ current_sasnote[1] }}</td>
+                                    </tr>
+{% endfor %}
+                                </table>
+                            <!-- End SAS Notes Table -->
+                            </div>
+                        <!-- End {{ hotfix[0] }}-sasnotes-accordion -->
+                        </div>
+
+                     <!-- End hotfix-{{ hotfix[0] }}-details section -->
+                    </div>
+                <!-- End hotfix-{{ hotfix[0] }}-details -->
+                </div>
+
+{% endfor %}
+            <!-- End available hotfix accordion -->
+            </div>
+        <!-- end available hotfix accordion -->
+        </div>
+
+        <!-- installed hotfix accordion -->
+        <div class="accordion hotfix-accordian installed-hotfix-accordion">
+        <h2 id="installed-hotfix-accordion-header">Installed Hotfixes (<b>total</b>: {{  hostvars['localhost']['sas_deployment_details']['installed_hotfixes'] | length }})</h2>
+             <div>
+{% for hotfix in hostvars['localhost']['sas_deployment_details']['installed_hotfixes'] | dictsort %}
+                <div class="accordion hotfix-details-accordion" id="{{ hotfix[0] }}--hotfix-details-accordion">
+                <h3 id="hotfix-details-{{ hotfix[0] }}-accordion-header">{{ hotfix[0] }}</h3>
+                    <div>
+                        <h4>Release Date: {{ hotfix[1].release_date}}</h4>
+
+                        <!-- Packages Accordion {{ hotfix[0] }} -->
+                        <div class="accordion packages-accordion" id="{{ hotfix[0]}}-packages-accordion">
+                        <h4 id="{{ hotfix[0] }}-hotfix-details-accordion-packages-header">Packages (<b>total</b>: {{ hotfix[1].packages | length }})</h4>
+                            <div>
+                                <table>
+                                    <tr>
+                                        <th>Host</th>
+                                        <th>Package</th>
+                                        <th>Installed Version</th>
+                                        <th>Hotfix Version</th>
+                                    </tr>
+{% for current_package in hotfix[1].packages %}
+                                    <tr>
+                                        <td>{{ current_package['hostname'] }}</td>
+                                        <td>{{ current_package['package'] }}</td>
+                                        <td>{{ current_package['installed_version'] }}</td>
+                                        <td>{{ current_package['hotfix_version'] }}</td>
+                                    </tr>
+{% endfor %}
+                                </table>
+                            <!-- End {{ hotfix[0] }} Package Details Table -->
+                            </div>
+                        <!-- End {{ hotfix[0] }} Package Details accordion  -->
+                        </div>
+
+                        <!-- SAS Notes Accordion {{ hotfix[0] }} -->
+                        <div class="accordion sasnotes-accordion" id="{{ hotfix[0] }}-sasnotes-accordion">
+                        <h3 id="{{ hotfix[0] }}-hotfix-details-accordion-sasnotes-header">SASNotes (<b>total</b>: {{ hotfix[1].sas_notes | length }})</h3>
+                            <div>
+                                <table>
+                                    <tr>
+                                        <th>Number</th>
+                                        <th>Title</th>
+                                    </tr>
+{% for current_sasnote in hotfix[1].sas_notes | dictsort %}
+                                    <tr>
+                                        <td>{{ current_sasnote[0] }}</td>
+                                        <td>{{ current_sasnote[1] }}</td>
+                                    </tr>
+{% endfor %}
+                                </table>
+                            <!-- End SAS Notes Table -->
+                            </div>
+                        <!-- End {{ hotfix[0] }}-sasnotes-accordion -->
+                        </div>
+
+                     <!-- End hotfix-{{ hotfix[0] }}-details section -->
+                    </div>
+                <!-- End hotfix-{{ hotfix[0] }}-details -->
+                </div>
+
+{% endfor %}
+            <!-- End installed hotfix accordion -->
+            </div>
+
+        <!-- end installed hotfix accordion -->
+        </div>
+<!-- End Error Checking. -->
+{% endif %}
+<!-- End report inlcude hotfix check -->
+{% endif %}
 
     <h1>Machines (<b>total</b>: {{ hostvars['localhost']['sas_deployment_details']['sas_hosts'] | length }})</h1>
 
