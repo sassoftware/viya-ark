@@ -1,0 +1,24 @@
+---
+
+- block:
+  - name: Determine if the Bash shell is installed
+    shell: bash --version
+    check_mode: no
+    register: current_shell
+
+  - name: Display the returned version of Bash shell
+    debug:
+      msg: "{{ current_shell.stdout }}"
+
+  - name: Ensure that the Bash shell is installed
+    assert:
+      that:
+        - ({{ current_shell.rc }} == 0)
+      msg: |
+        Bash does not appear to be installed on this system. 
+        Viya requires that the default system shell is bash.
+
+  ## end of block
+  tags:
+    - shell_check
+
