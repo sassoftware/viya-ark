@@ -233,7 +233,10 @@ do_geturls()
 	if [[ "$FILE" == "" ]]; then
 		echo "No SAS Viya URLs found"
 	else
-		cat $FILE|grep ProxyPass|grep -e "/SAS"|awk "{print \$2}"|sort|uniq|sed "s/^/http:\/\/"$host"/"
+		if [[ "$HURL" == "" ]]; then
+			HURL="http"
+		fi
+		cat $FILE|grep 'ProxyPass '|egrep -e "/SAS|/ModelStudio"|awk "{print \$2}"|sort|uniq|sed "s/^/${HURL}:\/\/"$host"/"
 	fi
 	return 0
 }
@@ -275,6 +278,7 @@ case "$OPT" in
 		DIR=$2; SIZE=$3
 		$OPT; exit $? ;;
 	geturls)
+		HURL=$2
 		do_$OPT
 		;;
 	checkps)
