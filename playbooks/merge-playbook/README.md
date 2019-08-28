@@ -31,7 +31,7 @@ To run the playbook and merge multi-tenant configuration files, execute the foll
 ```
 ansible-playbook viya-ark/playbooks/merge-playbook/merge-viya-deployment-files.yml -e "current_inventory_file=/local/sas_viya_playbook_CURRENT/inventory.ini" -e "tenantID_list=acme,intech,york"
 ```
-> **Note**: The ```<tenantID>_vars.yml``` file be in the same directory where the current version of the `inventory.ini` file is saved.
+> **Note**: The ```<tenantID>_vars.yml``` is assumed to be in the same directory where the current version of the `inventory.ini` file is saved.
 
 ## After the run
 The merged configuration files, differences between the current configuration files and the merged ones, and logs can be found in:
