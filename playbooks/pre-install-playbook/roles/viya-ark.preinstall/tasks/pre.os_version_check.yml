@@ -25,23 +25,23 @@
     assert:
       that: 
         # either 6, 7 or 8
-        - ansible_distribution_major_version is version_compare(os_major_version_1, '==')
+        - ansible_distribution_major_version is version(os_major_version_1, '==')
           or
-          ansible_distribution_major_version is version_compare(os_major_version_2, '==')
+          ansible_distribution_major_version is version(os_major_version_2, '==')
           or
-          ansible_distribution_major_version is version_compare(os_major_version_3, '==')
+          ansible_distribution_major_version is version(os_major_version_3, '==')
         # at least 6.7 if 6 or at least 7.1 if 7 or at least 8.0 if 8
-        - (ansible_distribution_major_version is version_compare(os_major_version_1, '==')
+        - (ansible_distribution_major_version is version(os_major_version_1, '==')
           and
-          ansible_distribution_version is version_compare(os_major_minor_version_1, '>='))
+          ansible_distribution_version is version(os_major_minor_version_1, '>='))
           or
-          (ansible_distribution_major_version is version_compare(os_major_version_2, '==')
+          (ansible_distribution_major_version is version(os_major_version_2, '==')
           and
-          ansible_distribution_version is version_compare(os_major_minor_version_2, '>='))
+          ansible_distribution_version is version(os_major_minor_version_2, '>='))
           or 
-          (ansible_distribution_major_version is version_compare(os_major_version_3, '==')
+          (ansible_distribution_major_version is version(os_major_version_3, '==')
           and
-          ansible_distribution_version is version_compare(os_major_minor_version_3, '>='))
+          ansible_distribution_version is version(os_major_minor_version_3, '>='))
       msg: |
         The OS of this server is not supported.
         Viya requires {{redhat_os_name}} {{os_major_version_1}}, {{os_major_version_2}} or {{os_major_version_3}}, (at least {{os_major_minor_version_1}}, {{os_major_minor_version_2}} or {{os_major_minor_version_3}} )
@@ -52,7 +52,7 @@
     assert:
       that:
         # version is at least 12.2
-        - ansible_distribution_version is version_compare(suse_os_major_minor_version, '>=')
+        - ansible_distribution_version is version(suse_os_major_minor_version, '>=')
       msg: |
         The OS of this server is not supported.
         Viya requires {{suse_os_name}} at least version {{suse_os_major_minor_version}}
