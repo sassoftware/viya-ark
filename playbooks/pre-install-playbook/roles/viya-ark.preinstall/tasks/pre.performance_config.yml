@@ -1,0 +1,95 @@
+---
+- block:
+    # Kernel semaphore are set as a single, tab-delimited string
+    # The current semaphore setting must be parsed and compared to the desired settings
+    # and only applied if they are actually higher
+
+    # Query and register current individual kernel.sem setting
+  - name: "Query current value of kernel.sem"
+    check_mode: no
+    shell: cat /proc/sys/kernel/sem
+    register: kernel_sem
+
+  - name: "Register current SEMMSL"
+    set_fact:
+        kernel_SEMMSL: "{{ kernel_sem.stdout.split()[0] }}"
+
+  - name: "Register current SEMMNS"
+    set_fact:
+        kernel_SEMMNS: "{{ kernel_sem.stdout.split()[1] }}"
+
+  - name: "Register current SEMOPM"
+    set_fact:
+        kernel_SEMOPM: "{{ kernel_sem.stdout.split()[2] }}"
+
+  - name: "Register current SEMMNI"
+    set_fact:
+        kernel_SEMMNI: "{{ kernel_sem.stdout.split()[3] }}"
+
+    # Compare all individual kernel.sem values and update them if they are higher
+  - name: "Update SEMMSL if the current system value is lower"
+    set_fact:
+        kernel_SEMMSL: "{{ item.value }}"
+    when:
+      - item.name is match("kernel.sem.SEMMSL")
+      - item.value > kernel_SEMMSL
+    with_items:
+      - "{{ semaphores }}"
+
+  - name: "Update SEMMNS if the current system value is lower"
+    set_fact:
+        kernel_SEMMNS: "{{ item.value }}"
+    when:
+      - item.name is match("kernel.sem.SEMMNS")
+      - item.value > kernel_SEMMNS
+    with_items:
+      - "{{ semaphores }}"
+
+  - name: "Update SEMOPM if the current system value is lower"
+    set_fact:
+        kernel_SEMOPM: "{{ item.value }}"
+    when:
+      - item.name is match("kernel.sem.SEMOPM")
+      - item.value > kernel_SEMOPM
+    with_items:
+      - "{{ semaphores }}"
+
+  - name: "Update SEMMNI if the current system value is lower"
+    set_fact:
+        kernel_SEMMNI: "{{ item.value }}"
+    when:
+      - item.name is match("kernel.sem.SEMMNI")
+      - item.value > kernel_SEMMNI
+    with_items:
+      - "{{ semaphores }}"
+
+  # Generate a tab delimited string with the new kernel semaphore values
+  - name: "Generate new kernel semaphore string"
+    set_fact:
+        kernel_semaphore_new: "{{ kernel_SEMMSL }}\t{{ kernel_SEMMNS }}\t{{ kernel_SEMOPM }}\t{{ kernel_SEMMNI }}"
+
+  # Apply kernel.sem semaphore values
+  - name: "Configure systemctl params for kernal semaphores in /etc/sysctl"
+    sysctl:
+      name: "kernel.sem"
+      value: "{{ kernel_semaphore_new }}"
+      state: present
+      sysctl_set: yes
+      reload: yes
+
+  # Apply performance settings
+  - name: "Configure OS performance settings"
+    sysctl:
+      name: "{{ item.name }}"
+      value: "{{ item.value }}"
+      state: present
+      sysctl_set: yes
+      reload: yes
+    with_items:
+      - "{{ performance_settings }}"
+      
+  become: yes
+  become_user: root
+  tags:
+    - performance_config
+
