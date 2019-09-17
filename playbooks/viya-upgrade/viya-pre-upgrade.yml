@@ -85,6 +85,11 @@
   tags:
     - save-vta-topics-tables
 
+- name: Delete mmlibs CASLIB if it exists
+  import_playbook: pre_upgrade/delete_mmlibs_caslib.yml
+  tags: 
+   - delete-mmlibs-caslib
+
 - name: Stop all tenant services
   import_playbook: pre_upgrade/stop-services-mt.yml
   when:
