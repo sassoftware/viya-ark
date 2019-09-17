@@ -1,0 +1,241 @@
+####################################################################
+#### delete_mmlibs_caslib.yml                                   ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: this playbook only works                          ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# This playbook defines the pre-update tasks for deleting the
+# mmLibs caslib if ModelServices is present. 
+#
+# For multi-tenant deployments:
+#
+# These tasks will be run for the provider using the credentials
+# provided by the
+#     - SAS_ADMIN_USERNAME (string)
+#     - SAS_ADMIN_PASSWORD (string)
+# variables defined in vars.yml. The tasks will also be run for
+# each tenant defined in the SAS_TENANT_DETAILS (list) variable
+# also in vars.yml.
+#
+# For non-tenant deployments, only the SAS_ADMIN_USERNAME and
+# SAS_ADMIN_PASSWORD varaibles need to be defined.
+#
+# A log of all changes for a given tenant is copied to the local
+# output directory defined in vars.yml.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     delete_mmlibs_caslib
+#
+####################################################################
+
+---
+- name: "Remove mmLibs caslib"
+  hosts: CommandLine[0]
+  become: yes
+
+  vars_files:
+      - ../vars.yml
+
+  vars:
+      # Value defined in 'vars' SHOULD NOT be overridden
+      script_name: '/opt/sas/viya/home/bin/sas-admin'
+      logfile_name: "delete_mmlibs_caslib-{{ '%F_%H-%M-%S' | strftime(ansible_date_time.epoch) }}.log"
+      profile_name: "__delete_mmlibs_caslib__"
+      tag_value: "delete-mmlibs-caslib"
+      modelrepo_shipped_version: "3.4.98"
+
+      cli_env:
+          SSL_CERT_FILE: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+          CONSUL_CACERT: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+          VAULT_CACERT: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+
+      delete_success_msg: >
+          This deployment contained ModelServices. A requirement for UIP is that mmLibs caslib be deleted, which was successful. 
+
+      delete_fail_msg: >
+          This deployment contained ModelServices but mmLibs caslib was not found in this deployment, 
+          skipping deleting it prior to upgrade.
+
+      delete_header: >
+          Delete the mmLibs caslib
+
+      no_model_services: >
+          This deployment did not contain ModelServices. No action for mmLibs caslib required.  
+
+      update_skipped_warn_msg: >
+          "Delete mmLIbs caslib" action was unable to execute.<br><br>
+          mmLibs caslib was not deleted because the <em>playbooks/viya-upgrade/vars.yml</em> 
+          file is missing the following variables:
+          <ul><li><b>SAS_ADMIN_USERNAME</b></li><li><b>SAS_ADMIN_PASSWORD</b></li></ul>
+          To remove mmLibs caslib,  define the variables in the <em>playbooks/viya-upgrade/vars.yml</em>
+          file and rerun this playbook with the tag <b>{{ tag_value }}</b>.
+
+      tenant_update_fail_msg: >
+          One or more tenants failed when deleting mmLibs caslib. <br>
+          Review the Ansible log for more information.<br><br>The tag <b>{{ tag_value }}</b> can be used when
+          re-running the playbook to limit task execution to include only these tasks.
+
+      tenants_skipped_warn_msg: >
+          "Delete mmLibs caslibs" action was unable to execute.<br><br>
+          A multi-tenant deployment was detected but no tenant details were provided. To update tenants,
+          add the required tenant details to the <b>SAS_TENANT_DETAILS</b> property in <em>playbooks/viya-upgrade/vars.yml</em> and re-run
+          this playbook with the tag <b>{{ tag_value }}</b> to limit task execution to only these tasks.
+
+  tasks:
+
+      - name: "Check if ModelServices exists"
+        set_fact:
+          mm_exists: true
+          mm_hosts: "{{ item.value }}"
+        loop: "{{ lookup('dict', groups) }}"
+        when: "'ModelServices' == item.key"
+
+      - name: "Exit if no ModelServices"
+        block:
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ no_model_services }}"
+            # if the requisite vars were not set, add a warning to the summary report about how to rerun this play
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'warn'
+                  - header: "{{ delete_header }}"
+                  - message: "{{ no_model_services }}"
+            - meta: end_play
+        when: mm_exists is not defined 
+
+      - name: "Get package facts on machine that has ModelServices on it"
+        delegate_to: "{{ item }}"
+        package_facts:
+          manager: "auto"
+        loop: "{{ groups['ModelServices'] }}"
+          
+      - name: "Get version of modelrepository"
+        delegate_to: "{{ item }}"
+        set_fact:
+          model_rep_version: "{{ ansible_facts.packages['sas-modelrepository'][0].version }}"
+        when:
+          - ansible_facts.packages['sas-modelrepository'] | length > 0
+          - ansible_facts.packages['sas-modelrepository'][0].version is defined
+        loop: "{{ groups['ModelServices'] }}"
+
+      - name: "Stop ModelRepository service for RHEL"
+        delegate_to: "{{ item }}"
+        become: true
+        become_user: root
+        service:
+          name: sas-viya-modelrepository-default
+          state: stopped
+        when:
+          - "ansible_os_family == 'RedHat'"
+          - model_rep_version is defined
+          - model_rep_version | version_compare(modelrepo_shipped_version, '<')
+        ignore_errors: yes
+        loop: "{{ groups['ModelServices'] }}"
+
+      # Delete mmLibs caslib only if credentials are provided
+      - block:
+
+            # Update non-tenant/SAS provider caslibs using the SAS_ADMIN_USERNAME and SAS_ADMIN_PASSWORD
+            # credentials from vars.yml
+            
+            - include_tasks: delete_mmlibs_caslib_tenant_tasks.yml
+              vars:
+                  - tenant_admin_username: "{{ SAS_ADMIN_USERNAME }}"
+                  - tenant_admin_password: "{{ SAS_ADMIN_PASSWORD }}"
+                  - tenant_url: "{{ hostvars['localhost']['sas_viya_upgrade']['sas_url_httpd'] }}"
+
+            # Update tenants defined in SAS_TENANT_DETAILS if sas.multi.tenancy.enabled=true
+            - block:
+
+                  # Update each tenant
+                  - include_tasks: delete_mmlibs_caslib_tenant_tasks.yml
+                    vars:
+                        - tenant_id: "{{ item.TENANT_ID }}"
+                        - tenant_admin_username: "{{ item.TENANT_ADMIN_USERNAME }}"
+                        - tenant_admin_password: "{{ item.TENANT_ADMIN_PASSWORD }}"
+                        - tenant_url: "{{ hostvars['localhost']['sas_viya_upgrade']['tenant_facts'][item.TENANT_ID]['sas_url_httpd'] }}"
+                    loop_control:
+                        label: "{{ item.TENANT_ID }}"
+                    loop: "{{ SAS_TENANT_DETAILS | flatten(levels=1) }}"
+
+              # Run these tasks if a failure was encountered during the tenant caslib update
+              rescue:
+
+                  # Print to Ansible output
+                  - debug:
+                        msg: "{{ tenant_update_fail_msg }}"
+
+                  # Add failure to summary
+                  - include_tasks: ../common/add-summary-item-tasks.yml
+                    vars:
+                        - level: 'fail'
+                        - header: "{{ delete_header }}"
+                        - message: "{{ tenant_update_fail_msg }}"
+
+              when:
+                  - hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled
+                  - SAS_TENANT_DETAILS is defined
+                  - SAS_TENANT_DETAILS is not none
+                  - SAS_TENANT_DETAILS | default([]) | length != 0
+
+            # If multi-tenant but no tenant details provided, log a warning
+            - block:
+
+                  # Print to Ansible output
+                  - debug:
+                        msg: "{{ tenants_skipped_warn_msg }}"
+
+                  # Add warning to summary
+                  - include_tasks: ../common/add-summary-item-tasks.yml
+                    vars:
+                        - level: 'warn'
+                        - header: "{{ delete_header }}"
+                        - message: "{{ tenants_skipped_warn_msg }}"
+
+              when:
+                  - hostvars['localhost'].sas_viya_upgrade.multi_tenant_enabled
+                  - SAS_TENANT_DETAILS is not defined or SAS_TENANT_DETAILS is none or SAS_TENANT_DETAILS | default([]) | length == 0
+
+        # Run these tasks when a failure was encountered during setup or during the provider update
+        rescue:
+
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ delete_fail_msg }}"
+
+            # Add failure to summary
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'fail'
+                  - header: "{{ delete_header }}"
+                  - message: "{{ delete_fail_msg }}"
+
+        when:
+            - SAS_ADMIN_USERNAME | default('') != ''
+            - SAS_ADMIN_PASSWORD | default('') != ''
+            - mm_exists is defined
+            - mm_exists == true
+
+      # If credentials were not provided, log a debug message and add an item to the summary
+      - block:
+
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ update_skipped_warn_msg }}"
+
+            # if the requisite vars were not set, add a warning to the summary report about how to rerun this play
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'warn'
+                  - header: "{{ delete_header }}"
+                  - message: "{{ update_skipped_warn_msg }}"
+
+        when: SAS_ADMIN_USERNAME | default('') == '' or SAS_ADMIN_PASSWORD | default('') == ''
+    

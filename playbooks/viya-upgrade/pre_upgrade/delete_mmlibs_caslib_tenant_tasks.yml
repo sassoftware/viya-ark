@@ -1,0 +1,147 @@
+####################################################################
+#### delete_mmlibs_caslibs_tenant_tasks.yml                     ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####                                                            ####
+#### WARNING: these tasks only work                             ####
+####           with Ansible 2.5 and above.                      ####
+####                                                            ####
+####################################################################
+
+####################################################################
+#
+# The tasks in this file represent the unique actions that need to
+# be run for each tenant in a deployment to make the requisite
+# remove mmLibs caslib
+#
+# These tasks are called by the delete_mmlibs_caslib.yml playbook
+# which defines the tasks that need to run prior to tenant-task
+# execution.
+#
+# Playbook execution can be limited to these tasks using the tag:
+#     delete-mmlibs-caslib
+#
+####################################################################
+
+---
+# Validates that a SASAdministrators username value is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SASAdministrators username value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_username | default('') != ''"
+      msg: "A SASAdministrator username value must be provided"
+
+# Validates that a SASAdministrators password provided is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SASAdministrators password value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_admin_password | default('') != ''"
+      msg: "A SASAdministrators password value must be provided"
+
+# Validates that a URL value is provided for this tenant
+# A missing or empty value will cause the subsequent tasks to be skipped
+- name: "Check for SAS deployment URL value - {{ tenant_id | default('SAS provider') }}"
+  assert:
+      that:
+          - "tenant_url | default('') != ''"
+      msg: "A SAS deployment URL value must be provided"
+
+# Set the profile for the sas-admin CLI calls
+- name: "Set profile endpoint  - {{ tenant_id | default('SAS provider') }}"
+  shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile set-endpoint {{ tenant_url }}"
+
+# Set the output type of sas-admin CLI calls to fulljson
+- name: "Set profile output  - {{ tenant_id | default('SAS provider') }}"
+  shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile set-output json"
+
+# Turn off color in the output of the sas-admin CLI calls
+- name: "Set profile output color - {{ tenant_id | default('SAS provider') }}"
+  shell: "{{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} profile toggle-color off"
+
+# Log into the sas-admin CLI
+- name: "Log in as SAS Administrator - {{ tenant_id | default('SAS provider') }}"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      {{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} auth login \
+      --user {{ tenant_admin_username }} --password {{ tenant_admin_password }}
+  environment: "{{ cli_env }}"
+  register: login_cmd
+  failed_when: "'Login failed' in login_cmd.stdout"
+  no_log: no
+
+# Get a list of all CAS servers for this tenant
+- name: "Get a list of CAS servers - {{ tenant_id | default('SAS provider') }}"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      {{ SASHOME }}/bin/sas-admin --profile {{ profile_name }} cas servers list --all
+  environment: "{{ cli_env }}"
+  register: cas_servers_raw
+  failed_when: cas_servers_raw.rc == 2 and 'no CAS servers defined' not in cas_servers_raw.stdout
+
+# If there are not CAS servers returned for this tenant, write a warning and end play
+- block:
+      # Print to Ansible output
+      - debug:
+            msg: "{{ tenants_skipped_warn_msg }}"
+
+      # Add warning to summary
+      - include_tasks: ../common/add-summary-item-tasks.yml
+        vars:
+            - level: 'warn'
+            - header: "No CAS servers found in the environment - {{ tenant_id | default('SAS provider') }}"
+            - message: "{{ no_cas_servers_warn_msg }}"
+
+      - name: "No CAS servers available"
+        debug:
+            msg: "{{ no_cas_servers_warn_msg }}"
+
+      - meta: end_play
+  when: cas_servers_raw.rc == 2 and 'no CAS servers defined' in cas_servers_raw.stdout
+
+# Get the CAS servers dict from the json returned by the CLI
+- set_fact:
+      cas_servers: "{{ cas_servers_raw.stdout | from_json }}"
+  
+# Delete mmLibs 
+- name: "Delete mmLibs if it exists"
+  shell: |
+      source {{ SAS_CONFIG_ROOT }}/consul.conf
+      {{ script_name }} --profile {{ profile_name }} --sas-endpoint {{ tenant_url }} cas caslibs delete --name mmLibs --server  {{ cas_server.name }} --superuser --force
+  environment:
+      SAS_ADMIN_USER: "{{ tenant_admin_username }}"
+      SAS_ADMIN_PASSWD: "{{ tenant_admin_password }}"
+  register: mmlibs_delete_results
+  ignore_errors: yes
+  loop_control:
+    loop_var: cas_server
+    label: "{{ cas_server.name }}"
+  loop: "{{ cas_servers['items'] | flatten(levels=1) }}"
+
+- name: "Loop through results of deleting mmlibs caslib"
+  with_items: "{{ mmlibs_delete_results['results'] }}"
+  set_fact:
+    mmlib_deleted: "{{ server.cas_server.name }}"
+  when: server.rc == 0
+  loop_control:
+    loop_var: server 
+
+# Add item to the summary report
+- include_tasks: ../common/add-summary-item-tasks.yml
+  vars:
+      - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }} on {{ mmlib_deleted }}"
+      - message: "{{ delete_success_msg }}"
+  when:
+      - "mmlib_deleted is defined"
+      - "'Login failed' not in login_cmd.stdout"
+      - "'Login failed' not in login_cmd.stderr"
+
+- include_tasks: ../common/add-summary-item-tasks.yml
+  vars:
+     - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }}"
+     - message: "{{ delete_fail_msg }}"
+  when: >
+      (mmlib_deleted is not defined) or
+      ('Login failed' in login_cmd.stdout) or
+      ('Login failed' in login_cmd.stderr)
