@@ -46,6 +46,7 @@ The following tagged tasks are automated as part of the ```viya-pre-upgrade.yml`
 * ```tag: update-casuser```: Add a non-default casenv_user to the sas group
 * ```tag: delete-default-backup-job```: Delete the default backup schedule job
 * ```tag: save-vta-topics-tables```: Save SAS Visual Text Analytics topics tables
+* ```tag: delete-mmlibs-caslib```: Delete mmLibs caslib if it exists
 
 ## Post-Upgrade task details
 The following tagged tasks are automated as part of the ```viya-post-upgrade.yml``` playbook, which can be run individually using the ansible ```--tags``` command line parameter, or skipped using ```--skip-tags```, if desired:
