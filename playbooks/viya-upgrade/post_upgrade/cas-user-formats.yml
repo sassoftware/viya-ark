@@ -35,12 +35,14 @@
       set_fact: 
         msg: "\"Adding user formats from casstartup.lua_*epoch files to casstartup_usermods.lua\" action was skipped."
         header_msg: "Adding default user formats"
+        additional_info_html: ""
       when: CASUSERMODSFILES_LIST | length == 0
 
     - name: Set Summary Message to inform list of casstartup_usermods file changes
       set_fact:
-        msg: "Added default user formats from casstartup.lua_*epoch files to {{CASUSERMODSFILES_LIST|to_yaml}}" 
+        msg: "Added default user formats from casstartup.lua_*epoch files to casstartup_usermods.lua" 
         header_msg: "Adding default user formats"
+        additional_info_html: "<b>Fullpath</b>: {{CASUSERMODSFILES_LIST|join(' ')}}"
       when: CASUSERMODSFILES_LIST | length > 0
 
     - name: Add to Upgrade Summary

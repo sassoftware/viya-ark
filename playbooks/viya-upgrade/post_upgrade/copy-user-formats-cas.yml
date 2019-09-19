@@ -53,7 +53,7 @@
 
 - name: Add casstartup_usermods.lua file to CASUSERMODSFILES_LIST
   set_fact:
-    CASUSERMODSFILES_LIST: "{{ hostvars['localhost']['CASUSERMODSFILES_LIST'] }} + ['{{ caslua_data }}/config/etc/cas/default/casstartup_usermods.lua']"
+    CASUSERMODSFILES_LIST: "{{ hostvars['localhost']['CASUSERMODSFILES_LIST'] }} + ['{{ caslua_data }}config/etc/cas/default/casstartup_usermods.lua']"
   delegate_to: localhost
   delegate_facts: true 
   when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.md5 != after.stat.md5 
