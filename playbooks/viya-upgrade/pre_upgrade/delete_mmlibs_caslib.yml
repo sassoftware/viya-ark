@@ -135,7 +135,7 @@
         when:
           - "ansible_os_family == 'RedHat'"
           - model_rep_version is defined
-          - model_rep_version | version_compare(modelrepo_shipped_version, '<')
+          - model_rep_version is version(modelrepo_shipped_version, '<')
         ignore_errors: yes
         loop: "{{ groups['ModelServices'] }}"
 
