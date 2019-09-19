@@ -1,0 +1,30 @@
+---
+####################################################################
+## Short hostname DNS check
+####################################################################
+- block:
+    - name: "Gather short hostname"
+      command: "hostname -s"
+      changed_when: false
+      register: pre_short_hostname_check_results
+
+    - set_fact:
+        pre_short_hostname_check_errors: false
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+
+    - include_tasks: pre.short_hostname_check_loop.yml
+      vars:
+        - hostname_results: "{{ hostvars[item].pre_short_hostname_check_results }}"
+        - host: "{{ item }}"
+      loop: "{{ groups['sas_all'] | flatten(levels=1) }}"
+
+    - block:
+        - fail:
+            msg: "Check above for details about the errors encountered."
+          run_once: true
+      when: hostvars['localhost'].pre_short_hostname_check_errors
+  tags:
+    - short_hostname_check
+    - detectableonly
