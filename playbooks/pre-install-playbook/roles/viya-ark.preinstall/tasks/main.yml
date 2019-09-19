@@ -7,6 +7,7 @@
 - import_tasks: pre.cpu_check.yml
 - import_tasks: pre.storage_check.yml
 - import_tasks: pre.hostname_check.yml
+- import_tasks: pre.short_hostname_check.yml
 - import_tasks: pre.yum_cache_config.yml
 - import_tasks: pre.required_packages_config.yml
 - import_tasks: pre.start_services.yml
