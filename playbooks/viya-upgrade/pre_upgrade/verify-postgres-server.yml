@@ -22,7 +22,6 @@
     - "{{ playbook_dir }}/../../../../vars.yml"
 
   vars:
-      - postgres_version_11: "This play does not support the current PostgreSQL database (version 11). Run the PostgreSQL cluster validation tasks manually before you run the upgrade that is in process."
       - postgres_cluster_unhealthy: "The status of the PostgreSQL cluster node is unhealthy. All nodes in the PostgreSQL cluster must have a healthy status."
       - sasdatasvrc_hostname_unmatched: "Host names for sasdatasvrc do not match between the inventory file and vars.yml"
       - pgpoolc_hostname_unmatched: "Host names for pgpoolc do not match between the inventory file and vars.yml"
@@ -37,59 +36,50 @@
       register: postgres11found
 
     - block:
+        - name: Report the version number of the installed PostgreSQL on this host
+          shell: /opt/sas/viya/home/bin/psql --version
+          become: yes
+          become_user: root
+          register: psql_version
+
         - debug:
-            msg: "{{ postgres_version_11 }}"
-        - include_tasks: ../common/add-summary-item-tasks.yml
-          vars:
-              - level: 'warn'
-              - header: "Verify the Health of the SAS Infrastructure Data Server"
-              - message: "{{ postgres_version_11 }}"
-        - meta: end_play
-      when: postgres11found.stat.exists
+            msg: "The version of the installed SAS Viya PostgreSQL Data is {{ psql_version.stdout }}."
 
-    - name: Report the version number of the installed PostgreSQL on this host
-      shell: /opt/sas/viya/home/bin/psql --version
-      become: yes
-      become_user: root
-      register: psql_version
+        - name: Check for /etc/init.d/sas-viya-sasdatasvrc-postgres
+          stat: path=/opt/sas/viya/config/etc/sasdatasvrc/postgres/pgpool0/pool.cdf
+          register: pool_cdf
+          become: yes
+          become_user: root
 
-    - debug:
-        msg: "The version of the installed SAS Viya PostgreSQL Data is {{ psql_version.stdout }}."
+        - name: Check whether if all of the PostgreSQL cluster node is healthy
+          lineinfile:
+            path: /opt/sas/viya/config/etc/sasdatasvrc/postgres/pgpool0/pool.cdf
+            regexp: '=unhealthy'
+            state: absent
+          become: yes
+          become_user: root
+          register: check_postgres_sever_node_unhealthy
+          check_mode: yes
+          failed_when: false
 
-    - name: Check for /etc/init.d/sas-viya-sasdatasvrc-postgres
-      stat: path=/opt/sas/viya/config/etc/sasdatasvrc/postgres/pgpool0/pool.cdf
-      register: pool_cdf
-      become: yes
-      become_user: root
-
-    - name: Check whether if all of the PostgreSQL cluster node is healthy
-      lineinfile:
-        path: /opt/sas/viya/config/etc/sasdatasvrc/postgres/pgpool0/pool.cdf
-        regexp: '=unhealthy'
-        state: absent
-      become: yes
-      become_user: root
-      register: check_postgres_sever_node_unhealthy
-      check_mode: yes
-      failed_when: false
-
-    - name: Verify that all of the PostgreSQL nodes is healthy
-      assert:
-        that: check_postgres_sever_node_unhealthy.found == 0
-        msg: "{{ postgres_cluster_unhealthy }}"
-      when: pool_cdf.stat.exists
-      register: assert_postgres_nodes
+        - name: Verify that all of the PostgreSQL nodes is healthy
+          assert:
+            that: check_postgres_sever_node_unhealthy.found == 0
+            msg: "{{ postgres_cluster_unhealthy }}"
+          register: assert_postgres_nodes
+          when: pool_cdf.stat.exists
+      when: postgres11found.stat.exists | bool == false
 
     - name: Retrieve the sasdatasvrc host names from the inventory file
-      set_fact: 
+      set_fact:
         sasdatasvrc_host: "{{ groups['sasdatasvrc'] }}"
 
     - name: Retrieve the pgpoolc host name from the inventory file
-      set_fact: 
+      set_fact:
         pgpoolc_host: "{{ groups['pgpoolc'] }}"
 
     - name: Retrieve the sasdatasvrc host name from the vars.yml file
-      set_fact: 
+      set_fact:
         vars_sasdatasvrc_host: "{{ INVOCATION_VARIABLES }}"
 
     - name: Compare the inventory host names for sasdatasvrc that are defined in vars.yml
@@ -100,12 +90,19 @@
       - "{{ sasdatasvrc_host }}"
       register: assert_sasdatasvrc_host
 
-    - name: Check for /etc/init.d/sas-viya-sasdatasvrc-postgres
-      stat: path=/etc/init.d/sas-viya-sasdatasvrc-postgres
+    - set_fact:
+        postgres_service_name: /etc/init.d/sas-viya-sasdatasvrc-postgres
+
+    - set_fact:
+        postgres_service_name: /etc/init.d/sas-viya-sasdatasvrc-postgres-pgpool0
+      when: postgres11found.stat.exists
+
+    - name: Check for {{ postgres_service_name }}
+      stat: path="{{ postgres_service_name }}"
       register: postgresinit
 
     - name: Retrieve the pgpoolc host name from the vars.yml file
-      set_fact: 
+      set_fact:
         vars_pgpoolc_host: "{{ INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] }}"
       when: postgresinit.stat.exists
 
@@ -115,24 +112,36 @@
         msg: "{{ pgpoolc_hostname_unmatched }}"
       with_items:
       - "{{ pgpoolc_host }}"
-      when: postgresinit.stat.exists
       register: assert_pgpoolc_host
+      when: postgresinit.stat.exists
 
-    - name: Retrieve the NODE_NUMBER value from the vars.yml file
-      set_fact: 
-        sasdatasvrc_number: "{{ item.NODE_NUMBER }}"
-      with_items:
-      - "{{ INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] }}"
-      when: item.NODE_TYPE == "P"
+    - set_fact:
+        nodetype_exists: false
 
-    - name: Retrieve the NODE_TYPE value from the vars.yml file
-      set_fact: 
-        sasdatasvrc_type: "{{ item.NODE_TYPE }}"
-      with_items:
-      - "{{ INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] }}"
+    - name: Check if the NODE_TYPE value exists in the vars.yml file
+      set_fact:
+        nodetype_exists: true
+      when: vars_sasdatasvrc_host | to_json| search ("NODE_TYPE")
+      run_once: yes
+
+    - block:
+        - name: Retrieve the NODE_NUMBER value from the vars.yml file
+          set_fact:
+            sasdatasvrc_number: "{{ item.NODE_NUMBER }}"
+          with_items:
+          - "{{ INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] }}"
+          when: item.NODE_TYPE == "P"
+
+        - name: Retrieve the NODE_TYPE value from the vars.yml file
+          set_fact:
+            sasdatasvrc_type: "{{ item.NODE_TYPE }}"
+          with_items:
+          - "{{ INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] }}"
+          when: postgresinit.stat.exists
+      when: postgres11found.stat.exists | bool == false and nodetype_exists | bool == true
 
     - name: Obtain the status of the PostgreSQL cluster
-      shell: '/etc/init.d/sas-viya-sasdatasvrc-postgres status'
+      shell: '{{ postgres_service_name }} status'
       become: yes
       become_user: root
       register: obtain_postgres_sever_status
@@ -174,31 +183,33 @@
       register: obtain_postgres_primary_hostname
       when: postgresinit.stat.exists
 
-    - name: Compare the primary node_type between the output from the PostgreSQL status check and vars.yml
-      assert:
-        that: obtain_postgres_primary_hostname.stdout == ansible_fqdn
-        msg: "{{ primary_node_type_unmatched }}"
-      when: 'postgresinit.stat.exists and sasdatasvrc_type == "P"'
-      register: assert_primary_host
-
     - name: Retrieve secondary host names from the output of the PostgreSQL status check
       shell: "cat {{ tempdir.path }}/postgres_status.out | grep standby | awk '{ print $3 }'"
       register: obtain_postgres_secondary_hostname
       when: postgresinit.stat.exists
 
-    - name: Compare the secondary node_type between the PostgreSQL check output and vars.yml
-      assert:
-        that: ansible_fqdn in obtain_postgres_secondary_hostname.stdout
-        msg: "{{ secondary_node_type_unmatched }}"
-      when: 'postgresinit.stat.exists and sasdatasvrc_type == "S"'
-      register: assert_secondary_host
+    - block:
+        - name: Compare the primary node_type between the output from the PostgreSQL status check and vars.yml
+          assert:
+            that: obtain_postgres_primary_hostname.stdout == ansible_fqdn
+            msg: "{{ primary_node_type_unmatched }}"
+          register: assert_primary_host
+          when: postgresinit.stat.exists and sasdatasvrc_type == "P"
+
+        - name: Compare the secondary node_type between the PostgreSQL check output and vars.yml
+          assert:
+            that: ansible_fqdn in obtain_postgres_secondary_hostname.stdout
+            msg: "{{ secondary_node_type_unmatched }}"
+          register: assert_secondary_host
+          when: postgresinit.stat.exists and sasdatasvrc_type == "S"
+      when: postgres11found.stat.exists | bool == false and nodetype_exists | bool == true
 
     - name: Compare the host names from the PostgreSQL check with the host names in the inventory file
       assert:
         that: ansible_fqdn in obtain_postgres_hostname.stdout
         msg: "{{ hostname_unmatched_postgres_output }}"
-      when: postgresinit.stat.exists
       register: assert_hostnames
+      when: postgresinit.stat.exists
 
     - name: Remove the file postgres_status.out from the temporary folder
       file:
