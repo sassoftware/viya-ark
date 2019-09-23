@@ -1,15 +1,16 @@
 config:
     application:
         sas.identities.providers.ldap.connection:
-            host: 'ad_host'
-            password: 'your_password'
+            host: 'your_ad_hostname'
+            password: 'dummypass'
             port: '389'
-            url: 'ldap://${sas.identities.providers.ldap.connection.host}:${sas.identities.providers.ldap.connection.port}''
-            userDN: 'CN=MY_Account,OU=Shared Accounts,OU=Users,DC=Customer,DC=com'
+            url: 'ldap://${sas.identities.providers.ldap.connection.host}:${sas.identities.providers.ldap.connection.port}'
+            anonymousBind: 'false'
+            userDN: 'CN=[test] SAS Demo Account,OU=Generic Accounts,OU=Admin,DC=na,DC=customer,DC=com'
         sas.identities.providers.ldap.group:
-            baseDN: 'OU=Groups,DC=Customer,DC=com'
+            baseDN: 'OU=Groups,DC=na,DC=customer,DC=com'
         sas.identities.providers.ldap.user:
-            baseDN: 'DC=Customer,DC=com'
+            baseDN: 'dc=customer,dc=com'
             searchFilter: 'sAMAccountName={0}'
-    identities:
-        administrator: 'your_user_id'
+        sas.identities:
+            administrator: 'your_user_id'
