@@ -211,7 +211,6 @@ semaphores:
 
 swappiness: 1
 
-jq_url: "https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64"
 
 ## do a 60 seconds pause at the begginning if not using the --check option
 use_pause: true
