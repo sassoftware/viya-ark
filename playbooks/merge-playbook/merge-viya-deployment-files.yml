@@ -527,7 +527,7 @@
         path: "{{ merged_vars_yml }}"
         regexp: "- PCP_PORT:"
         replace: "  PCP_PORT:"
-      when: ha_properties_exist.changed == False
+      when: ha_properties_exist.changed == True
 
     - name: Make sure all host groups include an underscore instead of a hyphen
       replace:
