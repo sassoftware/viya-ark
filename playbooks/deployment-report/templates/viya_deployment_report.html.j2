@@ -259,14 +259,14 @@ div.error-output-display {
 <div class="content">
 
 {% if hostvars['localhost']['sas_deployment_details']['include_hotfix_report'] %}
-    <h1>Hotfixes </h1>
+    <h1>Hot Fixes </h1>
 
 {% if not hostvars['localhost']['sas_deployment_details']['contact_hotfix_website'] %}
-        <h2> Unable to access Hot Fix Web site: <br><font color="red"><b>{{ hostvars['localhost']['sas_deployment_details']['master_website'] }}</b></font><br> Hotfix report skipped.</h2>
+        <h2> Unable to access Hot Fix Web site: <br><font color="red"><b>{{ hostvars['localhost']['sas_deployment_details']['master_website'] }}</b></font><br> Hot Fix report skipped.</h2>
 {% else %}
-        <!-- available hotfix accordion -->
+        <!-- available hot fix accordion -->
         <div class="accordion hotfix-accordian available-hotfix-accordion">
-        <h2 id="available-hotfix-accordion-header">Available Hotfixes  (<b>total</b>: {{  hostvars['localhost']['sas_deployment_details']['available_hotfixes'] | length }}) <span class="ui-icon ui-icon-circle-arrow-n inline-icon"></span></h2>
+        <h2 id="available-hotfix-accordion-header">Available Hot Fixes  (<b>total</b>: {{  hostvars['localhost']['sas_deployment_details']['available_hotfixes'] | length }}) <span class="ui-icon ui-icon-circle-arrow-n inline-icon"></span></h2>
             <div>
 {% for hotfix in hostvars['localhost']['sas_deployment_details']['available_hotfixes'] | dictsort %}
                 <div class="accordion hotfix-details-accordion" id="{{ hotfix[0] }}--hotfix-details-accordion">
@@ -283,7 +283,7 @@ div.error-output-display {
                                         <th>Host</th>
                                         <th>Package</th>
                                         <th>Installed Version</th>
-                                        <th>Hotfix Version</th>
+                                        <th>Hot Fix Version</th>
                                     </tr>
 {% for current_package in hotfix[1].packages %}
                                     <tr>
@@ -305,7 +305,7 @@ div.error-output-display {
 
                         <!-- SAS Notes Accordion {{ hotfix[0]  }} -->
                         <div class="accordion sasnotes-accordion" id="{{ hotfix[0] }}-sasnotes-accordion">
-                        <h3 id="{{ hotfix[0] }}-hotfix-details-accordion-sasnotes-header">SASNotes (<b>total</b>: {{ hotfix[1].sas_notes | length }})</h3>
+                        <h3 id="{{ hotfix[0] }}-hotfix-details-accordion-sasnotes-header">SAS Notes (<b>total</b>: {{ hotfix[1].sas_notes | length }})</h3>
                             <div>
                                 <table>
                                     <tr>
@@ -314,8 +314,8 @@ div.error-output-display {
                                     </tr>
 {% for current_sasnote in hotfix[1].sas_notes | dictsort %}
                                     <tr>
-                                        <td>{{ current_sasnote[0] }}</td>
-                                        <td>{{ current_sasnote[1] }}</td>
+                                        <td>{{ current_sasnote[1]['sas_note_link'] }}</td>
+                                        <td>{{ current_sasnote[1]['description'] }}</td>
                                     </tr>
 {% endfor %}
                                 </table>
@@ -335,9 +335,9 @@ div.error-output-display {
         <!-- end available hotfix accordion -->
         </div>
 
-        <!-- installed hotfix accordion -->
+        <!-- installed hot fix accordion -->
         <div class="accordion hotfix-accordian installed-hotfix-accordion">
-        <h2 id="installed-hotfix-accordion-header">Installed Hotfixes (<b>total</b>: {{  hostvars['localhost']['sas_deployment_details']['installed_hotfixes'] | length }})</h2>
+        <h2 id="installed-hotfix-accordion-header">Installed Hot Fixes (<b>total</b>: {{  hostvars['localhost']['sas_deployment_details']['installed_hotfixes'] | length }})</h2>
              <div>
 {% for hotfix in hostvars['localhost']['sas_deployment_details']['installed_hotfixes'] | dictsort %}
                 <div class="accordion hotfix-details-accordion" id="{{ hotfix[0] }}--hotfix-details-accordion">
@@ -354,7 +354,7 @@ div.error-output-display {
                                         <th>Host</th>
                                         <th>Package</th>
                                         <th>Installed Version</th>
-                                        <th>Hotfix Version</th>
+                                        <th>Hot Fix Version</th>
                                     </tr>
 {% for current_package in hotfix[1].packages %}
                                     <tr>
@@ -372,7 +372,7 @@ div.error-output-display {
 
                         <!-- SAS Notes Accordion {{ hotfix[0] }} -->
                         <div class="accordion sasnotes-accordion" id="{{ hotfix[0] }}-sasnotes-accordion">
-                        <h3 id="{{ hotfix[0] }}-hotfix-details-accordion-sasnotes-header">SASNotes (<b>total</b>: {{ hotfix[1].sas_notes | length }})</h3>
+                        <h3 id="{{ hotfix[0] }}-hotfix-details-accordion-sasnotes-header">SAS Notes (<b>total</b>: {{ hotfix[1].sas_notes | length }})</h3>
                             <div>
                                 <table>
                                     <tr>
@@ -381,8 +381,8 @@ div.error-output-display {
                                     </tr>
 {% for current_sasnote in hotfix[1].sas_notes | dictsort %}
                                     <tr>
-                                        <td>{{ current_sasnote[0] }}</td>
-                                        <td>{{ current_sasnote[1] }}</td>
+                                        <td>{{ current_sasnote[1]['sas_note_link'] }}</td>
+                                        <td>{{ current_sasnote[1]['description'] }}</td>
                                     </tr>
 {% endfor %}
                                 </table>

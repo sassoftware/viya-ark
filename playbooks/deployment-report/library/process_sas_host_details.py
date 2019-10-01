@@ -354,17 +354,17 @@ def main():
             if debug:
                 print("***** Error parsing " + baseURL + masterFile)
                 print(traceback.format_exc())
-                print("***** No hotfix information obtained.  Skipping hotfix report.\n\n")
+                print("***** No hot fix information obtained.  Skipping hot fix report.\n\n")
 
         if results["contact_hotfix_website"]:
             # Loop through the files discoverd in the master file
             if debug:
-                print("Building hotfix report, based on master file input.")
+                print("Building hot fix report, based on master file input.")
             for file_tag in allFilesRoot.findall('File'):
                 currentFile = file_tag.get('fileName')
                 fileToParse = baseURL + currentFile
                 # Retrieve each file.
-                # Inside of each file, the lines are keyed by the Hotfix id.  There are three types of lines, in order:
+                # Inside of each file, the lines are keyed by the hot fix id.  There are three types of lines, in order:
                 # 1) id and release date
                 # 2) id, sasnote, sasnotetitle
                 # 3) id, OS, package.
@@ -383,7 +383,7 @@ def main():
                     for update_tag in currentFileRoot.findall('update'):
                         currentUpdate = update_tag.get('id')
                         releaseDate = update_tag.get('released')
-                        # To get the top level Dictionary seeded with the Hotfix Name and release date.
+                        # To get the top level Dictionary seeded with the hot fix Name and release date.
                         if releaseDate is not None:
                             if currentUpdate in fullReport:
                                 if debug:
@@ -400,7 +400,7 @@ def main():
                                 fullReport[updateID]["release_date"] = releaseDate
                                 fullReport[updateID]["installed"] = False
                                 fullReport[updateID]["upToDate"] = False
-                        # To get the SASNote information under the Hotfix
+                        # To get the SASNote information under the hot fix
                         else:
                             if updateID == "DUPLICATE-SKIP":
                                 continue
@@ -412,7 +412,7 @@ def main():
                                 # This string needs to be encoded because some non-ASCII characters are
                                 # in some of the titles.
                                 fullReport[updateID]["sasnote"][sasNote] = sasNoteTitle.encode('utf-8')
-                            # To get the Package information under the HotFix.
+                            # To get the Package information under the hot fix.
                             else:
                                 os = update_tag.get("os")
                                 fullPackage = update_tag.get("package")
@@ -477,7 +477,7 @@ def main():
                                     # the upToDate=false does not get overridden by a True at the end.
                                     fullReport[updateID]["package"][package]["platform"][osFamily]["alreadyUpdated"] = False
 
-                                    # Add to the package to hotfix dict.
+                                    # Add to the package to hot fix dict.
                                     if package not in packageToHotfix:
                                         packageToHotfix[package] = []
                                     packageToHotfix[package].append([osFamily, updateID])
@@ -502,7 +502,7 @@ def main():
                 print("**** Build complete.  Here are the hot fixes:")
                 print_Full_Report(fullReport)
                 print("***********************************************************************************")
-                print("**** Here is the package to hotfix dict:")
+                print("**** Here is the package to hot fix dict:")
                 print("***********************************************************************************")
                 for current_package in packageToHotfix:
                     print("  " + current_package)
@@ -591,10 +591,16 @@ def main():
                 # Format the SAS Note description so that we can respect any HTML tags that are included in the text.
                 results[hotfix_dict_to_use][currentHotfix]["sas_notes"] = {}
                 for current_number in fullReport[currentHotfix]["sasnote"]:
+                    # Honor any html that is coming through.
                     temp_sasnote_description = fullReport[currentHotfix]["sasnote"][current_number]
                     temp_sasnote_description = temp_sasnote_description.replace("&lt;", "<")
                     temp_sasnote_description = temp_sasnote_description.replace("&gt;", ">")
-                    results[hotfix_dict_to_use][currentHotfix]["sas_notes"][current_number] = temp_sasnote_description
+                    # Build a link to the URL for the SAS Note.
+                    hot_fix_prefix = current_number[:2]
+                    hot_fix_postfix = current_number[2:]
+                    sas_note_url = "http://support.sas.com/kb/" + hot_fix_prefix + "/" + hot_fix_postfix + ".html"
+                    sas_note_html_link = "<a href=\"" + sas_note_url + "\"\>" + current_number + "</a>"
+                    results[hotfix_dict_to_use][currentHotfix]["sas_notes"][current_number] = {"sas_note_link":sas_note_html_link, "description":temp_sasnote_description}
 
     # in the event of a successful module execution, you will want to
     # simple AnsibleModule.exit_json(), passing the key/value results
