@@ -109,9 +109,14 @@
   shell: |
       source {{ SAS_CONFIG_ROOT }}/consul.conf
       {{ script_name }} --profile {{ profile_name }} --sas-endpoint {{ tenant_url }} cas caslibs delete --name mmLibs --server  {{ cas_server.name }} --superuser --force
+
   environment:
       SAS_ADMIN_USER: "{{ tenant_admin_username }}"
       SAS_ADMIN_PASSWD: "{{ tenant_admin_password }}"
+      SSL_CERT_FILE: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+      CONSUL_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+      VAULT_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+
   register: mmlibs_delete_results
   ignore_errors: yes
   loop_control:
