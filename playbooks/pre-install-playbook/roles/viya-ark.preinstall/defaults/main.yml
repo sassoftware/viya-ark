@@ -122,7 +122,7 @@ ulimits:
 max_hostname_length: 58        ## better number, SAS note is yet to be written.
 
 ## version-specific and solution-specific
-viya_version: 3.4
+viya_version: 3.5
 
 ## yum related
 yum_cache_yn: 0                ## do you want to turn the yum cache on or off? (1=on, 0=off)
