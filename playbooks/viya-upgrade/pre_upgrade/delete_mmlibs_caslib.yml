@@ -222,6 +222,7 @@
             - SAS_ADMIN_PASSWORD | default('') != ''
             - mm_exists is defined
             - mm_exists == true
+            - model_rep_version is version(modelrepo_shipped_version, '<')
 
       # If credentials were not provided, log a debug message and add an item to the summary
       - block:
