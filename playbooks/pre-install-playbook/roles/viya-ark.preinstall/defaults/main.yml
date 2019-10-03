@@ -122,6 +122,7 @@ ulimits:
 max_hostname_length: 58        ## better number, SAS note is yet to be written.
 
 ## version-specific and solution-specific
+## The value of this variable will default to the latest SAS Viya version
 viya_version: 3.5
 
 ## yum related
@@ -211,6 +212,7 @@ semaphores:
 
 swappiness: 1
 
+jq_url: "https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64"
 
 ## do a 60 seconds pause at the begginning if not using the --check option
 use_pause: true

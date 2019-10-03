@@ -5,6 +5,8 @@
 # Test harness:
 #   make it pass
 #     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags required_packages_config -e use_pause=0
+#   make it fail for jq by using a bad url
+#     ansible-playbook viya_pre_install_playbook.yml -i pre-install.inventory.ini --tags required_packages_config -e use_pause=0 -e jq_url=https://www.abcxyz.com/foo
 
 - block:
   ## block start
@@ -128,6 +130,52 @@
       - systemd
       - packages
 
+  ## Install jq-1.5 utility for VI
+  - block:
+
+    - debug:
+        msg: "SAS Viya version is {{viya_version}}"
+      tags:
+      - show_viya_version
+      - jq_debug
+
+    - name: Determine if jq is available
+      changed_when: false
+      check_mode: no
+      ignore_errors: yes
+      shell: which jq
+      register: which_jq
+
+    # - debug: var=which_jq
+    ## Block start (if jq can't be found)
+
+    - block:
+      - name: Confirm that /usr/bin/jq does not exist
+        stat:
+          path: "/usr/bin/jq"
+        register: usr_bin_jq
+
+      - name: Display whether /usr/bin/jq exists or not
+        debug: var=usr_bin_jq
+
+      - name: "If jq is not found in /usr/bin, download jq-1.5 utility into it"
+        get_url:
+          url: "{{jq_url}}"
+          dest: "/usr/bin/jq"
+          mode: 0755
+          owner: root
+          group: root
+        when: usr_bin_jq.stat.exists == false
+
+      ## end of inner block
+      when: which_jq.rc != 0
+
+    ## end outer block
+    when: viya_version is version('3.4', '<=')  
+    tags:
+      - jq
+      - packages
+  
   ## block end
   tags:
     - required_packages_config
