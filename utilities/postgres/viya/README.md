@@ -14,10 +14,10 @@ You can also run this script to determine whether the PostgreSQL instance is run
 If you are having issues with the number of connections in your environment, you can run this script to see the number of connections by application.
 
 For more information about SAS Infrastructure Data Server connections, see the SAS Viya documentation about tuning the server:
-[SAS® Viya® 3.4 Administration: Tuning](https://go.documentation.sas.com/?cdcId=calcdc&cdcVersion=3.4&docsetId=caltuning&docsetTarget=p1af06ydz72zztn1be8ml24ilnr8.htm).
+[SAS® Viya® 3.4 Administration: Tuning](https://go.documentation.sas.com/?cdcId=calcdc&cdcVersion=3.4&docsetId=caltuning&docsetTarget=p1af06ydz72zztn1be8ml24ilnr8.htm) or [SAS® Viya® 3.5 Administration: Tuning](https://go.documentation.sas.com/?cdcId=calcdc&cdcVersion=3.5&docsetId=caltuning&docsetTarget=p1af06ydz72zztn1be8ml24ilnr8.htm).
   
 ## Prerequisites for Running the Shell Script
-All SAS Viya 3.4 services must be up and running.
+All SAS Viya 3.4 or SAS Viya 3.5 services must be up and running.
 
 ## Running the Script
 

@@ -24,7 +24,7 @@
 
   - name: Ensure customer ulimit conf file exists
     copy:
-      content: "#Custom file for Viya 3.4 ulimits#\n"
+      content: "#Custom file for SAS Viya ulimits#\n"
       dest: "{{ulimit_file_loc}}"
       force: no
       group: root
