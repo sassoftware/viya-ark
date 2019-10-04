@@ -3,7 +3,7 @@
 ## Introduction
 This playbook verifies and optionally performs many of the tasks that are required to prepare the environment for a typical SAS Viya deployment.
 
-Use this playbook to prepare for a deployment of SAS Viya 3.4.
+Use this playbook to prepare for a deployment of SAS Viya 3.4 or SAS Viya 3.5.
 
 This playbook does not require you to provide the details of your software order.  It will therefore apply all usual pre-reqs for SAS Visual Analytics, SAS Visual Statistics, and SAS Visual Data Mining and Machine Learning, on all machines, regardless of their role.
 
