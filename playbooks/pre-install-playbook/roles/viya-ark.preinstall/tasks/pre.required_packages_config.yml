@@ -11,6 +11,38 @@
 - block:
   ## block start
 
+  - block:
+    ## block start determining supported version of java opensdk
+    - name: Get what version of Java might be installed
+      shell: java -version 2>&1 | grep version | awk '{print $3}' | sed 's/"//g'
+      register: java_version
+    
+    - name: Show the installed version of Java
+      debug: var=java_version.stdout
+      when: java_version.stdout != ""
+
+    - name: There is no Java installed
+      debug: var=java_version
+      when: java_version.stdout == ""
+
+    - name: Assert the installed version of Java is supported
+      assert:
+        that:
+          - java_version.stdout is version(min_java_version, '>=')
+        msg: |
+          The version of java installed ({{java_version.stdout}}) is not supported.  
+          Minimum supported version is {{min_java_version}}
+      when: java_version.stdout != ""
+
+    # exec during check mode
+    check_mode: no
+    # only exec the block when executing in check mode
+    when: ansible_check_mode |bool and viya_version is version('3.5','>=')    
+    # end block
+    tags:    
+      - jdk_check
+
+    
   # Note that Oracle 7 distributions reflect being RedHat ansible_os_family
   - name: Include OS Family specific package names
     include_vars: "{{ item }}"
@@ -27,6 +59,20 @@
       - "{{packages_general}}"
     tags:
       - packages
+
+  # Get and Show the version of Java installed.  A help to debug java version issues.
+  - name: Get the installed version of Java
+    shell: java -version 2>&1 | grep version | awk '{print $3}' | sed 's/"//g'
+    register: java_version_present
+    check_mode: no
+    tags:
+      - packages
+    
+  - name: Show the installed version of Java
+    debug: var=java_version_present.stdout
+    tags:
+      - packages
+
 
   ## RHEL 6 specific
   - name: Ensures required RHEL6 packages are present

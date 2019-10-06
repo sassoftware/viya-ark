@@ -168,6 +168,8 @@ yum_packages_rhel7:
 packages_suse:
   - "{{ cgrouptools }}"
 
+# Minimum Java version for Viya 3.5
+min_java_version: 1.8.0_121
 
 ##
 ## SAS YUM repos.
