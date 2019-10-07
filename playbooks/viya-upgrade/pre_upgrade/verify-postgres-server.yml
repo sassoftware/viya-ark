@@ -121,7 +121,7 @@
     - name: Check if the NODE_TYPE value exists in the vars.yml file
       set_fact:
         nodetype_exists: true
-      when: vars_sasdatasvrc_host | to_json| search ("NODE_TYPE")
+      when: '"NODE_TYPE" in vars_sasdatasvrc_host'
       run_once: yes
 
     - block:
