@@ -76,6 +76,10 @@
           To remove mmLibs caslib,  define the variables in the <em>playbooks/viya-upgrade/vars.yml</em>
           file and rerun this playbook with the tag <b>{{ tag_value }}</b>.
 
+      suse_not_supported: >
+          "Delete mmLibs caslibs" action was unable to execute.<br><br>
+          A host in this deployment that has ModelServices on it is running on SUSE. This action will be skipped. 
+
       tenant_update_fail_msg: >
           One or more tenants failed when deleting mmLibs caslib. <br>
           Review the Ansible log for more information.<br><br>The tag <b>{{ tag_value }}</b> can be used when
@@ -109,6 +113,20 @@
                   - message: "{{ no_model_services }}"
             - meta: end_play
         when: mm_exists is not defined 
+
+      - name: "Exit if running on SUSE"
+        block:
+            # Print to Ansible output
+            - debug:
+                  msg: "{{ suse_not_supported }}"
+            # if the requisite vars were not set, add a warning to the summary report about how to rerun this play
+            - include_tasks: ../common/add-summary-item-tasks.yml
+              vars:
+                  - level: 'warn'
+                  - header: "{{ delete_header }}"
+                  - message: "{{ suse_not_supported }}"
+            - meta: end_play
+        when: "ansible_os_family == 'Suse'"
 
       - name: "Get package facts on machine that has ModelServices on it"
         delegate_to: "{{ item }}"
