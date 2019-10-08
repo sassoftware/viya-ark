@@ -11,7 +11,7 @@
 ####################################################################
 #
 # This playbook defines the pre-update tasks for deleting the
-# mmLibs caslib if ModelServices is present. 
+# mmLibs caslib if ModelServices is present.
 #
 # For multi-tenant deployments:
 #
@@ -56,29 +56,29 @@
           VAULT_CACERT: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
 
       delete_success_msg: >
-          This deployment contained ModelServices. A requirement for UIP is that mmLibs caslib be deleted, which was successful. 
+          This deployment contained ModelServices host group. A requirement for UIP is that mmLibs caslib be deleted, which was successful.
 
       delete_fail_msg: >
-          This deployment contained ModelServices but mmLibs caslib was not found in this deployment, 
+          This deployment contained ModelServices host group but mmLibs caslib was not found in this deployment,
           skipping deleting it prior to upgrade.
 
       delete_header: >
           Delete the mmLibs caslib
 
       no_model_services: >
-          This deployment did not contain ModelServices. No action for mmLibs caslib required.  
+          This deployment did not contain ModelServices host group. No action for mmLibs caslib required.
 
       update_skipped_warn_msg: >
-          "Delete mmLIbs caslib" action was unable to execute.<br><br>
-          mmLibs caslib was not deleted because the <em>playbooks/viya-upgrade/vars.yml</em> 
+          "Delete mmLibs caslib" action was unable to execute.<br><br>
+          mmLibs caslib was not deleted because the <em>playbooks/viya-upgrade/vars.yml</em>
           file is missing the following variables:
           <ul><li><b>SAS_ADMIN_USERNAME</b></li><li><b>SAS_ADMIN_PASSWORD</b></li></ul>
           To remove mmLibs caslib,  define the variables in the <em>playbooks/viya-upgrade/vars.yml</em>
           file and rerun this playbook with the tag <b>{{ tag_value }}</b>.
 
       suse_not_supported: >
-          "Delete mmLibs caslibs" action was unable to execute.<br><br>
-          A host in this deployment that has ModelServices on it is running on SUSE. This action will be skipped. 
+          "Delete mmLibs caslibs" action was skipped.<br><br>
+          A host in this deployment that has ModelServices host group on it is running on SUSE. This action will be skipped.
 
       tenant_update_fail_msg: >
           One or more tenants failed when deleting mmLibs caslib. <br>
@@ -93,7 +93,7 @@
 
   tasks:
 
-      - name: "Check if ModelServices exists"
+      - name: "Check if ModelServices host group exists"
         set_fact:
           mm_exists: true
           mm_hosts: "{{ item.value }}"
@@ -105,24 +105,22 @@
             # Print to Ansible output
             - debug:
                   msg: "{{ no_model_services }}"
-            # if the requisite vars were not set, add a warning to the summary report about how to rerun this play
+            # if the ModelServices host group does not exist, add to summary report it is being skipped
             - include_tasks: ../common/add-summary-item-tasks.yml
               vars:
-                  - level: 'warn'
                   - header: "{{ delete_header }}"
                   - message: "{{ no_model_services }}"
             - meta: end_play
-        when: mm_exists is not defined 
+        when: mm_exists is not defined
 
       - name: "Exit if running on SUSE"
         block:
             # Print to Ansible output
             - debug:
                   msg: "{{ suse_not_supported }}"
-            # if the requisite vars were not set, add a warning to the summary report about how to rerun this play
+            # if SUSE dpeloyment, add to sumary report it is being skipped
             - include_tasks: ../common/add-summary-item-tasks.yml
               vars:
-                  - level: 'warn'
                   - header: "{{ delete_header }}"
                   - message: "{{ suse_not_supported }}"
             - meta: end_play
@@ -133,7 +131,7 @@
         package_facts:
           manager: "auto"
         loop: "{{ groups['ModelServices'] }}"
-          
+
       - name: "Get version of modelrepository"
         delegate_to: "{{ item }}"
         set_fact:
@@ -162,7 +160,7 @@
 
             # Update non-tenant/SAS provider caslibs using the SAS_ADMIN_USERNAME and SAS_ADMIN_PASSWORD
             # credentials from vars.yml
-            
+
             - include_tasks: delete_mmlibs_caslib_tenant_tasks.yml
               vars:
                   - tenant_admin_username: "{{ SAS_ADMIN_USERNAME }}"
@@ -257,4 +255,3 @@
                   - message: "{{ update_skipped_warn_msg }}"
 
         when: SAS_ADMIN_USERNAME | default('') == '' or SAS_ADMIN_PASSWORD | default('') == ''
-    
