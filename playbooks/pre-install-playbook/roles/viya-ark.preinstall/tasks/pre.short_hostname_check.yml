@@ -5,6 +5,7 @@
 - block:
     - name: "Gather short hostname"
       command: "hostname -s"
+      check_mode: no
       changed_when: false
       register: pre_short_hostname_check_results
 
