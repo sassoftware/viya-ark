@@ -47,7 +47,7 @@
 
   vars_prompt:
   - name: "current_inventory_file"
-    prompt: "Specify the path to the current inventory file to merge with new deployment files"
+    prompt: "Specify a fully qualified file path of the current inventory file to merge with new deployment files"
     private: no
 
   tasks:
@@ -57,6 +57,16 @@
 
     - debug:
         msg: "{{ playbook_dir }}"
+
+    - name: Verify that the specified current inventory file exists
+      stat:
+        path: "{{ current_inventory_file }}"
+      register: current_inventory_file_path
+
+    - name: Stop when the current inventory file does not exist
+      assert:
+        that: current_inventory_file_path.stat.exists and current_inventory_file_path.stat.isreg
+        msg: "The specified location is not a fully qualified path name to an inventory file."
 
     - name: Define a variable for the merged_files folder
       set_fact:

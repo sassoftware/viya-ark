@@ -24,7 +24,7 @@ To run the playbook, execute the following example command:
 ```
 ansible-playbook viya-ark/playbooks/merge-playbook/merge-viya-deployment-files.yml -e "current_inventory_file=/local/sas_viya_playbook_CURRENT/inventory.ini"
 ```
-> **Note**: The playbook will prompt you for the location of the directory where the current version of the `inventory.ini` file is saved. The current versions of `ansible.cfg and vars.yml` must be in the same directory. You can pass the directory location by using the -e option.
+> **Note**: The playbook will prompt you for a fully qualified file path of the current version of the `inventory.ini`. The current versions of `ansible.cfg and vars.yml` must be in the same directory. You can pass the file path location by using the -e option.
 
 
 To run the playbook and merge multi-tenant configuration files, execute the following example command:
