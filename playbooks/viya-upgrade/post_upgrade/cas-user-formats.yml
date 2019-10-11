@@ -35,7 +35,7 @@
       set_fact: 
         msg: "\"Adding user formats from casstartup.lua_*epoch files to casstartup_usermods.lua\" action was skipped."
         header_msg: "Adding default user formats"
-        additional_info_html: ""
+        additional_info_html: "<b>Task was skipped due to one of the following reasons</b>:<ul><li>No casstartup.lua_*epoch files was found under {{ SASROOT }}/[tenant_id]/config/etc/cas/default/</li><li>No user formats were found in the file casstartup.lua_*epoch</li></ul>"
       when: CASUSERMODSFILES_LIST | length == 0
 
     - name: Set Summary Message to inform list of casstartup_usermods file changes
