@@ -196,7 +196,7 @@ priv_ip_count_command: "ip -4 -o addr | awk -F'[ ]' '{print $2}' | grep -v lo | 
 
 
 ## third-party software requirements
-required_ansible_min_version: "2.7"
+required_ansible_min_version: "2.7.2"
 required_ansible_max_version: "2.9"
 ansible_version_compare_max_version: "2.10"  # Must be set one major version above required_ansible_max_version
 required_python_min_version: "2.6"
