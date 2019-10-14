@@ -1,5 +1,11 @@
 # SAS Viya Administration Resource Kit (SAS Viya ARK) - Connection Test Script
 
+### NOTE: 
+  - In Viya 3.5 **sds_micro_service_pg_connection_test.sh** is renamed to **monitor_pg_connection.sh** and it moved to sasdatasvrc RPM. 
+  - Path and the file name is */opt/sas/viya/home/libexec/sasdatasvrc/script/maintenance/monitor_pg_connection.sh*
+  - sds_micro_service_pg_connection_test.sh remains available here only for backwards compatibility with SAS Viya 3.4.
+  - It should not be used from SAS Viya 3.5 or higher onwards.
+
 ## Introduction
 SAS Viya ARK provides a utility that supports the deployment of the SAS Infrastructure Data Server component of SAS Viya. SAS Infrastructure Data Server is a PostgreSQL server that stores user data. 
 
@@ -14,10 +20,10 @@ You can also run this script to determine whether the PostgreSQL instance is run
 If you are having issues with the number of connections in your environment, you can run this script to see the number of connections by application.
 
 For more information about SAS Infrastructure Data Server connections, see the SAS Viya documentation about tuning the server:
-[SAS® Viya® 3.4 Administration: Tuning](https://go.documentation.sas.com/?cdcId=calcdc&cdcVersion=3.4&docsetId=caltuning&docsetTarget=p1af06ydz72zztn1be8ml24ilnr8.htm) or [SAS® Viya® 3.5 Administration: Tuning](https://go.documentation.sas.com/?cdcId=calcdc&cdcVersion=3.5&docsetId=caltuning&docsetTarget=p1af06ydz72zztn1be8ml24ilnr8.htm).
+[SAS® Viya® 3.4 Administration: Tuning](https://go.documentation.sas.com/?cdcId=calcdc&cdcVersion=3.4&docsetId=caltuning&docsetTarget=p1af06ydz72zztn1be8ml24ilnr8.htm) .
   
 ## Prerequisites for Running the Shell Script
-All SAS Viya 3.4 or SAS Viya 3.5 services must be up and running.
+All SAS Viya 3.4 services must be up and running.
 
 ## Running the Script
 
