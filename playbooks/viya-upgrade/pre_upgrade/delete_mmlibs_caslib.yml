@@ -78,7 +78,8 @@
 
       suse_not_supported: >
           "Delete mmLibs caslibs" action was skipped.<br><br>
-          A host in this deployment that has ModelServices host group on it is running on SUSE. This action will be skipped.
+          A host in this deployment that has ModelServices host group on it is running on SUSE operating system. 
+          This action is only required on RedHat operating systems and will be skipped.
 
       tenant_update_fail_msg: >
           One or more tenants failed when deleting mmLibs caslib. <br>
