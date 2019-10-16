@@ -47,8 +47,18 @@
           CONSUL_CACERT: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
           VAULT_CACERT: "{{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
 
-      delete_fail_msg: >
-          The "Delete Default Backup Schedule" job has been deleted or was not present. To view details in the log, see the <b>Additional Information</b> section.
+      delete_header: >
+          Delete the Default Backup Schedule Job
+
+      no_backup_job: >
+          This deployment did not contain a "Delete Default Backup Schedule" job. No action required.
+         
+      backup_service_not_deployed: >
+          The Backup Service is not deployed in this environment.  No action required.
+          
+      unknown_error: >
+          An unexpected error occured while attempting to delete the DEFAULT_BACKUP_SCHEDULE job.  Please see logs
+          for more information.
           
       delete_skipped_warn_msg: >
           The "Delete Default Backup Schedule" job was not deleted because the <em>playbooks/viya-upgrade/vars.yml</em> file is missing the following variables:
@@ -145,14 +155,14 @@
         rescue:
             # Print to Ansible output
             - debug:
-                  msg: "{{ delete_fail_msg }}"
+                  msg: "{{ unknown_error }}"
 
             # Add failure to summary
             - include_tasks: ../common/add-summary-item-tasks.yml
               vars:
                   - level: 'fail'
                   - header: "Failure enountered deleting the Default Backup Schedule Job"
-                  - message: "{{ delete_fail_msg }}"
+                  - message: "{{ unknown_error }}"
 
         # Always run these tesks whether or not a failure was enountered
         always:

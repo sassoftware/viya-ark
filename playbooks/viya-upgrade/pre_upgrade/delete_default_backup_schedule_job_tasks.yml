@@ -112,29 +112,74 @@
           Authorization: "Bearer {{ sasuser_credentials[ profile_name ]['access-token'] }}"
       body_format: json
       return_content: yes
-      status_code: 200
+      status_code: 200,404
       validate_certs: no
   register: job_requests_raw
 
+- name:  "Log if Backup server is not deployed."
+  block:
+  - debug:
+     msg: "{{ backup_service_not_deployed }}"
+
+  - include_tasks: ../common/add-summary-item-tasks.yml
+    vars:
+      - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }}"
+      - message: "{{ backup_service_not_deployed }}"
+      - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"
+
+  - environment: "{{ cli_env }}"
+    shell:
+      cmd:  |
+          echo -e "\n\nLog off ({{ tenant_id | default('SAS provider') }}):\n\n" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+          source {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/consul.conf
+          {{ bin_directory }}/sas-admin --profile {{ profile_name }} auth logout >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}#
+
+  - fetch:
+      src: "{{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}"
+      dest: "{{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] }}/"
+      flat: yes
+
+  - meta: end_play
+  - set_fact:
+      total_count: -1
+
+  when:
+    - " job_requests_raw['status'] == 404 "
+
+
 # Get session dict from json response
-- set_fact:
+- name:  "Examine the REST response."
+  block:
+  - set_fact:
       job_request: "{{ job_requests_raw.content | from_json }}"
+
+  - set_fact:
+      total_count={{ job_request.count }}
+  when:
+      total_count is not defined
 
 #If we've found the job, delete it.
 - name:  "Delete the default job scheduler"
   block:
-    - shell:
-        cmd:  |
-            echo -e "\n\nDelete the default scheduler:\n\n" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
-            source {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/consul.conf
-            {{ bin_directory }}/sas-admin --profile {{ profile_name }} job requests  delete --id "{{ job_request['items'][0].id }}" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
-      environment: "{{ cli_env }}"
-  when:  job_request.count>0
+  - shell:
+      cmd:  |
+        echo -e "\n\nDelete the default scheduler:\n\n" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+        source {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/consul.conf
+        {{ bin_directory }}/sas-admin --profile {{ profile_name }} job requests  delete --id "{{ job_request['items'][0].id }}" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+    environment: "{{ cli_env }}"
+  when: total_count|int  > 0
 
-- name:  "Log if delete was skipped."
+- name:  "Log if the DEFAULT_BACKUP_SCHEDULE isn't found."
   block:
-    - shell:  echo -e "\n\nDefault scheduler not found.  Skipping delete." >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
-  when: job_request.count == 0
+  - debug:
+     msg: "{{ no_backup_job }}"
+
+  - include_tasks: ../common/add-summary-item-tasks.yml
+    vars:
+      - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }}"
+      - message: "{{ no_backup_job }}"
+      - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"
+  when: total_count|int == 0
 
 # Log off the server
 - name: "Log off {{ tenant_id | default('SAS provider') }}"
@@ -155,8 +200,8 @@
 # Add the entry to the summary report.
 - include_tasks: ../common/add-summary-item-tasks.yml
   vars:
-      - header: "Delete the Default Backup Schedule Job - {{ tenant_id | default('SAS provider') }}"
+      - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }}"
       - message: >
-          The Delete Default Backup Schedule Job has been deleted or was not present. Please
-          review the log provided in the <b>Additional Information</b> section below for more details.
+          The Delete Default Backup Schedule Job has been deleted. Please review the log provided in the <b>Additional Information</b> section below for more details.
       - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"
+  when:  total_count|int > 0
