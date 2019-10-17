@@ -13,19 +13,19 @@ do_usage()
 
 do_stopms()
 {
-	LIST=$(cd /etc/init.d;ls sas-viya-* 2>/dev/null|grep -v cascontroller)
+	LIST=$(ls sas-viya-* 2>/dev/null|grep -v cascontroller)
 	do_stop
 }
 
 do_stopmt()
 {
-	LIST=$(cd /etc/init.d;ls sas-*-all-services 2>/dev/null)
+	LIST=$(ls sas-*-all-services 2>/dev/null)
 	do_stop
 }
 
 do_stopcas()
 {
-	LIST=$(cd /etc/init.d;ls sas-*-cascontroller-default 2>/dev/null)
+	LIST=$(ls sas-*-cascontroller-default 2>/dev/null)
 	do_stop
 }
 do_stop()
@@ -45,13 +45,13 @@ do_stop()
 
 do_startmt()
 {
-	LIST=$(cd /etc/init.d;ls sas-*-all-services 2>/dev/null| grep -v '\-viya\-')
+	LIST=$(ls sas-*-all-services 2>/dev/null| grep -v '\-viya\-')
 	do_start_common
 }
 
 do_startcas()
 {
-	LIST=$(cd /etc/init.d;ls sas-*-cascontroller-default 2>/dev/null)
+	LIST=$(ls sas-*-cascontroller-default 2>/dev/null)
 	do_start_common
 }
 
@@ -63,17 +63,24 @@ do_start_common()
 do_ps_common()
 {
 	ACTION=$1
+	LIST=$(echo $LIST)
 
-        if ! [[ $LIST = *[!\ ]* ]]; then
+        if [[ "$LIST" == "" ]]; then
                 return 0
         fi
 
+	if [[ "$DEBUG" != "" ]]; then
+		outmsg "viyasvs: LIST=($LIST)"
+		return 0
+	fi
+
 	for p in $LIST
 	do
+		echo "viyasvs: $ACTION $p"
 		if [[ $p =~ -all-services ]]; then
 			/etc/init.d/$p $ACTION &
 		else
-			do_service $p
+			do_service $ACTION $p
 		fi
 	done
 
@@ -92,13 +99,21 @@ do_ps_common()
 
 do_service()
 {
+	mode=$1
+	shift 1
 	service=$*
 
-	if [[ "${SYSTYPE}" == "systemd" ]]; then
-		systemctl $ACTION $service &
-	else
-		service $service $ACTION &
+	if [[ "$DEBUG" != "" ]]; then
+		echo "viyasvs: systemctl $mode $service"
+		return 0
 	fi
+
+	if [[ "${SYSTYPE}" == "systemd" ]]; then
+		systemctl $mode $service &
+	else
+		service $service $mode &
+	fi
+	return $!
 }
 
 do_svastatus()
@@ -122,7 +137,7 @@ do_svastatus()
 		fi
 	fi
 
-	LIST=$(cd /etc/init.d;ls sas-*-all-services 2>/dev/null)
+	LIST=$(ls sas-*-all-services 2>/dev/null)
 
 	for f in $LIST
 	do
@@ -132,11 +147,15 @@ do_svastatus()
 
 do_checkdb()
 {
-	CMD=/etc/init.d/sas-viya-sasdatasvrc-${dbname}
+	if [[ "$viya35" == "1" ]]; then
+		CMD=/etc/init.d/sas-viya-sasdatasvrc-${dbname}-pgpool${dbnum}
+	else
+		CMD=/etc/init.d/sas-viya-sasdatasvrc-${dbname}
+	fi
 	if [[ ! -x $CMD ]]; then
-		#echo "ERROR: Could not find the service $CMD"
+		echo "Warning: Could not find the service $CMD"
 		#exit 2
-		continue
+		return
 	fi
 
 	info=$($CMD status 2>&1)
@@ -149,48 +168,158 @@ do_checkdb()
 
 do_startdb()
 {
-	cd /etc/init.d
-	if [[ -f "sas-viya-sasdatasvrc-${dbname}" ]]; then
-		LIST="
-		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pcp
-		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pgpool
-		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pool_hba
-		sas-viya-sasdatasvrc-${dbname}
-		"
+	if [[ "$viya35" == "1" ]]; then
+		dbnum=$dbarg2
+		if [[ -x "$DBDIR/pgpool${dbnum}/startall" ]]; then
+			if [[ "$DEBUG" == "" && "$dbnum" == "0" ]]; then
+				check_consul
+				if [[ $? == 0 ]]; then
+					#status: is running not sufficient
+					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-pgpool${dbnum} status|grep 'node_id')
+					if [[ "$dbstatus" == "" ]]; then
+						outmsg "viyasvs: LIST=($DBDIR/pgpool${dbnum}/startall)"
+						su - sas -c "$DBDIR/pgpool${dbnum}/startall"
+						FAIL=$?
+					fi
+				else
+					echo "ERROR: consul has issue, need to be fixed before starting pgpool"
+					exit 1
+				fi
+			fi
+		fi
+	else
+		if [[ -f "sas-viya-sasdatasvrc-${dbname}" ]]; then
+			LIST="
+			sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pcp
+			sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pgpool
+			sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pool_hba
+			sas-viya-sasdatasvrc-${dbname}
+			"
+			do_ps_common start
+		fi
 	fi
-
-	do_ps_common start
 }
 
 do_stopdb()
 {
-	cd /etc/init.d
-	if [[ -f "sas-viya-sasdatasvrc-${dbname}" ]]; then
-		LIST="
-		sas-viya-sasdatasvrc-${dbname}
-		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pool_hba
-		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pgpool
-		sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pcp
-		"
+	if [[ "$viya35" == "1" ]]; then
+		dbnum=$dbarg2
+		if [[ -x "$DBDIR/pgpool${dbnum}/shutdownall" ]]; then
+			outmsg "viyasvs: LIST=($DBDIR/pgpool${dbnum}/shutdownall)"
+			if [[ "$DEBUG" == "" && "$dbnum" == "0" ]]; then
+				check_consul
+				if [[ $? == 0 ]]; then
+					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-pgpool${dbnum} status|grep 'is running')
+					if [[ "$dbstatus" != "" ]]; then
+						su - sas -c "$DBDIR/pgpool${dbnum}/shutdownall"
+						FAIL=$?
+					fi
+				else
+					echo "Warning: consul is not up, skip shutdown pgpool"
+					exit 0
+				fi
+			fi
+		fi
+	else
+		if [[ -f "sas-viya-sasdatasvrc-${dbname}" ]]; then
+			LIST="
+			sas-viya-sasdatasvrc-${dbname}
+			sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pool_hba
+			sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pgpool
+			sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pcp
+			"
+		fi
 	fi
 
 	do_ps_common stop
 }
 
+check_dbps()
+{
+	for f in $LIST
+	do
+		skip=0
+		#outmsg "viyasvs: check_dbps ($f)"
+		if [[ -f "$PIDROOT/$f.pid" ]]; then
+			p=$(cat $PIDROOT/$f.pid)
+			ps -p $p > /dev/null 2>&1
+			if [[ $? == 0 ]]; then
+				skip=1
+			fi
+		fi
+		if [[ "$skip" != "1" ]]; then
+			rc=$(do_service stop $f)
+			if [[ "$rc" != "0" ]]; then
+				wait $rc
+			fi
+		fi
+	done
+}
+
 do_startdbct()
 {
-	cd /etc/init.d
-	LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c3-)
+	if [[ "$viya35" == "1" ]]; then
+		dbtype=$dbarg2
+		LIST1=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}*-consul-template-operation_node"| cut -c3-|sort)
+		LIST2=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}*-consul-template-*_hba"| cut -c3-|sort)
+		LIST="$LIST1 $LIST2"
+		check_dbps
+		do_ps_common start
+		if [[ "$dbtype" == "node" && -x "$DBDIR/node0/startall" ]]; then
+			if [[ "$DEBUG" == "" && "$dbnum" == "0" ]]; then
+				check_consul
+				if [[ $? == 0 ]]; then
+					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-node0 status|grep 'is running')
+					if [[ "$dbstatus" == "" ]]; then
+						outmsg "viyasvs: startdbct: $DBDIR/node0/startall"
+						su - sas -c "$DBDIR/node0/startall"
+						if [[ $? != 0 ]]; then
+							let "FAIL+=1"
+						fi
+					fi
+				else
+					echo "ERROR: consul has issue, need to be fixed before starting nodes"
+					exit 1
+				fi
+			fi
+		fi
+	else
+		LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c3-)
+		do_ps_common start
+	fi
 
-	do_ps_common start
 }
 
 do_stopdbct()
 {
-	cd /etc/init.d
-	LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c 3-)
-
-	do_ps_common stop
+	if [[ "$viya35" == "1" ]]; then
+		dbtype=$dbarg2
+		if [[ "$dbtype" == "node" && -x "$DBDIR/node0/shutdownall" ]]; then
+			outmsg "viyasvs: stopdbct: $DBDIR/node0/shutdownall"
+			if [[ "$DEBUG" == "" ]]; then
+				check_consul
+				if [[ $? == 0 ]]; then
+					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-node0 status|grep 'is running')
+					if [[ "$dbstatus" != "" ]]; then
+						su - sas -c "$DBDIR/node0/shutdownall"
+						if [[ $? != 0 ]]; then
+							let "FAIL+=1"
+						fi
+					fi
+				else
+					echo "Warning: consul is not up, skip stopping database nodes"
+					exit 0
+				fi	
+			fi
+		fi
+		LIST1=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}[[:digit:]]*-consul-template-operation_node"| cut -c3-|sort)
+		LIST2=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}[[:digit:]]*-consul-template-*_hba"| cut -c3-|sort)
+		LIST="$LIST2 $LIST1"
+		do_ps_common stop
+	else
+		LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c 3-)
+		do_ps_common stop
+	fi
 }
 
 checkspace()
@@ -207,15 +336,29 @@ checkspace()
 	fi
 }
 
-do_cleancomp()
+clean_dbps()
 {
-	LIST=$(ps -o "user pid ppid cmd" |grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep compsrv)
-	echo "$LIST"
-	NLIST=$(echo "$LIST"|awk '{print $2}')
+	LIST=$(ps -e -o "user pid ppid cmd" |grep -E 'sds_consul_health_check|sas-crypto-management'|grep -v grep)
+	#outmsg "viyasvs: clean_dbps ($LIST)"
+	NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
 
 	for p in $NLIST
 	do
-		echo "kill -KILL $p 2>/dev/null"
+		echo "kill -KILL $p"
+		kill -KILL $p 2>/dev/null
+	done
+	return 0
+}
+
+do_cleancomp()
+{
+	LIST=$(ps -e -o "user pid ppid cmd" |grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep compsrv|grep -v grep)
+	echo "$LIST"
+	NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
+
+	for p in $NLIST
+	do
+		echo "kill -KILL $p"
 		kill -KILL $p 2>/dev/null
 	done
 	return 0
@@ -241,22 +384,62 @@ do_geturls()
 	return 0
 }
 
+initdb()
+{
+	ls sas-viya-sasdatasvrc-*consul-template-operation_node > /dev/null 2>&1
+	if [[ $? == 0 ]]; then
+		viya35=1
+		DBDIR=/opt/sas/viya/config/data/sasdatasvrc/$dbname
+	else
+		viya35=
+	fi
+}
+
+check_consul()
+{
+	CONF=/opt/sas/viya/config/consul.conf
+	if [[ ! -f "$CONF" ]]; then
+		echo "ERROR: consul config file error"
+		exit 1
+	fi
+	source $CONF
+	/opt/sas/viya/home/bin/sas-csq list-services | grep $dbname > /dev/null
+	return $?
+}
+outmsg()
+{
+	echo "info: $*"
+}
+
+init()
+{
+	SYSTYPE=$(ps -p 1|grep -v PID|awk '{print $4}')
+	DEBUG=
+	LIST=
+	cd /etc/init.d
+	PIDROOT=/var/run/sas
+}
 ######
 # main
 ######
-SYSTYPE=$(ps -p 1 | grep -v PID | awk '{ print $4 }')
 
 OPT=$1
+init
+
 case "$OPT" in
 	stopms|stopmt|startmt|startcas|stopcas|svastatus)
 		FAIL=0; do_$OPT; exit $FAIL ;;
 	startdbct|startdb|stopdb|stopdbct)
 		shift 1
 		dbname=$1
+		dbarg2=$2
+		initdb
 		FAIL=0; do_$OPT; exit $FAIL ;;
 	checkdb)
 		shift 1
 		dbname=$1
+		dbnum=$2
+		initdb
 		do_$OPT; exit $? ;;
 	start|stop)
 		shift 1
@@ -270,6 +453,10 @@ case "$OPT" in
 		done
 
 		do_ps_common $OPT
+
+		if [[ "$TLIST" =~ "sas-viya-consul-default" ]]; then
+			clean_dbps
+		fi
 		;;
 	cleancomp)
 		do_$OPT
@@ -284,10 +471,19 @@ case "$OPT" in
 	checkps)
 		shift 1
 		CNT=$*
-		if [[ "$CNT" != "" ]]; then
-			ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool'|grep -v grep|tail $CNT
+		if [[ $CNT -eq 0 ]]; then
+			ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool|postgres'|grep -v grep|awk '{print}'
 		else
-			ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool'|grep -v grep|awk '{print}'
+			info=$(ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool|postgres'|grep -v grep)
+			if [[ "$info" == "" ]]; then
+				exit 0
+			fi
+			#total=$(echo "$info"|wc -l)
+			#if [[ $CNT -ne 1 && $total -gt $CNT ]]; then
+			#	echo "Partial of the processes listed: $CNT/$total"
+			#fi
+			#echo "$info" | tail -$CNT
+			echo "$info"
 		fi
 		exit 0
 		;;

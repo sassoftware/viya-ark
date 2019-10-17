@@ -65,15 +65,33 @@
       - name: Start SAS Infrastructure Data Server Consul Template
         include_tasks: viya-dbct.yml
         vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: startdbct
+          dbtype: pgpool
+        when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
+
+      - name: Start SAS Infrastructure Data Server Consul Template
+        include_tasks: viya-dbct.yml
+        vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: startdbct
+          dbtype: node
         when: INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] is defined
+
+      - name: Start SAS Infrastructure Data Server Consul Template
+        include_tasks: viya-dbct.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: startdbct
+          dbtype: pgpool
+        when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
 
       - name: Start SAS Infrastructure Data Server Consul Template
         include_tasks: viya-dbct.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: startdbct
+          dbtype: node
         when: INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'] is defined
 
       - name: Start SAS Infrastructure Data Server
@@ -81,6 +99,7 @@
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: startdb
+          dbnum:  "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['POOL_NUMBER']|default([])}}"
         when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined
 
       - name: Start SAS Infrastructure Data Server
@@ -88,6 +107,7 @@
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: startdb
+          dbnum:  "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['POOL_NUMBER']|default([])}}"
         when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined
 
       when: INVOCATION_VARIABLES[inventory_hostname] is defined

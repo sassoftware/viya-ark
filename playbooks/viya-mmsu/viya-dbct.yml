@@ -5,5 +5,5 @@
 ####################################################################
 
 - name: SAS Infrastructure Data Server Consul Template - {{dbname}}
-  script: "viya-svs.sh {{dbaction}} {{dbname}}"
+  script: "viya-svs.sh {{dbaction}} {{dbname}} {{dbtype}}"
   when: not ansible_check_mode
