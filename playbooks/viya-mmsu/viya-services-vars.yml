@@ -4,13 +4,13 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 ---
-svs_label: 3.4.20190827
+svs_label: 3.5.20191017
 #########################################
 # Variables used in playbooks
 #########################################
-svas_retry_count: 2
+svas_retry_count: 3
 svas_delay_timer: 2                   #seconds
 enable_stray_cleanup: false           #stray processes cleanup
+stray_process_count: 20               #0: list all
 log_diskspace_minimum: 2097152000     #2GB
 url_link: https                       #default https
-
