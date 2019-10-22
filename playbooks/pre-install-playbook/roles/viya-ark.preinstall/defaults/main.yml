@@ -171,6 +171,10 @@ packages_suse:
 # Minimum Java version for Viya 3.5
 min_java_version: 1.8.0_121
 
+required_package_versions_rhel:
+  - { name: curl, value: 7.19.7-53 }
+  - { name: nss.x86_64, value: 3.36.0-7 }
+
 ##
 ## SAS YUM repos.
 ##
