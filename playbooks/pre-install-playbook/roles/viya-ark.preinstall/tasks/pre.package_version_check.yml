@@ -1,0 +1,74 @@
+---
+####################################################################
+## Required Package Version for RHEL
+####################################################################
+# This task block should only run on RHEL systems, as it uses yum
+# to query available package versions.
+
+- block:
+  ## RHEL packages with a minimum version requirement
+
+  - name: Default valid installed package flag to false
+    set_fact:
+      package_meets_requirement: False
+     
+  # Is the package already installed at the required level?
+  - name: Check for installed RHEL package '{{ item.name }}'
+    shell: yum list installed {{ item.name }}
+    args:
+      warn: no
+    register: installed_package
+    check_mode: no
+    ignore_errors: true
+    
+  - name: Check that installed RHEL package '{{ item.name }}' meets minimum version {{ item.value }}
+    shell: yum list installed {{ item.name }} | tail -1 | awk '{print $2}'
+    args:
+      warn: no
+    register: installed_package_version
+    check_mode: no
+    when: installed_package.rc == 0
+    
+  - name: Set valid installed package flag
+    set_fact:
+      package_meets_requirement: True
+    when: installed_package.rc == 0 and installed_package_version.stdout is version_compare(item.value, '>=')
+    
+  # Is there a package by that name in an available repository?
+  - name: Check that required RHEL package '{{ item.name }}' is available in a repository at some version
+    shell: yum list available {{ item.name }}
+    args:
+      warn: no
+    register: package_available
+    check_mode: no
+    ignore_errors: true
+    when: not package_meets_requirement
+
+  - name: Assert that package '{{ item.name }}' is available
+    assert:
+      that: 
+        - package_available.rc == 0
+      fail_msg: "ERROR: Package {{ item.name }} is not available in any registered repository."
+      success_msg: "Package {{ item.name }} was found in a registered repository."
+    when: not package_meets_requirement
+    
+  # Does the located package meet the defined minimum version?
+  - name: Check that required RHEL package {{ item.name }} is available in some repository at minimum version {{ item.value }}
+    shell: yum list available {{ item.name }} | tail -1 | awk '{print $2}'
+    args:
+      warn: no
+    register: this_version
+    check_mode: no
+    when: not package_meets_requirement
+
+  - name: Assert that available package '{{ item.name }}' meets the version requirement {{ item.value }}
+    assert:
+      that: 
+        - this_version.stdout is version_compare(item.value, '>=') or package_meets_requirement
+      fail_msg: "ERROR: Package {{ item.name }} available at version {{ this_version.stdout }} does not meet minimum required version of {{ item.value }}."
+      success_msg: "Package {{ item.name }} available at version {{ this_version.stdout }} meets minimum required version of {{ item.value }}."
+    when: not package_meets_requirement
+    
+  tags:
+    - packages
+    
