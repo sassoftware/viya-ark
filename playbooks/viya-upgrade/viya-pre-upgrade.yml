@@ -53,14 +53,6 @@
   tags:
     - verify-postgres-server
 
-- name: Move audit records from 3.3 CAS host to 3.4 Operations host
-  import_playbook: pre_upgrade/move_audit_records_from_CAS33_to_OpHost34.yml
-  when: 
-    - "'move-audit-records' in ansible_run_tags or 'all' in ansible_run_tags"
-    - "'move-audit-records' not in ansible_skip_tags"
-  tags:
-    - move-audit-records
-
 - name: Add a non-default casenv_user to the sas group
   import_playbook: pre_upgrade/viya-update-casuser.yml
   when: 
@@ -84,6 +76,11 @@
     - "'save-vta-topics-tables' not in ansible_skip_tags"
   tags:
     - save-vta-topics-tables
+
+- name: Delete mmlibs CASLIB if it exists
+  import_playbook: pre_upgrade/delete_mmlibs_caslib.yml
+  tags: 
+   - delete-mmlibs-caslib
 
 - name: Stop all tenant services
   import_playbook: pre_upgrade/stop-services-mt.yml

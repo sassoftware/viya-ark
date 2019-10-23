@@ -9,8 +9,13 @@ The SAS Viya Multi-Machine Services Utilities repository contains a set of playb
 * The SAS Viya Multi-Machine Services Utilities playbooks must be placed under the sas_viya_playbook directory where SAS Viya was deployed.
   The directory structure of this project must be preserved.
   For example: ```sas_viya_playbook/viya-ark/playbooks/viya-mmsu/```
-* Support multi-tenant deployment.
-* Verify that the sas-viya-all-services script is exempted from system reboots. This step prevents the script from executing automatically when the machine is restarted.
+* Verify that the sas-viya-all-services script is exempted from system reboots. This step prevents the script from executing automatically when the machine is restarted. This can be done by running viya-services-disable.yml playbook.
+
+## Supported deployment of SAS Viya Multi-Machine Services Utilities Playbooks
+* Single-machine deployment
+* Multi-machines deployment
+* Multi-tenant deployment
+* Clustered database deployment
 
 ## Running the Playbooks
 To list the status of all SAS Viya services and URLs, execute:

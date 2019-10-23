@@ -1,0 +1,40 @@
+- block:
+    - name: "Ping host {{ host }} from deployment host using gathered shortname"
+      command: "ping -c 3 {{ hostname_results.stdout_lines[0] }}"
+      check_mode: no
+      changed_when: false
+      delegate_to: "{{ groups['consul'] | first if 'consul' in groups else groups['sas_all'] | first }}"
+      run_once: true
+  rescue:
+    - debug:
+        msg: >
+          The inventory host {{ host }} was not accessible through DNS using its shortname ({{ hostname_results.stdout_lines[0]}}).
+          Make sure that this host's shortname is registered with the DNS server.
+      delegate_to: localhost
+      run_once: true
+
+    - set_fact:
+        pre_short_hostname_check_errors: true
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+  when:
+    - hostname_results.stdout_lines | length > 0
+    - hostname_results.stdout_lines[0] != ''
+
+- block:
+    - debug:
+        msg: >
+          The short hostname for inventory host {{ host }} could not be determined.
+          Make sure that this host's shortname is correctly configured.
+      delegate_to: localhost
+      run_once: true
+
+    - set_fact:
+        pre_short_hostname_check_errors: true
+      delegate_to: localhost
+      delegate_facts: true
+      run_once: true
+  when: >
+    hostname_results.stdout_lines | length == 0 or
+    hostname_results.stdout_lines[0] == ''

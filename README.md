@@ -29,6 +29,7 @@ Tool support for the latest release of SAS Viya:
 * [Merge SAS Viya Deployment Files](playbooks/merge-playbook)
 * [Home Directory Creator](playbooks/home-directory-creator)
 * [SAS Data Server Utility Script](utilities/postgres/viya)
+* [SAS Viya LDAP Validator](playbooks/ldap-validator)
 
 Related Tools Not Contained in SAS Viya ARK:
 * SAS Viya ARK only supports Linux.  For Windows supporting tools, go to [SAS Viya Deployment Assistant for Windows](https://support.sas.com/en/documentation/install-center/viya/deployment-tools/34/deployment-assistant-windows.html).

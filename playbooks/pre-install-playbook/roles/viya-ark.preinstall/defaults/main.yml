@@ -209,13 +209,17 @@ required_python_min_version: "2.6"
 DefaultTimeoutStopSec: 1800s
 DefaultTimeoutStartSec: 1800s
 
-
 semaphores:
-  - { name: kernel.sem        , value: 512 32000 256 1024 }
+  - { name: kernel.sem.SEMMSL, value: 512 }
+  - { name: kernel.sem.SEMMNS, value: 32000 }
+  - { name: kernel.sem.SEMOPM, value: 256 }
+  - { name: kernel.sem.SEMMNI, value: 1024 }
+
+performance_settings:
   - { name: net.core.somaxconn, value: 2048 }
   - { name: vm.max_map_count, value: 262144 }
   - { name: vm.overcommit_memory, value: 0 } ## added for VI
-
+  
 swappiness: 1
 
 jq_url: "https://github.com/stedolan/jq/releases/download/jq-1.5/jq-linux64"

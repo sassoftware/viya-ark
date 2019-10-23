@@ -42,10 +42,10 @@ The following tagged tasks are automated as part of the ```viya-pre-upgrade.yml`
 * ```tag: check-disk-space```: Check disk space prior to upgrade
 * ```tag: verify-postgres-server```: Verify health of the SAS Infrastructure Data Server
 * ```tag: stop-tenant-services```: Stop all tenant services
-* ```tag: move-audit-records```: Move audit records from SAS Viya 3.3 CAS host to SAS 3.4 Operations host
 * ```tag: update-casuser```: Add a non-default casenv_user to the sas group
 * ```tag: delete-default-backup-job```: Delete the default backup schedule job
 * ```tag: save-vta-topics-tables```: Save SAS Visual Text Analytics topics tables
+* ```tag: delete-mmlibs-caslib```: Delete mmLibs caslib if it exists
 
 ## Post-Upgrade task details
 The following tagged tasks are automated as part of the ```viya-post-upgrade.yml``` playbook, which can be run individually using the ansible ```--tags``` command line parameter, or skipped using ```--skip-tags```, if desired:

@@ -8,8 +8,8 @@
 ####################################################################
 #
 # This playbook compares the configuration files that were used
-# in the previous SAS Viya deployment with files that will be used  
-# in the SAS Viya upgrade process and merges the user-modified values  
+# in the previous SAS Viya deployment with files that will be used
+# in the SAS Viya upgrade process and merges the user-modified values
 # into the newer configuration files.
 #
 # The configuration files that this playbook handles are ansible.cfg, 
@@ -25,7 +25,7 @@
 # with the following two options:
 # -e "current_inventory_file=/viya3.3/sas_viya_playbook/myinventory.ini"
 #
-# The vars.yml and ansible.cfg deployment files must exist in the 
+# The vars.yml and ansible.cfg deployment files must exist in the
 # same directory.
 #
 # Optional: The tenantID_vars.yml files can be merged. Run:
@@ -47,7 +47,7 @@
 
   vars_prompt:
   - name: "current_inventory_file"
-    prompt: "Specify the path to the current inventory file to merge with new deployment files"
+    prompt: "Specify a fully qualified file path of the current inventory file to merge with new deployment files"
     private: no
 
   tasks:
@@ -58,6 +58,16 @@
     - debug:
         msg: "{{ playbook_dir }}"
 
+    - name: Verify that the specified current inventory file exists
+      stat:
+        path: "{{ current_inventory_file }}"
+      register: current_inventory_file_path
+
+    - name: Stop when the current inventory file does not exist
+      assert:
+        that: current_inventory_file_path.stat.exists and current_inventory_file_path.stat.isreg
+        msg: "The specified location is not a fully qualified path name to an inventory file."
+
     - name: Define a variable for the merged_files folder
       set_fact:
         merged_folder: "{{ playbook_dir }}/merged_files/{{ timestamp.stdout }}"
@@ -67,7 +77,7 @@
         new_ansible_cfg: "{{ merged_folder }}/ansible.cfg"
 
     - name: Set an current_files_dir variable
-      set_fact: 
+      set_fact:
         current_files_dir: "{{ current_inventory_file | dirname }}"
 
     - name: Set an current ansible.cfg file variable
@@ -82,7 +92,7 @@
 
     - name: Convert the supplied tenantID_list string to an array list
       set_fact:
-        tenant_id_list_array: "{{ tenant_id_string.split(',') }}" 
+        tenant_id_list_array: "{{ tenant_id_string.split(',') }}"
       when: tenantID_list is defined
 
     - debug:
@@ -217,7 +227,7 @@
           line: 'sas_casserver_worker'
         - regexp: 'sas-casserver-secondary'
           line: 'sas_casserver_secondary'
-      when: hyphen_in_new_host_group.changed == False 
+      when: hyphen_in_new_host_group.changed == False
 
     - name: Generate a cat vars.yml stdout
       command: cat "{{ current_vars_yml }}"
@@ -225,6 +235,24 @@
 
     - set_fact:
        merged_vars_yml: "{{ merged_folder }}/vars.yml"
+
+    - name: Check whether the NODE_TYPE property exists in the pre merged vars.yml
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        regexp: 'NODE_TYPE:'
+        state: absent
+      register: node_type_exists
+      check_mode: yes
+      failed_when: false
+
+    - name: Check whether the HA_PGPOOL_VIRTUAL_IP property exists in the pre merged vars.yml
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        regexp: 'HA_PGPOOL_VIRTUAL_IP:'
+        state: absent
+      register: ha_properties_exist
+      check_mode: yes
+      failed_when: false
 
     - name: Uncomment out the vars.yml properties in the merged folder if they are activated in the current vars.yml
       replace:
@@ -317,7 +345,7 @@
       assert:
         that: hyphen_in_new_host_group.changed == False
         msg: "Going backward from the host group with an underscore (_) in its name to the host group with a hyphen (-) in its name is not allowed."
-      when: hyphen_in_old_host_group.changed == False and hyphen_in_new_host_group.changed == True 
+      when: hyphen_in_old_host_group.changed == False and hyphen_in_new_host_group.changed == True
 
     - name: Perform deployment file merges
       merge_viya_deployment_files:
@@ -414,20 +442,24 @@
         path: "{{ temp_current_inventory_file }}"
         state: 'absent'
 
-    - name: Show the differences between the original and new configuration files
-      shell: diff -y -B --ignore-blank-lines "{{ item.current }}" "{{ item.new }}" > "{{ merged_folder }}/{{ item.filename }}"
-      register: show_difference
-      ignore_errors: true
+    - name: Check whether the cpsdatasvrc property exists in the current inventory file
+      lineinfile:
+        path: "{{ current_inventory_file }}"
+        regexp: 'cpsdatasvrc:'
+        state: absent
+      register: cpspostgres_props_exist
+      check_mode: yes
       failed_when: false
-      with_items:
-        - { current: "{{ current_inventory_file }}", new: "{{ merged_folder }}/inventory.ini", filename: inventory_diff.txt }
-        - { current: "{{ current_ansible_cfg }}", new: "{{ merged_folder }}/ansible.cfg", filename: ansible_cfg_diff.txt }
-        - { current: "{{ current_vars_yml }}", new: "{{ merged_vars_yml }}", filename: vars_yml_diff.txt }
 
+    # case 1: cpspgpoolc host group not existing in the current inventory file (pre 19w43) without cps props in the target vars.yml - no action required
+    # case 2: cpspgpoolc host group not existing in the current inventory file (pre 19w43) with cps props but no cps props in the target vars.yml - move the cps props to the target
+    # case 3: cpspgpoolc host group not existing in the current inventory file (pre 19w43) with cps props and HA props in the target vars.yml - move the cps props to the target
+    # case 4: pgpoolc/cpspgpoolc host group exists in the current inventory file (post 19w43) with cps props but no HA props in the target vars.yml - update the cps props
     - name: Find the CommonPlanningService Invocation variables
       set_fact:
         cps_invocation: "{{ INVOCATION_VARIABLES['deployTarget']['cpspgpoolc'] | default([]) }}"
 
+    # case 2
     - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
       blockinfile:
         path: "{{ merged_vars_yml }}"
@@ -446,7 +478,66 @@
                    PGPOOL_PORT: '5441'
                    SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
                    SERVICE_NAME: cpspostgres
-      when: cps_invocation|length > 0 
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == False
+
+    # case 3
+    - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
+      blockinfile:
+        path: "{{ merged_vars_yml }}"
+        marker: "<!-- {mark} Modify the deploymentTarget name -->"
+        insertafter: "INVOCATION_VARIABLES"
+        block: |3
+              ? choose-target-host:
+                 cpsdatasvrc:
+                 - NODE_NUMBER: '0'
+                   PG_PORT: '5442'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+                 cpspgpoolc:
+                 - HA_PGPOOL_VIRTUAL_IP: ''"
+                   HA_PGPOOL_WATCHDOG_PORT: ''"
+                   POOL_NUMBER: '0'"
+                   PCP_PORT: '5440'
+                   PGPOOL_PORT: '5441'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True
+
+    - name: Check whether the NODE_TYPE property exists in the merged vars.yml
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        regexp: 'NODE_TYPE:'
+        state: absent
+      register: merged_node_type_exists
+      check_mode: yes
+      failed_when: false
+
+    - name: Remove the NODE_TYPE line from the vars.yml file
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        regexp: 'NODE_TYPE:'
+        state: absent
+      when: node_type_exists.changed == False and merged_node_type_exists.changed == True
+
+    # case 4
+    - name: Insert the pgpools HA properties to the vars.yml file
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        line: "{{ item }}"
+        insertbefore: '- PCP_PORT:'
+      when: ha_properties_exist.changed == False
+      with_items:
+      - "      - HA_PGPOOL_VIRTUAL_IP: ''"
+      - "        HA_PGPOOL_WATCHDOG_PORT: ''"
+      - "        POOL_NUMBER: '0'"
+      when: ha_properties_exist.changed == True
+
+    - name: Replace the old pgpools property with a new one in the merged vars.yml
+      replace:
+        path: "{{ merged_vars_yml }}"
+        regexp: "- PCP_PORT:"
+        replace: "  PCP_PORT:"
+      when: ha_properties_exist.changed == True
 
     - name: Make sure all host groups include an underscore instead of a hyphen
       replace:
@@ -463,6 +554,16 @@
         - regexp: 'sas-casserver-secondary'
           line: 'sas_casserver_secondary'
       when: hyphen_in_new_host_group.changed == False 
+
+    - name: Show the differences between the original and new configuration files
+      shell: diff -y -B --ignore-blank-lines "{{ item.current }}" "{{ item.new }}" > "{{ merged_folder }}/{{ item.filename }}"
+      register: show_difference
+      ignore_errors: true
+      failed_when: false
+      with_items:
+        - { current: "{{ current_inventory_file }}", new: "{{ merged_folder }}/inventory.ini", filename: inventory_diff.txt }
+        - { current: "{{ current_ansible_cfg }}", new: "{{ merged_folder }}/ansible.cfg", filename: ansible_cfg_diff.txt }
+        - { current: "{{ current_vars_yml }}", new: "{{ merged_vars_yml }}", filename: vars_yml_diff.txt }
 
     - name: Show the differences between the original and new tenant configuration files
       shell: diff -y -B --ignore-blank-lines "{{ current_files_dir }}/{{ item }}_vars.yml" "{{ merged_folder }}/{{ item }}_vars.yml" > "{{ merged_folder }}/{{ item }}_vars_yml_diff.txt"

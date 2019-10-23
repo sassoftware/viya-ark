@@ -191,7 +191,7 @@ SKIP_MERGE_OPTIONS = ['MAXIMUM_RECOMMENDED_ANSIBLE_VERSION', 'sas_install_type',
                       'remote_tmp', 'DEPLOYMENT_ID', 'tenant_instance',
                       'provider_endpoint_scheme', 'INSTALL_USER', 'INSTALL_GROUP',
                       'provider_endpoint_port','sas_consul_on_cas_hosts',
-                      'casenv_tenant','REPOSITORY_WAREHOUSE']
+                      'casenv_tenant','REPOSITORY_WAREHOUSE','setup_sas_users','sas_users']
 
 
 ############################################################
