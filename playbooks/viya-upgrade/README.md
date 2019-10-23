@@ -9,9 +9,9 @@ The SAS Viya upgrade process is used to deploy a new SAS Viya order that may con
 
 > **Note**: The Ansible ```--check``` mode is not supported by the SAS Viya Upgrade Task Playbooks.
 
-1. Follow the instructions in the appropriate section of the *SAS Viya 3.4 for Linux: Deployment Guide*, located [here](https://go.documentation.sas.com/?docsetId=dplyml0phy0lax&docsetTarget=n07ugb1h3rhjqjn1equl5zhx8hhd.htm&docsetVersion=3.4&locale=en). When that document directs you to return to this page, continue with the instructions below.
+1. Follow the instructions in the appropriate section of the *SAS Viya 3.4 for Linux: Deployment Guide* or *SAS Viya 3.5 for Linux: Deployment Guide*, located [here for SAS Viya 3.4](https://go.documentation.sas.com/?docsetId=dplyml0phy0lax&docsetTarget=n07ugb1h3rhjqjn1equl5zhx8hhd.htm&docsetVersion=3.4&locale=en) and [here for SAS Viya 3.5](https://go.documentation.sas.com/?docsetId=dplyml0phy0lax&docsetTarget=n07ugb1h3rhjqjn1equl5zhx8hhd.htm&docsetVersion=3.5&locale=en). When that document directs you to return to this page, continue with the instructions below.
 2. Clone or download the SAS Viya ARK project into the new ```sas_viya_playbook``` directory. The directory structure of this project must be preserved. For example: ```sas_viya_playbook/viya-ark/playbooks/viya-upgrade/```
-3. If upgrading to SAS Viya 3.4 from earlier versions of Viya, the [Pre-installation of Viya System Requirements](../pre-install-playbook) can be run to ensure the latest Viya system requirements are met.
+3. If upgrading to SAS Viya 3.4 or SAS Viya 3.5 from earlier versions of Viya, the [Pre-installation of Viya System Requirements](../pre-install-playbook) can be run to ensure the latest Viya system requirements are met.
 4. Modify the viya-upgrade variables file ```viya-ark/playbooks/viya-upgrade/vars.yml``` to set the following properties:
   * ```SAS_ADMIN_USERNAME```, ```SAS_ADMIN_PASSWORD```: provide SAS Administrator credentials. This is required for certain tasks to perform.
   * ```SAS_TENANT_DETAILS```: if using a multi-tenant deployment, provide a list of each tenant ID and SAS Administrator credentials.
@@ -27,14 +27,14 @@ ansible-playbook viya-ark/playbooks/viya-upgrade/viya-pre-upgrade.yml
 ```
 7. After the Pre-Upgrade playbook has completed, it will generate a pre-upgrade summary HTML report that can be opened in any browser to view the results: ```sas_viya_playbook/viya_upgrade_output/viya_pre_upgrade_summary_<timestamp>.html```
 If there are any errors listed in the report, remediate the issue and then run the Pre-Upgrade playbook again. Repeat this step until the playbook runs without errors.
-8. Return to the *SAS Viya 3.4 for Linux: Deployment Guide* and continue the instructions there until directed to return to this page.
+8. Return to the *SAS Viya 3.4 for Linux: Deployment Guide* or *SAS Viya 3.5 for Linux: Deployment Guide* and continue the instructions there until directed to return to this page.
 9. After the SAS Viya upgrade deployment has completed successfully, run the Post-Upgrade playbook from the new ```sas_viya_playbook``` directory:
 ```
 ansible-playbook viya-ark/playbooks/viya-upgrade/viya-post-upgrade.yml
 ```
 10. After the Post-Upgrade playbook has completed, it will generate a post-upgrade summary HTML report that can be opened in any browser to view the results: ```sas_viya_playbook/viya_upgrade_output/viya_post_upgrade_summary_<timestamp>.html```
 If there are any errors listed in the report, remediate the issue and then run the Post-Upgrade playbook again. Repeat this step until the playbook runs without errors.
-11. Return to the *SAS Viya 3.4 for Linux: Deployment Guide* to complete the post-upgrade tasks.
+11. Return to the *SAS Viya 3.4 for Linux: Deployment Guide* or *SAS Viya 3.5 for Linux: Deployment Guide* to complete the post-upgrade tasks.
 
 ## Pre-Upgrade task details
 The following tagged tasks are automated as part of the ```viya-pre-upgrade.yml``` playbook, which can be run individually using the ansible ```--tags``` command line parameter, or skipped using ```--skip-tags```, if desired:

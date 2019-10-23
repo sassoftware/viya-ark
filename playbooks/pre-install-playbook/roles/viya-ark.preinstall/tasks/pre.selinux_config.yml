@@ -8,6 +8,12 @@
 #   make it fail
 #
 
+- debug:
+    msg: "SAS Viya version is {{viya_version}}"
+  tags:
+    - show_viya_version
+    - selinux_config
+
 - name: Check if SELinux config file exists (signifying SELinux is installed)
   stat:
     path: /etc/selinux/config
@@ -59,7 +65,37 @@
     when: selinuxstatus.stdout is defined and  selinuxstatus.stdout == 'Enforcing'
     ignore_errors: yes
 
-  when: config_file.stat.exists
+  when: config_file.stat.exists and viya_version is version('3.4', '<=')
+  ## block end
+  tags:
+    - prereq
+    - selinux_config
+
+
+- block:
+  ## block start
+
+  - name: Get selinux status
+    shell: /usr/sbin/getenforce
+    changed_when: False
+    check_mode: no
+    register: selinuxstatus
+    tags:
+      - prereq
+      - selinux
+
+  - name: Check to see if SELinux is configured appropriate for deployment
+    assert:
+      that:
+        - selinuxstatus.stdout is defined and selinuxstatus.stdout != 'Enforcing'
+      fail_msg: 
+        "The pre-installation playbook has determined that SELinux is not set appropriate for deployment ({{selinuxstatus.stdout}}). 
+        See the 'Configure SELinux' topic in SAS Viya on Linux: Deployment Guide for information about 
+        deploying with SELinux."
+      success_msg:
+        "The pre-installation playbook has determined that SELinux is set to {{selinuxstatus.stdout}}."
+
+  when: config_file.stat.exists and viya_version is version('3.5', '>=')
   ## block end
   tags:
     - prereq

@@ -1,6 +1,6 @@
 # SAS Viya Administration Resource Kit (SAS Viya ARK)
 
-SAS Viya ARK provides interoperating tools and utilities to help SAS customers prepare for a SAS(R) Viya(R) deployment.
+SAS Viya ARK provides interoperating tools and utilities to help SAS customers prepare for a SAS® Viya® deployment.
 
 ## Introduction
 SAS Viya ARK is a collection of resources to automate and streamline tasks that are required to prepare an environment for a SAS Viya deployment.
