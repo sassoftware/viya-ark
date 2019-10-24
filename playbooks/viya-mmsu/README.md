@@ -1,4 +1,4 @@
-# SAS Viya Administration Resource Kit (SAS Viya ARK) - SAS Viya Multi-Machine Services Utilities Playbooks
+# SAS Viya Administration Resource Kit (SAS Viya ARK) - SAS Viya Multi-Machine Services Utilities Playbooks (MMSU)
 
 ## Introduction
 The SAS Viya Multi-Machine Services Utilities repository contains a set of playbooks to start or stop the SAS Viya services gracefully across the 1 - n machines that are identified in the inventory.ini file.
@@ -10,6 +10,7 @@ The SAS Viya Multi-Machine Services Utilities repository contains a set of playb
   The directory structure of this project must be preserved.
   For example: ```sas_viya_playbook/viya-ark/playbooks/viya-mmsu/```
 * Verify that the sas-viya-all-services script is exempted from system reboots. This step prevents the script from executing automatically when the machine is restarted. This can be done by running viya-services-disable.yml playbook.
+* sas-viya-all-services script should not be run manually on any machines when using MMSU playbooks
 
 ## Supported deployment of SAS Viya Multi-Machine Services Utilities Playbooks
 * Single-machine deployment
@@ -45,6 +46,7 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restart.yml
     "msg": [
         "Please examine the following stray process(es)",
         "If enable_stray_cleanup=true, it will be cleaned up automatically",
+	"except database processes which require fix manually to avoid data corruption."
         "This playbook can be rerun to clean up the child procsses",
         [
           ...

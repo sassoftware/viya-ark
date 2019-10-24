@@ -70,13 +70,13 @@ do_ps_common()
         fi
 
 	if [[ "$DEBUG" != "" ]]; then
-		outmsg "viyasvs: LIST=($LIST)"
+		echo "viyasvs: LIST=($LIST)"
 		return 0
 	fi
 
 	for p in $LIST
 	do
-		echo "viyasvs: $ACTION $p"
+		#echo "viyasvs: $ACTION $p"
 		if [[ $p =~ -all-services ]]; then
 			/etc/init.d/$p $ACTION &
 		else
@@ -127,7 +127,7 @@ do_svastatus()
 	info=$($CMD status 2>&1)
 	rc=$?
 	if [[ $rc != 0 ]]; then
-		echo $info|grep 'is stopped' > /dev/null
+		echo $info|grep -q 'is stopped'
 		if [[ $? == 0 ]]; then
 			echo "Consul is down - unable to obtain status"
 			return
@@ -143,6 +143,7 @@ do_svastatus()
 	do
 		/etc/init.d/$f status|sed "s|sas-services completed|$f completed|"
 	done
+	return 0
 }
 
 do_checkdb()
@@ -177,7 +178,6 @@ do_startdb()
 					#status: is running not sufficient
 					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-pgpool${dbnum} status|grep 'node_id')
 					if [[ "$dbstatus" == "" ]]; then
-						outmsg "viyasvs: LIST=($DBDIR/pgpool${dbnum}/startall)"
 						su - sas -c "$DBDIR/pgpool${dbnum}/startall"
 						FAIL=$?
 					fi
@@ -205,7 +205,6 @@ do_stopdb()
 	if [[ "$viya35" == "1" ]]; then
 		dbnum=$dbarg2
 		if [[ -x "$DBDIR/pgpool${dbnum}/shutdownall" ]]; then
-			outmsg "viyasvs: LIST=($DBDIR/pgpool${dbnum}/shutdownall)"
 			if [[ "$DEBUG" == "" && "$dbnum" == "0" ]]; then
 				check_consul
 				if [[ $? == 0 ]]; then
@@ -239,7 +238,6 @@ check_dbps()
 	for f in $LIST
 	do
 		skip=0
-		#outmsg "viyasvs: check_dbps ($f)"
 		if [[ -f "$PIDROOT/$f.pid" ]]; then
 			p=$(cat $PIDROOT/$f.pid)
 			ps -p $p > /dev/null 2>&1
@@ -271,7 +269,6 @@ do_startdbct()
 				if [[ $? == 0 ]]; then
 					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-node0 status|grep 'is running')
 					if [[ "$dbstatus" == "" ]]; then
-						outmsg "viyasvs: startdbct: $DBDIR/node0/startall"
 						su - sas -c "$DBDIR/node0/startall"
 						if [[ $? != 0 ]]; then
 							let "FAIL+=1"
@@ -295,7 +292,6 @@ do_stopdbct()
 	if [[ "$viya35" == "1" ]]; then
 		dbtype=$dbarg2
 		if [[ "$dbtype" == "node" && -x "$DBDIR/node0/shutdownall" ]]; then
-			outmsg "viyasvs: stopdbct: $DBDIR/node0/shutdownall"
 			if [[ "$DEBUG" == "" ]]; then
 				check_consul
 				if [[ $? == 0 ]]; then
@@ -339,7 +335,6 @@ checkspace()
 clean_dbps()
 {
 	LIST=$(ps -e -o "user pid ppid cmd" |grep -E 'sds_consul_health_check|sas-crypto-management'|grep -v grep)
-	#outmsg "viyasvs: clean_dbps ($LIST)"
 	NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
 
 	for p in $NLIST
@@ -350,10 +345,8 @@ clean_dbps()
 	return 0
 }
 
-do_cleancomp()
+do_cleanps()
 {
-	LIST=$(ps -e -o "user pid ppid cmd" |grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep compsrv|grep -v grep)
-	echo "$LIST"
 	NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
 
 	for p in $NLIST
@@ -397,18 +390,49 @@ initdb()
 
 check_consul()
 {
+	CMD=/etc/init.d/sas-viya-consul-default
+	if [[ ! -x "$CMD" ]]; then
+		echo "ERROR: command not found: $CMD"
+		exit 2
+	fi
+
+	$CMD status|grep -q 'is dead' 
+	if [[ $? == 0 ]]; then
+		return 255
+	fi
+	
 	CONF=/opt/sas/viya/config/consul.conf
 	if [[ ! -f "$CONF" ]]; then
-		echo "ERROR: consul config file error"
+		echo "ERROR: consul config file is missing ($CONF)"
 		exit 1
 	fi
+
 	source $CONF
-	/opt/sas/viya/home/bin/sas-csq list-services | grep $dbname > /dev/null
-	return $?
-}
-outmsg()
-{
-	echo "info: $*"
+	local info
+	info=$(/opt/sas/viya/home/bin/consul members)
+	rc=$?
+	if [[ $rc != 0 ]]; then
+		echo "ERROR: consul has error, please check consul log."
+		exit $rc
+		#return $rc
+	fi
+
+	local cnt
+	cnt=$(echo "$info"| grep -v -E 'Status|alive'|wc -l)
+	if [[ $cnt != 0 ]]; then
+		echo "$info"
+		echo "ERROR: consul is not healthy, please check consul log."
+		exit $cnt
+		#return $cnt 
+	fi
+
+	/opt/sas/viya/home/bin/sas-csq list-services | grep -q $dbname
+	rc=$?
+	if [[ $rc != 0 ]]; then
+		echo "ERROR: consul has error, database $dbname service is missing: $rc"
+		exit $rc
+		#return $rc
+	fi
 }
 
 init()
@@ -458,8 +482,13 @@ case "$OPT" in
 			clean_dbps
 		fi
 		;;
+	cleanps)
+		LIST=$(ps -e -o "user pid ppid cmd"|grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep -v -E 'grep|pgpool|postgres')
+		do_cleanps
+		;;
 	cleancomp)
-		do_$OPT
+		LIST=$(ps -e -o "user pid ppid cmd" |grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep compsrv|grep -v grep)
+		do_cleanps
 		;;
 	checkspace)
 		DIR=$2; SIZE=$3
@@ -478,12 +507,11 @@ case "$OPT" in
 			if [[ "$info" == "" ]]; then
 				exit 0
 			fi
-			#total=$(echo "$info"|wc -l)
-			#if [[ $CNT -ne 1 && $total -gt $CNT ]]; then
-			#	echo "Partial of the processes listed: $CNT/$total"
-			#fi
-			#echo "$info" | tail -$CNT
-			echo "$info"
+			total=$(echo "$info"|wc -l)
+			if [[ $CNT -ne 1 && $total -gt $CNT ]]; then
+				echo "Partial of the processes listed: $CNT/$total"
+			fi
+			echo "$info" | tail -$CNT
 		fi
 		exit 0
 		;;

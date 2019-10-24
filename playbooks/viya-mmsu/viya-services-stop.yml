@@ -206,20 +206,18 @@
         debug:
           msg:
             - "Please examine the following stray process(es)"
-            - "If enable_stray_cleanup=true, it will be cleaned up automatically"
-            - "This playbook can be rerun to clean up the child procsses"
+            - "If enable_stray_cleanup=true, process will be cleaned up automatically"
+            - "except database processes which require fix manually to avoid data corruption."
+            - "This playbook can be rerun to clean up the child procsses."
             - "{{stray_processes.stdout_lines}}"
         failed_when: stray_processes.stdout != '' and not ansible_check_mode
         when: (stray_processes.stdout != '') and (enable_stray_cleanup|bool != true)
 
       - name: Clean up SAS stray processes if enabled
-        shell: "kill -KILL {{item.split()[1]}}"
+        script: viya-svs.sh cleanps
         when: (enable_stray_cleanup|bool == true) and (stray_processes.stdout != '')
         check_mode: no
         any_errors_fatal: true
-        with_items: "{{stray_processes.stdout_lines}}"
-        loop_control:
-          label: "{{ item.split()[1] }}"
 
       - name: Display SAS cleanup stray processes
         debug:
