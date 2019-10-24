@@ -183,7 +183,7 @@
 
     - name: Rerun start SAS services if needed
       shell: /etc/init.d/sas-viya-all-services start
-      when: not ansible_check_mode and ((svas1 is defined and (svas1.stdout|search('Failed!') or svas1.stdout|search('timeout'))) or (svas2 is defined and (svas2.stdout|search('Failed!') or svas2.stdout|search('timeout'))))
+      when: not ansible_check_mode and ((svas1 is defined and (svas1.stdout is search('Failed!') or svas1.stdout is search('timeout'))) or (svas2 is defined and (svas2.stdout is search('Failed!') or svas2.stdout is search('timeout'))))
       register: svasall
       until: svasall.stdout.find('Failed!') == -1 and svasall.stdout.find('timeout') == -1
       retries: "{{svas_retry_count}}"

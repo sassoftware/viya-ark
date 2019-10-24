@@ -27,7 +27,7 @@
     - name: Set consul flag
       set_fact:
         cflag: false
-      when: svas_status.stdout|search('Consul is down')
+      when: svas_status.stdout is search('Consul is down')
 
     - name: Display SAS service status from Configuration Server (Consul)
       debug: msg="{{svas_status.stdout_lines}}"
