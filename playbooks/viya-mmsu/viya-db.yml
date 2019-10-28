@@ -24,7 +24,7 @@
       msg:
         - "ERROR: PGPool is not running"
         - "This issue needs to be addressed before rerun the playbook."
-    when: not ansible_check_mode and dbrc.stdout|search('is not running')
+    when: not ansible_check_mode and dbrc.stdout is search('is not running')
 
   when: dbaction == 'startdb'
 
