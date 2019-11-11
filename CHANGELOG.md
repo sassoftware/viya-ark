@@ -1,6 +1,41 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.0 - November 19, 2019
+
+- **Summary**:
+    This release of SAS Viya ARK is coincidental to the release of SAS Viya 3.5.
+- Issues addressed:
+    - DEPENB-1174 - Upgrade Tasks added a playbook to move audit records from SAS Viya 3.3 CAS host to SAS 3.4 Operations host.
+    - DEPENB-1531 - Pre-Installation playbook should check if the short hostname is pingable.
+    - DEPENB-1578 - Pre-Installation playbook should only update kernel semaphores if they are larger than the current values.
+    - DEPENB-1600 - Pre-Installation playbook README updated to reference provided inventory file.
+    - DEPENB-1649 - Pre-Installation playbook needs to check for presence of bash shell.
+    - DEPENB-1666 - Pre-Installation playbook should check FQDN for hostname length check.
+    - DEPENB-1748 - Add hotfix reporting to SAS Viya Deployment Report.
+    - DEPENB-1836 - Multi-Machine Services Utilities should display the URLs with https instead of http.
+    - DEPENB-1982 - Upgrade Tasks added a playbook to delete mmLibs caslib.
+    - DEPENB-2027 - Warn Customers of non-supported Java version
+    - DEPENB-2036 - Upgrade Tasks fixed format of default user paths.
+    - DEPENB-2054 - Support Ansible 2.9
+    - DEPENB-2105 - Pre-Installation playbook needs to support SELinux in "enforced" mode
+    - DEPENB-2108 - Upgrade Tasks failed searching for NODE_TYPE which is no longer in vars.yml
+    - DEPENB-2110 - LDAP Validator update sitedefault_sample_ad.ym to be consistent with sitedefault_sample_openldap.yml
+    - DEPENB-2113 - Remove jq installation from Viya ARK pre-install playbook
+    - DEPENB-2120 - Multi-Machine Services Utilities support for postgress 11
+    - DEPENB-2137 - viya-upgrade needs to be updated for Viya 3.5 references
+    - DEPENB-2171 - Pre-Installation playbook should check for Ansible patch version
+    - DEPENB-2182 - merge-playbook fails to handle dir path
+    - DEPENB-2183 - Erroneous failure reported for Visual Investigator 3.3 -> 3.5 UIP
+    - DEPENB-2189 - Utility sds_micro_service_pg_connection_test.sh script should no longer be used.  README update
+    - DEPENB-2192 - Clarify message in pre-upgrade summary for skipping mmlibs step on SUSE
+    - DEPENB-2115 - LDAP Validator not reflected in Index of Tools in Viya ARK root README.
+    - DEPENB-2200 - Need to check for required curl and nss versions in repo
+    - DEPENBDAT-627 - Ansible 2.9 support for viya-upgrade related playbook.
+- Ansible Support: Ansible 2.7.2 - Ansible 2.9
+
+<!-- LATEST RELEASE END -->
+
 ## Viya34-ark-1.7 - August 22, 2019
 
 - **Summary**:
@@ -11,8 +46,6 @@
     - DEPENB-1857 - Inventory file hostgroup names now use underscores rather than hyphens (Ansible 2.8).
     - DEPENB-1619 - Provide playbook to assist merging deployment files.
 - Ansible Support: Ansible 2.5 - Ansible 2.8
-
-<!-- LATEST RELEASE END -->
 
 ## Viya34-ark-1.6 - August 13, 2019
 
