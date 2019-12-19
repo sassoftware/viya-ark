@@ -30,7 +30,8 @@
     report_file_name: "viya_deployment_report"
     report_data_file_name: "{{ report_file_name + '_data' }}"
     output_dir: "{{ playbook_dir + '/../../..' }}"
-    include_hotfix_report: True
+    # The hotfix report has been temporarily disabled this release.
+    include_hotfix_report: False
     hotfix_url: "http://ftp.sas.com/techsup/download/hotfix/HF2/util01/Viya/data/"
     hotfix_master_file: "Viya_Update_Page_Index.xml"
 

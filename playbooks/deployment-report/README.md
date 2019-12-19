@@ -2,15 +2,8 @@
 
 ## Introduction
 This playbook gathers information about SAS Viya software and the hosts where it is deployed.
-Furthermore, it optionally compares the packages installed on the system with the most up to 
-date versions to determine which hotfixes have not been applied.  The data gathered is then 
-written to disk as a YAML-formatted data file and a static web-page for easily viewing the data. 
-
-Hotfix information in the report include:
-* The hotfixes not applied
-* The release date of each hotfix
-* Each package and version associated with the hotfix
-* The number and title of each SASNote associated with the hotfix
+The data gathered is then written to disk as a YAML-formatted data file and a static web-page 
+for easily viewing the data. 
 
 Deployment attributes in the report include:
 * Operating system information and architecture
@@ -32,7 +25,6 @@ The output files written to the `sas_viya_playbook/` are:
 * Install SAS Viya software using the SAS-provided `sas_viya_playbook`.
 * Obtain a local copy of the inventory file used when deploying the SAS Viya software.
 * Verify that the user has sudoers privileges.
-* Connectivity to sas.com (for the Hotfix Report Only)
 
 ## Running the Playbook
 To run the playbook, execute the following command:
@@ -59,20 +51,7 @@ To exclude the static web page and only create the report data:
   ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "exclude_html=true"
   ```
 
-To exclude the hotfix report:
-  ```bash
-  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "include_hotfix_report=False"
-  ```
-
 To force the creation of the report files into the current directory:
   ```bash
   ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e 'output_dir=./'
-  ```
-To specify an alternate location for the published hotfix data:
-  ```bash
-  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e 'hotfix_url=<URL_To_Hotfix_Master_File>'
-  ```
-To specify an alternate hotfix file:
-  ```bash
-  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e 'hotfix__master_file=<Master_File_Name>'
   ```

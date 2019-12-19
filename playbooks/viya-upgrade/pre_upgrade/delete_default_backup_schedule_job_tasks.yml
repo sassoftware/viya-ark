@@ -102,10 +102,10 @@
       state: absent
   delegate_to: localhost
 
-# Get the job schedulers through a REST call
-- name: "Get the scheduler job - {{ tenant_id | default('SAS provider') }}"
+# Get the schedule through a REST call
+- name: "Get the backup schedule - {{ tenant_id | default('SAS provider') }}"
   uri:
-      url: "{{ tenant_url }}jobExecution/jobRequests?filter=eq(name,'{{ default_schedule_job_name }}')"
+      url: "{{ tenant_url }}jobExecution/jobRequests?filter=eq(name,'{{ backup_schedule_name }}')"
       method: GET
       headers:
           Accept: application/vnd.sas.collection+json
@@ -114,7 +114,21 @@
       return_content: yes
       status_code: 200,404
       validate_certs: no
-  register: job_requests_raw
+  register: schedule_raw
+
+# Get the scheduler job through a REST call
+- name: "Get the backup scheduler job - {{ tenant_id | default('SAS provider') }}"
+  uri:
+      url: "{{ tenant_url }}scheduler/jobs?filter=eq(name,'{{ backup_schedule_job_name }}')"
+      method: GET
+      headers:
+          Accept: application/vnd.sas.collection+json
+          Authorization: "Bearer {{ sasuser_credentials[ profile_name ]['access-token'] }}"
+      body_format: json
+      return_content: yes
+      status_code: 200,404
+      validate_certs: no
+  register: scheduler_job_raw
 
 - name:  "Log if Backup server is not deployed."
   block:
@@ -140,36 +154,69 @@
       flat: yes
 
   - meta: end_play
-  - set_fact:
-      total_count: -1
 
-  when:
-    - " job_requests_raw['status'] == 404 "
+  when: schedule_raw['status'] == 404 and scheduler_job_raw['status'] == 404 
+
+- name:  "Check to see if DEFAULT_BACKUP_SCHEDULE is found"
+  set_fact:
+      total_job_count: -1
+  when: schedule_raw['status'] == 404
+
+- name:  "Check to see if DEFAULT_BACKUP_SCHEDULER_JOB is found"
+  set_fact:
+      total_scheduler_count: -1
+  when: scheduler_job_raw['status'] == 404 
 
 
-# Get session dict from json response
-- name:  "Examine the REST response."
+# Get session dict from json response (DEFAULT_BACKUP_SCHEDULE)
+- name:  "Examine the REST response for the Backup Schedule Job."
   block:
   - set_fact:
-      job_request: "{{ job_requests_raw.content | from_json }}"
+      job_request: "{{ schedule_raw.content | from_json }}"
 
   - set_fact:
-      total_count={{ job_request.count }}
-  when:
-      total_count is not defined
+      total_job_count={{ job_request.count }}
+  when: " schedule_raw['status'] == 200 "
 
-#If we've found the job, delete it.
-- name:  "Delete the default job scheduler"
+# Get session dict from json response (DEFAULT_BACKUP_SCHEDULER_JOB).
+- name:  "Examine the REST response for the Backup Scheduler Job."
+  block:
+  - set_fact:
+      job_scheduler_request: "{{ scheduler_job_raw.content | from_json }}"
+
+  - set_fact:
+      total_scheduler_count={{ job_scheduler_request.count }}
+  when: " scheduler_job_raw['status'] == 200 "
+
+#If we've found DEFAULT_BACKUP_SCHEDULE, delete it.
+- name:  "Delete DEFAULT_BACKUP_SCHEDULE."
   block:
   - shell:
       cmd:  |
-        echo -e "\n\nDelete the default scheduler:\n\n" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+        echo -e "\n\nDelete DEFAULT_BACKUP_SCHEDULE:\n" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
         source {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/consul.conf
         {{ bin_directory }}/sas-admin --profile {{ profile_name }} job requests  delete --id "{{ job_request['items'][0].id }}" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
     environment: "{{ cli_env }}"
-  when: total_count|int  > 0
+  when: total_job_count|int  > 0
 
-- name:  "Log if the DEFAULT_BACKUP_SCHEDULE isn't found."
+#If we've found DEFAULT_BACKUP_SCHEDULER_JOB, delete it.
+- name:  "Delete DEFAULT_BACKUP_SCHEDULER_JOB."
+  block:
+  - shell:  echo -e "\n\nDelete DEFAULT_BACKUP_SCHEDULER_JOB:\n" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+  - uri:
+      url: "{{ tenant_url }}scheduler/jobs/{{ job_scheduler_request['items'][0].id }}"
+      method: DELETE
+      headers:
+          Accept: application/vnd.sas.collection+json
+          Authorization: "Bearer {{ sasuser_credentials[ profile_name ]['access-token'] }}"
+      body_format: json
+      return_content: yes
+      status_code: 204,404
+      validate_certs: no
+  - shell:  echo -e "Deleted the scheduler job \"{{ job_scheduler_request['items'][0].id }}\"\n\n" >> {{ delete_backup_controls_tmpdir.path }}/{{ tenant_id | default('provider') + '_' + logfile_name }}
+  when: total_scheduler_count|int  > 0
+
+- name:  "Log if the DEFAULT_BACKUP_SCHEDULE and DEFAULT_BACKUP_SCHEDULER_JOB aren't found."
   block:
   - debug:
      msg: "{{ no_backup_job }}"
@@ -179,7 +226,7 @@
       - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }}"
       - message: "{{ no_backup_job }}"
       - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"
-  when: total_count|int == 0
+  when: total_job_count|int == 0 and total_scheduler_count==0
 
 # Log off the server
 - name: "Log off {{ tenant_id | default('SAS provider') }}"
@@ -197,11 +244,34 @@
       dest: "{{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] }}/"
       flat: yes
 
-# Add the entry to the summary report.
+# Add the entry to the summary report (both objects deleted).
 - include_tasks: ../common/add-summary-item-tasks.yml
   vars:
       - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }}"
-      - message: >
-          The Delete Default Backup Schedule Job has been deleted. Please review the log provided in the <b>Additional Information</b> section below for more details.
+      - message: "{{ successfully_deleted_both_msg }}"
       - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"
-  when:  total_count|int > 0
+  when:  total_job_count|int > 0 and total_scheduler_count|int > 0
+  
+# Add the entry to the summary report (DEFAULT_BACKUP_SCHEDULE deleted only).
+- include_tasks: ../common/add-summary-item-tasks.yml
+  vars:
+      - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }}"
+      - message: "{{ successfully_deleted_backup_schedule_msg }}"
+      - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"
+  when:  total_job_count|int > 0 and total_scheduler_count|int < 1
+  
+# Add the entry to the summary report (DEFAULT_BACKUP_SCHEDULER_JOB deleted only).
+- include_tasks: ../common/add-summary-item-tasks.yml
+  vars:
+      - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }}"
+      - message: "{{ successfully_deleted_back_scheduler_job_msg }}"
+      - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"
+  when:  total_job_count|int < 1 and total_scheduler_count|int > 0
+  
+# Add the entry to the summary report (Neither existed).
+- include_tasks: ../common/add-summary-item-tasks.yml
+  vars:
+      - header: "{{ delete_header }} - {{ tenant_id | default('SAS provider') }}"
+      - message: "{{ no_backup_job }}"
+      - additional_info_html: "<b>Log file</b>: {{ hostvars['localhost']['UPGRADE_OUTPUT_DIRECTORY'] + '/' + tenant_id | default('provider') + '_' + logfile_name }}"
+  when:  total_job_count|int < 1 and total_scheduler_count|int < 1

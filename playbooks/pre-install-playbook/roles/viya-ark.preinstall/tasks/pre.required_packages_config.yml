@@ -17,9 +17,29 @@
     when: ((ansible_distribution == redhat_os_name|string or ansible_distribution == oracle_os_name|string) and viya_version is version('3.5','>='))
     tags:
       - packages
+      - package_version_check
+
+    
+  # Note that Oracle 7 distributions reflect being RedHat ansible_os_family
+  - name: Include OS Family specific package names
+    include_vars: "{{ item }}"
+    with_first_found:
+      - "{{ ansible_os_family }}.yml"
+      - default.yml
+
+    
+  ## works for all OS Families
+  - name: Ensures required packages are present
+    package:
+      name: "{{ item }}"
+      state: present
+    with_items:
+      - "{{packages_general}}"
+    tags:
+      - packages
 
   - block:
-    ## block start determining supported version of java opensdk
+    ## block start determining supported version of java openjdk
     - name: Get what version of Java might be installed
       shell: java -version 2>&1 | grep version | awk '{print $3}' | sed 's/"//g'
       register: java_version
@@ -43,43 +63,10 @@
 
     # exec during check mode
     check_mode: no
-    # only exec the block when executing in check mode
-    when: ansible_check_mode |bool and viya_version is version('3.5','>=')
+    when: viya_version is version('3.5','>=')
     # end block
     tags:    
       - jdk_check
-
-    
-  # Note that Oracle 7 distributions reflect being RedHat ansible_os_family
-  - name: Include OS Family specific package names
-    include_vars: "{{ item }}"
-    with_first_found:
-      - "{{ ansible_os_family }}.yml"
-      - default.yml
-    
-  ## works for all OS Families
-  - name: Ensures required packages are present
-    package:
-      name: "{{ item }}"
-      state: present
-    with_items:
-      - "{{packages_general}}"
-    tags:
-      - packages
-
-  # Get and Show the version of Java installed.  A help to debug java version issues.
-  - name: Get the installed version of Java
-    shell: java -version 2>&1 | grep version | awk '{print $3}' | sed 's/"//g'
-    register: java_version_present
-    check_mode: no
-    tags:
-      - packages
-    
-  - name: Show the installed version of Java
-    debug: var=java_version_present.stdout
-    tags:
-      - packages
-
 
   ## RHEL 6 specific
   - name: Ensures required RHEL6 packages are present

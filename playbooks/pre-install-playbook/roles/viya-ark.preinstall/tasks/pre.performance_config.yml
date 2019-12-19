@@ -32,7 +32,7 @@
         kernel_SEMMSL: "{{ item.value }}"
     when:
       - item.name is match("kernel.sem.SEMMSL")
-      - item.value > kernel_SEMMSL
+      - item.value > kernel_SEMMSL|int
     with_items:
       - "{{ semaphores }}"
 
@@ -41,7 +41,7 @@
         kernel_SEMMNS: "{{ item.value }}"
     when:
       - item.name is match("kernel.sem.SEMMNS")
-      - item.value > kernel_SEMMNS
+      - item.value > kernel_SEMMNS|int
     with_items:
       - "{{ semaphores }}"
 
@@ -50,7 +50,7 @@
         kernel_SEMOPM: "{{ item.value }}"
     when:
       - item.name is match("kernel.sem.SEMOPM")
-      - item.value > kernel_SEMOPM
+      - item.value > kernel_SEMOPM|int
     with_items:
       - "{{ semaphores }}"
 
@@ -59,7 +59,7 @@
         kernel_SEMMNI: "{{ item.value }}"
     when:
       - item.name is match("kernel.sem.SEMMNI")
-      - item.value > kernel_SEMMNI
+      - item.value > kernel_SEMMNI|int
     with_items:
       - "{{ semaphores }}"
 

@@ -2,7 +2,6 @@
 # OS specific package names for SuSE/SLES
 java_openjdk_version: java-1_8_0-openjdk
 libXp_x86_64_pkg: libXpm4
-libXp_i686_pkg: libXpm4
 libXext_pkg: libXext6
 libXmu_pkg: libXmu6
 libXtst_pkg: libXtst6
