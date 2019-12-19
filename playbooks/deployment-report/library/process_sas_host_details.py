@@ -41,22 +41,24 @@ options:
         description:
             - The name of the dict object registered with hostvars which will contain the host details.
         required: true
-    include_hotfix_report:
-        description:
-            - Whether or not to include the hotfix report.
-        required:  false
-        default:   true
-    hotfix_url:
-        description:
-            -  The URL to look for the published hotfixes.
-        require:  False
-        default:  http://ftp.sas.com/techsup/download/hotfix/HF2/util01/Viya/data/
-    hotfix_master_file:
-        description:
-            -  The file that holds all of the hotfix infomration.
-        require:  False
-        default:  Viya_Update_Page_Index.xml
 '''
+# The following are options for the hotfix report, which has been temporarily disabled for this release.
+#    include_hotfix_report:
+#        description:
+#            - Whether or not to include the hotfix report.
+#        required:  false
+#        default:   true
+#    hotfix_url:
+#        description:
+#            -  The URL to look for the published hotfixes.
+#        require:  False
+#        default:  http://ftp.sas.com/techsup/download/hotfix/HF2/util01/Viya/data/
+#    hotfix_master_file:
+#        description:
+#            -  The file that holds all of the hotfix infomration.
+#        require:  False
+#        default:  Viya_Update_Page_Index.xml
+#'''
 
 EXAMPLES = '''
 # Process SAS deployment information

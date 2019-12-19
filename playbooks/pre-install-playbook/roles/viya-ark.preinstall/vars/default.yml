@@ -2,7 +2,6 @@
 # OS specific package names for RedHat
 java_openjdk_version: java-1.8.0-openjdk
 libXp_x86_64_pkg: libXp.x86_64
-libXp_i686_pkg: libXp.i686
 libXext_pkg: libXext
 libXmu_pkg: libXmu
 libXtst_pkg: libXtst

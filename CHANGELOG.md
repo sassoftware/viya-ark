@@ -1,6 +1,25 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.1 - December 19, 2019
+
+- **Summary**:
+  Enhancements and fixes related to Upgrade, Deployment Report, Pre-Installation playbooks and documentation.
+- Issues addressed:
+  - General
+    - VIYAARK-64 - Known Issues section added to main README
+  - SAS Viya Upgrade Tasks Playbooks
+    - VIYAARK-45 - DEFAULT_BACKUP_SCHEDULE job not recreated after upgrade from SAS Viya 3.3 to SAS Viya 3.4/3.5
+    - VIYAARK-41 - Pre-Upgrade playbook fails if SAS Viya 3.5 software order adds [ModelServer]
+  - SAS Viya Deployment Report
+    - VIYAARK-46 - Temporarily disable hotfix report for earlier release
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-43 - Remove libXp.i686 from required software packages
+    - VIYAARK-25 - Non-supported Java version check done in normal mode as well as check mode
+    - VIYAARK-50 - Kernel semaphore performance configuration task not adjusting settings as expected (Python 2) and failing playbook (Python 3)
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.0 - November 19, 2019
 
 - **Summary**:
@@ -33,8 +52,6 @@
     - DEPENB-2200 - Need to check for required curl and nss versions in repo
     - DEPENBDAT-627 - Ansible 2.9 support for viya-upgrade related playbook.
 - Ansible Support: Ansible 2.7.2 - Ansible 2.9
-
-<!-- LATEST RELEASE END -->
 
 ## Viya34-ark-1.7 - August 22, 2019
 

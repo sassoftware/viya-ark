@@ -18,7 +18,7 @@
         - ansible_os_family == redhat_os_name or ansible_os_family == suse_os_name 
       msg: |
         The OS of this server is not supported.
-        Viya requires {{redhat_os_name}} {{os_major_version_1}}, {{os_major_version_2}} or {{os_major_version_3}}, (at least {{os_major_minor_version_1}}, {{os_major_minor_version_2}} or {{os_major_minor_version_3}} ) or {{suse_os_name}} at least version {{suse_os_major_minor_version}}
+        Viya requires {{redhat_os_name}} {{os_major_version_1}}, {{os_major_version_2}}, (at least {{os_major_minor_version_1}}, {{os_major_minor_version_2}} ) or {{suse_os_name}} at least version {{suse_os_major_minor_version}}
         You seem to have {{ansible_os_family}} {{ansible_distribution_version}}
 
   - name: Ensure that the Operating System version is supported when on RedHat (this includes Oracle Linux)
@@ -28,9 +28,7 @@
         - ansible_distribution_major_version is version(os_major_version_1, '==')
           or
           ansible_distribution_major_version is version(os_major_version_2, '==')
-          or
-          ansible_distribution_major_version is version(os_major_version_3, '==')
-        # at least 6.7 if 6 or at least 7.1 if 7 or at least 8.0 if 8
+        # at least 6.7 if 6 or at least 7.1 if 7
         - (ansible_distribution_major_version is version(os_major_version_1, '==')
           and
           ansible_distribution_version is version(os_major_minor_version_1, '>='))
@@ -38,13 +36,9 @@
           (ansible_distribution_major_version is version(os_major_version_2, '==')
           and
           ansible_distribution_version is version(os_major_minor_version_2, '>='))
-          or 
-          (ansible_distribution_major_version is version(os_major_version_3, '==')
-          and
-          ansible_distribution_version is version(os_major_minor_version_3, '>='))
       msg: |
         The OS of this server is not supported.
-        Viya requires {{redhat_os_name}} {{os_major_version_1}}, {{os_major_version_2}} or {{os_major_version_3}}, (at least {{os_major_minor_version_1}}, {{os_major_minor_version_2}} or {{os_major_minor_version_3}} )
+        Viya requires {{redhat_os_name}} {{os_major_version_1}}, {{os_major_version_2}}, (at least {{os_major_minor_version_1}}, {{os_major_minor_version_2}} )
         You seem to have {{ansible_os_family}} {{ansible_distribution_version}}
     when: ansible_os_family == redhat_os_name
 

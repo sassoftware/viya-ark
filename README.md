@@ -34,6 +34,11 @@ Tool support for the latest release of SAS Viya:
 Related Tools Not Contained in SAS Viya ARK:
 * SAS Viya ARK only supports Linux.  For Windows supporting tools, go to [SAS Viya Deployment Assistant for Windows](https://support.sas.com/en/documentation/install-center/viya/deployment-tools/34/deployment-assistant-windows.html).
 
+## Known Support Issues
+The following issues are known and may impact the expected usage or performance of the Viya ARK tools.
+
+* SAS Viya 3.5 supports Linux on Power on a limited availability basis. The SAS Viya ARK tools do not support Linux on Power in the Viya35-ark-1.0 release.
+
 ## License
 
 This project is licensed under the [Apache 2.0 License](LICENSE).

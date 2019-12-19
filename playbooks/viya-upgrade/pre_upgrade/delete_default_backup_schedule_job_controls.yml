@@ -38,7 +38,8 @@
       bin_directory:  "{{SASHOME}}/bin"
       httpd_host:  "localhost"
       logfile_name:  "delete_default_backup_schedule_job-{{ '%F_%H-%M-%S' | strftime(ansible_date_time.epoch) }}.log"
-      default_schedule_job_name:  "DEFAULT_BACKUP_SCHEDULE"
+      backup_schedule_name:  "DEFAULT_BACKUP_SCHEDULE"
+      backup_schedule_job_name:  "DEFAULT_BACKUP_SCHEDULER_JOB"
       tag_value: 'delete-default-backup-job'
       profile_name: "{{ '__' + tag_value + '__' }}"
 
@@ -51,15 +52,15 @@
           Delete the Default Backup Schedule Job
 
       no_backup_job: >
-          This deployment did not contain a "Delete Default Backup Schedule" job. No action required.
-         
+          This deployment did not contain either DEFAULT_BACKUP_SCHEDULE or DEFAULT_BACKUP_SCHEDULER_JOB. No action required.
+
       backup_service_not_deployed: >
           The Backup Service is not deployed in this environment.  No action required.
-          
+
       unknown_error: >
           An unexpected error occured while attempting to delete the DEFAULT_BACKUP_SCHEDULE job.  Please see logs
           for more information.
-          
+
       delete_skipped_warn_msg: >
           The "Delete Default Backup Schedule" job was not deleted because the <em>playbooks/viya-upgrade/vars.yml</em> file is missing the following variables:
           <ul><li><b>SAS_ADMIN_USERNAME</b></li><li><b>SAS_ADMIN_PASSWORD</b></li></ul>
@@ -67,7 +68,6 @@
           Then rerun this playbook with the tag <b>{{ tag_value }}</b>.
 
       play_not_needed_info_msg: >
-          "The Deleting of the DEFAULT_BACKUP_SCHEDULE job" action was skipped.<br><br>
           The deleting of the DEFAULT_BACKUP_SCHEDULE job was skipped because
           <ul><li>The sas-deploymentBackup is at version {{ sas_deployment_backup_info.stdout_lines[0] }}.</li>
           <li>This action is not needed when the level is 2.1 or higher.</li></ul>
@@ -75,12 +75,21 @@
           <b>Additional Information</b> for more detail.
 
       unsupported_os_msg: >
-          "The Deleting of the DEFAULT_BACKUP_SCHEDULE job" action was skipped.<br><br>
           The deleting of the DEFAULT_BACKUP_SCHEDULE job was skipped because
           <ul><li>The Operating Sytem is {{ ansible_os_family }}.</li>
           <li>This action is only required on Red Hat operating sytems.</li></ul>
           These actions are not needed for the upgrade process to continue. Review the Ansible log or the
           <b>Additional Information</b> for more detail.
+
+      successfully_deleted_both_msg: >
+          Both DEFAULT_BACKUP_SCHEDULE and DEFAULT_BACKUP_SCHEDULER_JOB have been deleted. Please review the log provided in the <b>Additional Information</b> section below for more details.
+
+      successfully_deleted_backup_schedule_msg: >
+          DEFAULT_BACKUP_SCHEDULE has been deleted. Please review the log provided in the <b>Additional Information</b> section below for more details.
+
+      successfully_deleted_back_scheduler_job_msg: >
+          DEFAULT_BACKUP_SCHEDULER_JOB has been deleted. Please review the log provided in the <b>Additional Information</b> section below for more details.
+
   tasks:
       # There is no need to run this play, unless the operating system is Red Hat.
       - block:
