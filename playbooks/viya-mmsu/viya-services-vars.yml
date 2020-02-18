@@ -14,3 +14,4 @@ enable_stray_cleanup: false           #stray processes cleanup
 stray_process_count: 30               #0: list all
 log_diskspace_minimum: 2097152000     #2GB
 url_link: https                       #default https
+use_pause: true
