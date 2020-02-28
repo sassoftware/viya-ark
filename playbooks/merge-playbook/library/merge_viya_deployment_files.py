@@ -18,7 +18,7 @@ import logging
 import os
 import re
 import shutil
-import StringIO
+import six
 import socket
 import sys
 import traceback
@@ -49,6 +49,13 @@ formatter = logging.Formatter(
 ch.setFormatter(formatter)
 LOG.addHandler(ch)
 
+############################################################
+#  NEW PROPERTIES FOR POSTGRES HA
+############################################################
+HA_PGPOOL_VIRTUAL_IP_LINE    = "      - HA_PGPOOL_VIRTUAL_IP: ''\n"
+HA_PGPOOL_WATCHDOG_PORT_LINE = "        HA_PGPOOL_WATCHDOG_PORT: ''\n"
+PCP_PORT_LINE    = "      - PCP_PORT"
+POOL_NUMBER_LINE = "        POOL_NUMBER: '0'\n"
 
 ############################################################
 #   Get Local Environment
@@ -56,7 +63,6 @@ LOG.addHandler(ch)
 def get_local_environment():
 
     """ Data to display in the log for debugging purposes """
-
     info = {}
 
     # hostname
@@ -112,7 +118,6 @@ def read_yaml(yaml_file):
     Raises:
         ValueError raised when package yaml cannot be read
     """
-
     try:
         # Read the package yaml file
         yaml = YAML()
@@ -163,7 +168,7 @@ def read_inventory(inv_file, comments):
         inv_parser.read(tmp_file_name)
     except configparser.MissingSectionHeaderError:
         # need to inject [host-definitions] inventory section header to parse it
-        try_again = StringIO.StringIO()
+        try_again = six.StringIO()
         try_again.write('[host-definitions]\n')
         try_again.write(open(tmp_file_name).read())
         try_again.seek(0, os.SEEK_SET)
@@ -283,8 +288,7 @@ def merge_ansible_config(current_config, new_config):
 ############################################################
 #   Merge function for inventory.in
 ############################################################
-def merge_inventory_ini(current_inventory, new_inventory):
-
+def merge_inventory_ini(current_inventory, new_inventory, merge_default_host):
     test_result = dict()
     cmdline_hosts = ''
 
@@ -340,15 +344,19 @@ def merge_inventory_ini(current_inventory, new_inventory):
                 # leave the new children section intact
                 continue
 
-            LOG.info("The new host group has been found and a temporary value added. The temporary value must be replaced.")
             test_result[section] = 'NEW'
 
             # first clear the new inventory hostgroup target placeholders
             for option in new_inventory.options(section):
                 new_inventory.remove_option(section, option)
 
-            # set a temporary placeholder value to make the user choose later
-            new_inventory.set(section, '? choose-target-host', None)
+            if merge_default_host:
+                new_inventory.set(section, merge_default_host, None)
+                LOG.info("The new host group has been found and the host '" + merge_default_host + "' was added.")
+            else:
+                # set a temporary placeholder value to make the user choose later
+                new_inventory.set(section, '? choose-target-host', None)
+                LOG.info("The new host group has been found and a temporary value '? choose-target-host was added'. The temporary value must be replaced.")
 
     # test_result['__MERGED__'] = str(_get_config_dict(new_inventory))
 
@@ -376,7 +384,7 @@ def post_process_inventory(new_inventory_file, new_inventory_base_file):
         # restore the removed comments
         post_content = re.sub('99999;', '#', post_content, flags=re.M)
 
-        with open(new_inventory_file, 'wb') as post_process_file:
+        with open(new_inventory_file, 'w') as post_process_file:
             post_process_file.write(post_content)
 
         # restore the comments from the base inventory.ini
@@ -392,7 +400,7 @@ def post_process_inventory(new_inventory_file, new_inventory_base_file):
                     searchword = lines[i + 1]
                     if not searchword.startswith(searchquery):
                         lineno = get_linenumber(new_inventory_file, searchword)
-                        print lineno
+                        print (lineno)
                         replace_line(new_inventory_file, lineno, '\n' + newline)
                         newline = ''
                 i = i + 1
@@ -467,6 +475,19 @@ def get_linenumber(cfg_file, searchword):
 
 
 ############################################################
+#   Add new Postgres properties to cpspgpoolc and pgpoolc in the vars.yml
+############################################################
+def add_new_properties_invocation_variable (vars_file):
+    with open(vars_file, "r") as in_file:
+        buf = in_file.readlines()
+
+    with open(vars_file, "w") as out_file:
+        for line in buf:
+            if line.startswith(PCP_PORT_LINE):
+                line = HA_PGPOOL_VIRTUAL_IP_LINE + HA_PGPOOL_WATCHDOG_PORT_LINE + POOL_NUMBER_LINE +  line
+            out_file.write(line)
+
+############################################################
 #   Main
 ############################################################
 def main():
@@ -474,8 +495,10 @@ def main():
         "hostvars": {"required": True, "type": "str"},
         "current_inventory_file": {"required": True, "type": "str"},
         "current_files_dir": {"required": True, "type": "str"},
+        "add_ha_properties": {"required": True, "type": "bool"},
         "log_file_name": {"required": True, "type": "str"},
         "tenant_id_string": {"required": False, "type": "str"},
+        "merge_default_host": {"required": False, "type": "str"},
     }
     module = AnsibleModule(argument_spec=fields,
                            check_invalid_arguments=True,
@@ -483,6 +506,7 @@ def main():
 
     current_inventory_file = module.params['current_inventory_file']
     current_files_dir = module.params['current_files_dir']
+    add_ha_properties = module.params['add_ha_properties']
 
     if not current_inventory_file.startswith(os.sep):
         # force working with absolution path location
@@ -528,17 +552,11 @@ def main():
     LOG.debug("")
 
     current_cfg = read_config(current_ansible_cfg)
-
     current_inventory = read_inventory(current_inventory_file, 'no')
-
     current_vars = read_yaml(current_vars_yml)
-
     hostvars_str = module.params['hostvars']
     hostvars = json.loads(hostvars_str)
 
-    # use any one hostvar section to determine deployment files location
-    first_host_key = hostvars.keys()[0]
-    first_host_vars = hostvars.get(first_host_key)
 
     new_inventory_file = os.path.join(new_inventory_dir, 'inventory.ini')
     # back up the new inventory file
@@ -558,22 +576,30 @@ def main():
         LOG.error("The ansible.cfg is not a valid file.")
         module.exit_json(failed=True, msg=fail_msg)
 
+    # Get the merge_default_host
+    merge_default_host = module.params['merge_default_host']
+    if merge_default_host:
+        LOG.info("The merge_default_host is: " + merge_default_host)
+
     new_cfg = read_config(new_ansible_cfg)
     new_inventory = read_inventory(new_inventory_file, 'yes')
     new_vars = read_yaml(new_vars_yml)
 
     merge_cfg = merge_ansible_config(current_cfg, new_cfg)
-    merge_inventory = merge_inventory_ini(current_inventory, new_inventory)
+    merge_inventory = merge_inventory_ini(current_inventory, new_inventory, merge_default_host)
     merge_vars = merge_vars_yml(current_vars, new_vars)
 
     # write merged results to files
-    with open(new_ansible_cfg, 'wb') as merge_file:
+    with open(new_ansible_cfg, 'w') as merge_file:
         new_cfg.write(merge_file)
-
-    with open(new_inventory_file, 'wb') as merge_file:
+    with open(new_inventory_file, 'w') as merge_file:
         new_inventory.write(merge_file)
-
     write_yaml(new_vars, new_vars_yml)
+
+    # add new HA properties
+    if add_ha_properties:
+        add_new_properties_invocation_variable(new_vars_yml)
+        LOG.info("The new postgres HA properties werer added to the newer vars.yml file.")
 
     # Get the tenant_id_list and do merge the tenant_vars.yml files
     tenant_string = module.params['tenant_id_string']

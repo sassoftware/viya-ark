@@ -62,6 +62,8 @@
 
   - name: Make SELinux permissive (in the current session) but only if it's currently enabled
     shell: "setenforce 0"
+    changed_when: False
+    check_mode: no
     when: selinuxstatus.stdout is defined and  selinuxstatus.stdout == 'Enforcing'
     ignore_errors: yes
 

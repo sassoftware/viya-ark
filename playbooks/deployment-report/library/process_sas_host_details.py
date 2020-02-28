@@ -8,9 +8,16 @@
 
 from ansible.module_utils.basic import AnsibleModule
 import ast
-import urllib2
 import traceback
 import xml.etree.ElementTree as ET
+# Python 2
+try:
+    import urllib2 as web_request
+    import urllib2 as web_error
+# Python 3
+except ImportError:
+    import urllib.request as web_request
+    import urllib.error   as web_error
 
 ANSIBLE_METADATA = {
     'metadata_version': '1.0',
@@ -41,24 +48,17 @@ options:
         description:
             - The name of the dict object registered with hostvars which will contain the host details.
         required: true
+    include_hotfix_report:
+        description:
+            - Whether or not to include the hotfix report.
+        required:  false
+        default:   true
+    hotfix_url:
+        description:
+            -  The URL to look for the published hotfixes.
+        require:  False
+        default:  http://ftp.sas.com/techsup/download/hotfix/HF2/util01/Viya/data/
 '''
-# The following are options for the hotfix report, which has been temporarily disabled for this release.
-#    include_hotfix_report:
-#        description:
-#            - Whether or not to include the hotfix report.
-#        required:  false
-#        default:   true
-#    hotfix_url:
-#        description:
-#            -  The URL to look for the published hotfixes.
-#        require:  False
-#        default:  http://ftp.sas.com/techsup/download/hotfix/HF2/util01/Viya/data/
-#    hotfix_master_file:
-#        description:
-#            -  The file that holds all of the hotfix infomration.
-#        require:  False
-#        default:  Viya_Update_Page_Index.xml
-#'''
 
 EXAMPLES = '''
 # Process SAS deployment information
@@ -108,7 +108,7 @@ def print_Full_Report( fullReport):
 ###########################################
 #  compare_versions
 #
-# This function takes in two string formated like so:
+# This function takes in two string formatted like so:
 #   d.d.d[....]-dddddd
 #
 # Note:  The first string passed in will be the string that
@@ -116,12 +116,15 @@ def print_Full_Report( fullReport):
 # OS specfic information.  It will be stripped out
 # from splitdash1[1] below.
 #
+# The last string that is passed is whether or not to
+# compare the time-date stamps.
+#
 # Here are the return values:
 #   -1 the first string is lower than the second string
 #    0 the first and second strings match exactly.
 #    1 the first string is higher than the second string.
 ###############################################
-def compare_versions (version1, version2):
+def compare_versions (version1, version2, honorTimeStamp=True):
     return_code = 0
 
     splitdash1 = version1.split('-')
@@ -142,7 +145,7 @@ def compare_versions (version1, version2):
             return_code = -1
             break
 
-    if return_code == 0:
+    if return_code == 0 and honorTimeStamp:
         if length2 > length1:
             return_code= -1
         else:
@@ -181,8 +184,7 @@ def main():
             report_timestamp=dict(type=str, required=False, default=''),
             registered_dict_name=dict(type=str, required=False, default="get_sas_host_details_results"),
             include_hotfix_report=dict(type=bool, required=False, default=True),
-            hotfix_url = dict(type=str, required=True),
-            hotfix_master_file = dict(type=str, required=True)
+            hotfix_url = dict(type=str, required=True)
     ),
         supports_check_mode=True
     )
@@ -193,7 +195,6 @@ def main():
     registered_dict_name = module.params['registered_dict_name']
     include_hotfix_report = module.params['include_hotfix_report']
     hotfix_url = module.params['hotfix_url']
-    hotfix_master_file = module.params['hotfix_master_file']
 
     # Starting in Ansible 2.8.1, there is the potential for hostvars
     # to be passed as a byte string, if the dict is too large
@@ -278,7 +279,7 @@ def main():
     ##################################################################################
     # This section will find all of the hotfixes available and add them to the report.
     ##################################################################################
-
+    #
     # There are a few data structures that are complicated enough to warrant a description:
     # fullReport
     #  This will hold all of the data in a format condusive to printing it out in the final report.  This is how
@@ -327,15 +328,210 @@ def main():
     #          key="version", pointing to a string of the package versions currently installed on the host.
     ############################################################################
 
+
+    # These properties will determine whether sections in the ansible output should be displayed or not.
+    results["legacy_products_found"] = False
+    results["hotfix_legacy_products"] = "There is no hotfix data available for the following products due to their age:\n"
+    results["no_hotfixes_available"] = False
+    results["no_hotfix_products"] = "The following products are installed, but there are no associated hotfixes for them:\n"
+
     results["include_hotfix_report"] = include_hotfix_report
+    files_to_scan = []
     if include_hotfix_report:
-        # This is the URL from which to pull the hotfix files.
+
+        # Constants for the RPMs.
+        VA_RPM='sas-sasvisualanalytics'
+        ESM_RPM='sas-esm-service'
+        ESP_RPM='sas-espcondb'
+        IIM_RPM='sas-svi-intelligence-management'
+        VI_RPM='sas-svi-visual-investigator'
+        SPRE_RPM='sas-basecfg1'
+
+        # The following list contains the RPMs that are unique to each of the product sets defined
+        # in the default baseURL
+        key_rpms = [VA_RPM,
+                    ESM_RPM,
+                    ESP_RPM,
+                    IIM_RPM,
+                    VI_RPM
+                    ]
+        # This is a list of the files on the hotfix website to use, depending on what is currently installed.
+        # This is a dictionary of all rpms to their versions, across all machines in the deployment.
+        all_installed_rpms = {}
+
+        # Walk through all of the machines in the deployment.  Build the list of RPM -> Version.
+        # If there is more than one copy of an RPM (expected on multi-machine deployments) and
+        # there is a difference in version (which there should NOT be, though it is possible),
+        # use the lowest version possible.
+        for current_machine in results['sas_hosts']:
+            if not results['sas_hosts'][current_machine]["_unreachable"] and not results['sas_hosts'][current_machine][
+               "_failed"] and results['sas_hosts'][current_machine]['_sas_installed']:
+                for current_rpm in results['sas_hosts'][current_machine]['sas_packages']:
+                    # Skip any "noarch" packages, as they are not needed.
+                    if results['sas_hosts'][current_machine]['sas_packages'][current_rpm]['attributes']['arch'].find('noarch') == -1:
+                        current_rpm_version = \
+                        results['sas_hosts'][current_machine]['sas_packages'][current_rpm]['attributes']['version']
+                        if current_rpm in all_installed_rpms.keys():
+                            if compare_versions(all_installed_rpms[current_rpm], current_rpm_version) < 0:
+                                all_installed_rpms[current_rpm] = current_rpm_version
+                        else:
+                            all_installed_rpms[current_rpm] = current_rpm_version
+
+        # Loop through the key RPM list.  If a key RPM exists, check the version and then add it to the list to be checked.
+        for current_rpm in key_rpms:
+            if current_rpm in all_installed_rpms.keys():
+                rpm_version = all_installed_rpms[current_rpm]
+                if current_rpm == VA_RPM:
+                    # Viya 3.5 shipped with sas-visualanalytics at version 2.5.10.  If the version is at or above this,
+                    # use the VA 3.5 hotfix file.
+                    if compare_versions(rpm_version, "2.5.10", False) >= 0:
+                        files_to_scan.append("Viya_3_5_lax_home.xml")
+                    # Viya 3.4 (19w34) shipped with sas-visualanalytics at version 1.9.543.  If the version is at or
+                    # above this, use the VA 3.4 hotfix file.
+                    elif compare_versions(rpm_version, "1.9.543", False) >= 0:
+                        files_to_scan.append("Viya_3_4_lax_0819_home.xml")
+                    # Viya 3.4 (18w30) shipped at version 1.4.244.  However, there was a refresh at 19w21, but VA was not
+                    # refreshed.  So, an additional check will need to be made to see if we are before or after  the
+                    # 19w21 refresh.
+                    elif (compare_versions(rpm_version, "1.4.244", False) >= 0):
+                        # basecfg1 was updated at 19w21.  So, that is what will be looked at to see if the deployment is
+                        # at least 19w21.
+                        basecfg1_version = all_installed_rpms[SPRE_RPM]
+                        if compare_versions(basecfg1_version, "3.19", False) >= 0:
+                            files_to_scan.append("Viya_3_4_lax_0519_home.xml")
+                        else:
+                            files_to_scan.append("Viya_3_4_lax_home.xml")
+                    # Viya 3.3 shipped with sas-visualanalytics at version 1.2.557.  If the version is at or
+                    # above this, use the VA 3.3 hotfix file.
+                    elif (compare_versions(rpm_version, "1.2.557", False) >= 0):
+                        files_to_scan.append("Viya_3_3_home.xml")
+                    # Viya 3.2 shipped with sas-visualanalytics at version 1.2.557.  If the version is at or
+                    # above this, use the VA 3.3 hotfix file.
+                    elif (compare_versions(rpm_version, "1.0.328", False) >= 0):
+                        files_to_scan.append("Viya_3_2_home.xml")
+                    # Otherwise, the version is too old.  Just note that this DU, though deployed, is too old and it
+                    # won't be reported on.
+                    else:
+                        results["legacy_products_found"] = True
+                        results["hotfix_legacy_products"] = results["hotfix_legacy_products"] + "  " + current_rpm + \
+                                                            " is at version " + str(rpm_version) + \
+                                                            ", but the minimum reported version is 1.0.328.\n"
+                elif current_rpm == ESM_RPM:
+                    # ESM 6.2 shipped with sas-esm-service at version 6.2.7.  If the version is at or above this,
+                    # use the ESM 6.2 hotfix file.
+                    if compare_versions(rpm_version, "6.2.7", False) >= 0:
+                        files_to_scan.append('Viya_ESM_6_2_home.xml')
+                    # ESM 6.1 shipped with sas-esm-service at version 6.1.76.  If the version is at or above this,
+                    # use the ESM 6.1 hotfix file.
+                    elif compare_versions(rpm_version, "6.1.76", False) >= 0:
+                        files_to_scan.append('Viya_ESM_6_1_home.xml')
+                    # ESM 5.2 shipped with sas-esm-service at version 5.2.40.  If the version is at or above this,
+                    # use the ESM 5.2 hotfix file.
+                    elif compare_versions(rpm_version, "5.2.40", False) >= 0:
+                        files_to_scan.append('Viya_ESM_5_2_home.xml')
+                    # ESM 5.1 shipped with sas-esm-service at version 5.1.13.  If the version is at or above this,
+                    # use the ESM 5.1 hotfix file.
+                    elif compare_versions(rpm_version, "5.1.13", False) >= 0 :
+                        files_to_scan.append('Viya_ESM_5_1_home.xml')
+                    # ESM 4.3 shipped with sas-esm-service at version 4.3.20.  If the version is at or above this,
+                    # use the ESM 4.3 hotfix file.
+                    elif compare_versions(rpm_version, "4.3.20", False) >= 0:
+                        files_to_scan.append('Viya_ESM_4_3_home.xml')
+                    # Otherwise, the version is too old.  Just note that this DU, though deployed, is too old and it
+                    # won't be reported on.
+                    else:
+                        results["legacy_products_found"] = True
+                        results["hotfix_legacy_products"] = results["hotfix_legacy_products"] + "  " + current_rpm + \
+                                                            " is at version " + str(rpm_version) + \
+                                                            ", but the minimum reported version is 6.1.76.\n"
+                elif current_rpm == ESP_RPM:
+                    # ESP 6.2 shipped with sas-espcondb at version 6.2.0.  If the version is at or above this,
+                    # use the ESP 6.2 hotfix file.
+                    if compare_versions(rpm_version, "6.2.0", False) >= 0:
+                        files_to_scan.append("Viya_ESP_6_2_home.xml")
+                    # ESP 6.1 shipped with sas-espcondb at version 6.1.0.  If the version is at or above this,
+                    # use the ESP 6.1 hotfix file.
+                    elif compare_versions(rpm_version, "6.1.0", False) >= 0:
+                        files_to_scan.append("Viya_ESP_6_1_home.xml")
+                    # ESP 5.2 shipped with sas-espcondb at version 5.2.0.  If the version is at or above this,
+                    # use the ESP 5.2 hotfix file.
+                    elif compare_versions(rpm_version, "5.2.0", False) >= 0:
+                        files_to_scan.append("Viya_ESP_5_2_home.xml")
+                    # ESP 5.1 shipped with sas-espcondb at version 5.1.0.  If the version is at or above this,
+                    # use the ESP 5.1 hotfix file.
+                    elif compare_versions(rpm_version, "5.1.0", False) >= 0:
+                        files_to_scan.append("Viya_ESP_5_1_home.xml")
+                    # ESP 4.3 shipped with sas-espcondb at version 4.3.0.  If the version is at or above this,
+                    # use the ESP 4.3 hotfix file.
+                    elif compare_versions(rpm_version, "4.3.0", False) >= 0:
+                        files_to_scan.append("Viya_ESP_4_3_home.xml")
+                    # Otherwise, the version is too old.  Just note that this DU, though deployed, is too old and it
+                    # won't be reported on.
+                    else:
+                        results["legacy_products_found"] = True
+                        results["hotfix_legacy_products"] = results["hotfix_legacy_products"] + "  " + current_rpm + \
+                                                            " is at version " + str(rpm_version) + \
+                                                            ", but the minimum reported version is 4.3.0.\n"
+                elif current_rpm == IIM_RPM:
+                    # IIM 1.5 shipped with sas-svi-intelligence-management at version 1.5.11.  If the version is at or
+                    # above this, use the IIM 1.5 hotfix file.
+                    if compare_versions(rpm_version, "1.5.11", False) >= 0:
+                        files_to_scan.append("Viya_IIM_1_5_home.xml")
+                    # IIM 1.4 shipped with sas-svi-intelligence-management at version 1.4.7.  If the version is at or
+                    # above this, use the IIM 1.4 hotfix file.
+                    elif compare_versions(rpm_version, "1.4.7", False) >= 0:
+                        files_to_scan.append("Viya_IIM_1_4_home.xml")
+                    # IIM 1.3 shipped with sas-svi-intelligence-management at version 1.3.10.  If the version is at or
+                    # above this, use the IIM 1.3 hotfix file.
+                    elif compare_versions(rpm_version, "1.3.10", False) >= 0:
+                        files_to_scan.append('Viya_IIM_1_3_home.xml')
+                    # Otherwise, the version is too old.  Just note that this DU, though deployed, is too old and it
+                    # won't be reported on.
+                    else:
+                        results["legacy_products_found"] = True
+                        results["hotfix_legacy_products"] = results["hotfix_legacy_products"] + "  " + current_rpm + \
+                                                            " is at version " + str(rpm_version) + \
+                                                            ", but the minimum reported version is 1.3.10.\n"
+                elif current_rpm == VI_RPM:
+                    # VI 10.6 shipped with sas-svi-visual-investigator at version 8.2.72.  If the version is at or
+                    # above this, use the VI 10.6 hotfix file.
+                    if compare_versions(rpm_version, "8.2.72", False) >= 0:
+                        files_to_scan.append("Viya_VI_10_6_home.xml")
+                    # VI 10.5.1 shipped with sas-svi-visual-investigator at version 7.5.129.  If the version is at or
+                    # above this, use the VI 10.5.1 hotfix file.
+                    elif compare_versions(rpm_version, "7.5.129", False) >= 0:
+                        files_to_scan.append("Viya_VI_10_5_1_home.xml")
+                    # VI 10.5 shipped with sas-svi-visual-investigator at version 7.4.22.  If the version is at or
+                    # above this, use the VI 10.5 hotfix file.
+                    elif compare_versions(rpm_version, "7.4.22", False) >= 0:
+                        files_to_scan.append("Viya_VI_10_5_home.xml")
+                    # VI 10.4 shipped with sas-svi-visual-investigator at version 7.1.51.  If the version is at or
+                    # above this, use the VI 10.4 hotfix file.
+                    elif compare_versions(rpm_version, "7.1.51", False) >= 0:
+                        files_to_scan.append("Viya_VI_10_4_home.xml")
+                    # VI 10.3.1 shipped with sas-svi-visual-investigator at version 6.4.6.  If the version is at or
+                    # above this, use the VI 10.3.1 hotfix file.
+                    elif compare_versions(rpm_version, "6.4.6", False) >= 0:
+                        files_to_scan.append("Viya_VI_10_3_1_home.xml")
+                    # VI 10.3 shipped with sas-svi-visual-investigator at version 6.3.2.  If the version is at or
+                    # above this, use the VI 10.3 hotfix file.
+                    elif compare_versions(rpm_version, "6.3.2", False) >= 0:
+                        files_to_scan.append("Viya_VI_10_3_home.xml")
+                    # Otherwise, the version is too old.  Just note that this DU, though deployed, is too old and it
+                    # won't be reported on.
+                    else:
+                        results["legacy_products_found"] = True
+                        results["hotfix_legacy_products"] = results["hotfix_legacy_products"] + "  " + current_rpm + \
+                                                            " is at version " + str(rpm_version) + \
+                                                            ", but the minimum reported version is 6.3.2.\n"
+
+        # This is the URL base from which to pull the hotfix files.
+        # Because the user can specify hotfix_url, we need to check to see if the trailing slash is there.  If not,
+        # add it.
         if hotfix_url[-1:] == '/':
             baseURL = hotfix_url
         else:
             baseURL = hotfix_url + '/'
-        # This is the master file that lists which other files should be examined for the actual hotfixes themselves.
-        masterFile = hotfix_master_file
         # This is the top level object to store the hotfix report information (see above).
         fullReport = {}
         # This is a dict of package to hotfixes (see above).
@@ -343,27 +539,24 @@ def main():
         # This boolean will help with debugging.
         debug = False
 
+        # Check to see if the base site can be reached.  If not, an error will be displayed in the deployment report
+        # itself.  Note:  We don't actually care about the content.  This check is just to see if the page can be
+        # reached.
+        results["master_website"] = baseURL
         try:
-            # Parse the master file to obtain where the hotfix files are.
-            masterFileXML = urllib2.urlopen(baseURL + masterFile)
-
-            # Parse the master file and build a list of all files.
-            allFilesRoot = ET.fromstring(masterFileXML.read())
+            landing_page = web_request.urlopen(baseURL)
+            http_output = landing_page.read()
             results["contact_hotfix_website"] = True
-        except urllib2.URLError :
+        except web_error.URLError :
             results["contact_hotfix_website"] = False
-            results["master_website"] = baseURL + masterFile
             if debug:
-                print("***** Error parsing " + baseURL + masterFile)
+                print("***** Error parsing " + baseURL)
                 print(traceback.format_exc())
                 print("***** No hot fix information obtained.  Skipping hot fix report.\n\n")
 
-        if results["contact_hotfix_website"]:
-            # Loop through the files discoverd in the master file
-            if debug:
-                print("Building hot fix report, based on master file input.")
-            for file_tag in allFilesRoot.findall('File'):
-                currentFile = file_tag.get('fileName')
+        files_to_remove = []
+        if len(files_to_scan) > 0:
+            for currentFile in files_to_scan:
                 fileToParse = baseURL + currentFile
                 # Retrieve each file.
                 # Inside of each file, the lines are keyed by the hot fix id.  There are three types of lines, in order:
@@ -379,7 +572,7 @@ def main():
                 #    Packages
                 #      Package Name, Version, and OS
                 try:
-                    currentFileXML = urllib2.urlopen(fileToParse)
+                    currentFileXML = web_request.urlopen(fileToParse)
                     currentFileRoot = ET.fromstring(currentFileXML.read())
                     updateID = ""
                     for update_tag in currentFileRoot.findall('update'):
@@ -426,7 +619,7 @@ def main():
                                     # Format the package information.
                                     # Windows does not have a dash in the version; Linux does.  So, we need to break differently,
                                     # depending on the OS.
-                                    if os.lower().find("windows") > -1:
+                                    if os.lower().find("windows") >= 0:
                                         versionStartIndex = fullPackage.rfind("-")
                                         achitectureStartIndex = -1
                                         versionEndIndex = lastPeriodIndex
@@ -436,21 +629,21 @@ def main():
                                         # Linux has architecture in the package.  This will be stored in its own key.
                                         achitectureStartIndex = fullPackage.rfind(".", 0, lastPeriodIndex)
                                         # SLES has the string 'suse' in its package.  This will strip it out (as well as an extra .).
-                                        if os.lower().find("suse") > -1:
+                                        if os.lower().find("suse") >= 0:
                                             versionEndIndex = achitectureStartIndex - 5
                                             osFamily = "Suse"
                                         else:
-                                            if os.lower().find("yocto") > -1:
+                                            if os.lower().find("yocto") >= 0:
                                                 versionEndIndex = achitectureStartIndex - 6
                                                 osFamily = "Yocto"
                                             else:
-                                                if os.lower().find("ubuntu") > -1:
+                                                if os.lower().find("ubuntu") >= 0:
                                                     versionStartIndex = fullPackage.rfind("_", 0, fullPackage.rfind("_"))
                                                     versionEndIndex = fullPackage.rfind("_")
                                                     achitectureStartIndex = versionEndIndex
                                                     osFamily = "Ubuntu"
                                                 else:
-                                                    if os.lower().find("red hat enterprise linux 7") > -1:
+                                                    if os.lower().find("red hat enterprise linux 7") >= 0:
                                                         versionStartIndex = versionStartIndex = fullPackage.rfind(":")
                                                         versionEndIndex = len(fullPackage)
                                                         achitectureStartIndex = -1
@@ -489,7 +682,10 @@ def main():
                         print("***** Error parsing " + fileToParse)
                         print(traceback.format_exc())
                         print("***** Skipping file.\n\n")
-                except urllib2.HTTPError:
+                except web_error.HTTPError:
+                    results["no_hotfixes_available"] = True
+                    results["no_hotfix_products"] = results["no_hotfix_products"] + "  " + currentFile + "\n"
+                    files_to_remove.append(currentFile)
                     if debug:
                         print("***** Cannot access " + fileToParse)
                         print(traceback.format_exc())
@@ -499,6 +695,10 @@ def main():
                         print("***** Error encountered with " + fileToParse)
                         print(traceback.format_exc())
                         print("***** Skipping the file.\n\n")
+
+            # Remove files that have been flagged as not existing
+            for this_file in files_to_remove:
+                files_to_scan.remove(this_file)
 
             if debug:
                 print("**** Build complete.  Here are the hot fixes:")
@@ -515,7 +715,8 @@ def main():
                 print("Accessing environment Data.")
 
             for currentMachine in results['sas_hosts']:
-                if not results['sas_hosts'][currentMachine]["_unreachable"] and not results['sas_hosts'][currentMachine]["_failed"]:
+                if not results['sas_hosts'][currentMachine]["_unreachable"] and not results['sas_hosts'][currentMachine]["_failed"]\
+                   and results['sas_hosts'][currentMachine]['_sas_installed']:
                     currentOS = results['sas_hosts'][currentMachine]['os']['family']
                     for currentPackage in results['sas_hosts'][currentMachine]['sas_packages']:
                         if currentPackage in packageToHotfix:
@@ -536,7 +737,7 @@ def main():
                                     upToDate = compare_versions(installedVersion, hotfixVersion) >= 0
                                     fullReport[currentHotfix]["installed"] = True
                                     fullReport[currentHotfix]["package"][currentPackage]["platform"][currentOS]["installed"] = True
-                                    # If a previous pacakage marked updateToDate=True, it can still be pulled back to false if another package isn't
+                                    # If a previous package marked updateToDate=True, it can still be pulled back to false if another package isn't
                                     # up to date.  If the previous package was marked upToDate=false, the hotfix cannot be marked true.
                                     if not fullReport[currentHotfix]["package"][currentPackage]["platform"][currentOS]["alreadyUpdated"] or \
                                         (fullReport[currentHotfix]["package"][currentPackage]["platform"][currentOS]["alreadyUpdated"] and
@@ -594,7 +795,7 @@ def main():
                 results[hotfix_dict_to_use][currentHotfix]["sas_notes"] = {}
                 for current_number in fullReport[currentHotfix]["sasnote"]:
                     # Honor any html that is coming through.
-                    temp_sasnote_description = fullReport[currentHotfix]["sasnote"][current_number]
+                    temp_sasnote_description = fullReport[currentHotfix]["sasnote"][current_number].decode('utf-8')
                     temp_sasnote_description = temp_sasnote_description.replace("&lt;", "<")
                     temp_sasnote_description = temp_sasnote_description.replace("&gt;", ">")
                     # Build a link to the URL for the SAS Note.
@@ -603,6 +804,17 @@ def main():
                     sas_note_url = "http://support.sas.com/kb/" + hot_fix_prefix + "/" + hot_fix_postfix + ".html"
                     sas_note_html_link = "<a href=\"" + sas_note_url + "\"\>" + current_number + "</a>"
                     results[hotfix_dict_to_use][currentHotfix]["sas_notes"][current_number] = {"sas_note_link":sas_note_html_link, "description":temp_sasnote_description}
+
+    if len(files_to_scan) == 0:
+        formatted_file_output = "Installed products analyzed; no applicable hotfix files to report on.\n"
+    else:
+        formatted_file_output = "Installed Products analyzed; hotfix files used in report:\n"
+        current_file_number = 1
+        for current_file in files_to_scan:
+            formatted_file_output = formatted_file_output + "  " + current_file_number.__str__() + ")  " + baseURL + current_file + "\n"
+            current_file_number += 1
+
+    results["hotfix_scanned_files"] = formatted_file_output
 
     # in the event of a successful module execution, you will want to
     # simple AnsibleModule.exit_json(), passing the key/value results

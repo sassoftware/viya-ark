@@ -80,7 +80,10 @@ do_ps_common()
 		if [[ $p =~ -all-services ]]; then
 			/etc/init.d/$p $ACTION &
 		else
-			do_service $ACTION $p
+			check_svcignore $p
+			if [[ $? == 0 ]]; then
+				do_service $ACTION $p
+			fi
 		fi
 	done
 
@@ -212,6 +215,9 @@ do_stopdb()
 					if [[ "$dbstatus" != "" ]]; then
 						su - sas -c "$DBDIR/pgpool${dbnum}/shutdownall"
 						FAIL=$?
+						if [[ "$FAIL" != "0" ]]; then
+							return
+						fi
 					fi
 				else
 					echo "Warning: consul is not up, skip shutdown pgpool"
@@ -300,6 +306,7 @@ do_stopdbct()
 						su - sas -c "$DBDIR/node0/shutdownall"
 						if [[ $? != 0 ]]; then
 							let "FAIL+=1"
+							return
 						fi
 					fi
 				else
@@ -335,23 +342,19 @@ checkspace()
 clean_dbps()
 {
 	LIST=$(ps -e -o "user pid ppid cmd" |grep -E 'sds_consul_health_check|sas-crypto-management'|grep -v grep)
-	NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
-
-	for p in $NLIST
-	do
-		echo "kill -KILL $p"
-		kill -KILL $p 2>/dev/null
-	done
-	return 0
+	do_cleanps
 }
 
 do_cleanps()
 {
+	local flag=$1
 	NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
 
 	for p in $NLIST
 	do
-		echo "kill -KILL $p"
+		if [[ "$flag" == "" ]]; then
+			echo "kill -KILL $p"
+		fi
 		kill -KILL $p 2>/dev/null
 	done
 	return 0
@@ -435,6 +438,70 @@ check_consul()
 	fi
 }
 
+do_deregconsul()
+{
+	SNAME=sas-viya-consul-default
+	if [[ ! -x "/etc/init.d/$SNAME" ]]; then
+                echo "Warning: service $SNAME not found"
+		return
+	fi
+
+	local rc=$(do_service start $SNAME)
+	if [[ "$rc" != "0" ]]; then
+		wait $rc
+	fi
+
+        CONF=/opt/sas/viya/config/consul.conf
+        if [[ ! -f "$CONF" ]]; then
+                echo "Warning: consul config file is missing ($CONF)"
+                return
+        fi
+        source $CONF
+        export CONSUL_HTTP_TOKEN=$($SUDO cat /opt/sas/viya/config/etc/SASSecurityCertificateFramework/tokens/consul/default/client.token)
+
+        local BT=/opt/sas/viya/home/bin/sas-bootstrap-config
+
+	local i=0
+	while true;
+	do
+		local idlist=$($BT agent service list 2>&1)
+		echo "$idlist" | grep 'ERROR: Unable to retrieve' > /dev/null 2>&1
+		if [[ $? != 0 ]]; then
+			idlist=$(echo "$idlist"|grep '"ID":'|grep -v -E 'postgres-'|awk '{print $2}'|sed -e 's/["|,| ]//g')
+			for id in $idlist
+			do
+				echo "$id"
+				$BT agent service deregister $id
+			done
+			break
+		else
+			if [[ $i > $consul_retry_counter ]]; then
+				break
+			fi
+		fi
+		((i=i+1))
+	done
+
+	rc=$(do_service stop $SNAME)
+	if [[ "$rc" != "0" ]]; then
+		wait $rc
+	fi
+
+	LIST=$(ps -e -o "user pid ppid cmd"|grep -E '/opt/sas/spre/|/opt/sas/viya/'| \
+		grep -E 'sds_consul_health_check|sas-crypto-management|kill_consul_helper|sas-bootstrap-config'|grep -v grep)
+	do_cleanps -s
+}
+
+check_svcignore()
+{
+	local key=$1
+	if [[ "$IGNORE" =~ "$key" ]]; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 init()
 {
 	SYSTYPE=$(ps -p 1|grep -v PID|awk '{print $4}')
@@ -442,6 +509,13 @@ init()
 	LIST=
 	cd /etc/init.d
 	PIDROOT=/var/run/sas
+
+	IGNORE=
+	local SVCFILE=/opt/sas/viya/config/etc/viya-svc-mgr/svc-ignore
+	if [[ -f "$SVCFILE" ]]; then
+		IGNORE=$(sed -e 's/#.*$//' -e '/^$/d' $SVCFILE)
+	fi
+
 }
 ######
 # main
@@ -451,6 +525,9 @@ OPT=$1
 init
 
 case "$OPT" in
+	deregconsul)
+		consul_retry_counter=$2
+		do_$OPT ;;
 	stopms|stopmt|startmt|startcas|stopcas|svastatus)
 		FAIL=0; do_$OPT; exit $FAIL ;;
 	startdbct|startdb|stopdb|stopdbct)
@@ -468,6 +545,7 @@ case "$OPT" in
 	start|stop)
 		shift 1
 		TLIST=$*
+		consul_retry_counter=$1
 		LIST=
 		for l in $TLIST
 		do
@@ -479,7 +557,10 @@ case "$OPT" in
 		do_ps_common $OPT
 
 		if [[ "$TLIST" =~ "sas-viya-consul-default" ]]; then
-			clean_dbps
+			if [[ "$OPT" == "stop" ]]; then
+				clean_dbps
+				do_deregconsul
+			fi
 		fi
 		;;
 	cleanps)

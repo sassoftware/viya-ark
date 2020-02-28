@@ -4,6 +4,7 @@
   - name: Determine if the Bash shell is installed
     shell: bash --version
     check_mode: no
+    changed_when: False
     register: current_shell
 
   - name: Display the returned version of Bash shell

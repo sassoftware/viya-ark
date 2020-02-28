@@ -15,6 +15,8 @@ SAS Viya ARK provides the following types of assistance:
   * Infrastructure templates
 
 ## Prerequisites for SAS Viya ARK
+Obtain the latest version of SAS Viya ARK with every new software order.
+
 Each item that is included in the resource kit provides a document that describes its specific prerequisites and functionality.
 
 For example, a functioning [Ansible Controller](http://docs.ansible.com/ansible/latest/intro_installation.html) is required to run  the Ansible playbooks that are included below in the [Pre-installation Playbook](playbooks/pre-install-playbook) section. A list of the available playbooks is provided.

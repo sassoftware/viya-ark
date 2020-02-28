@@ -1,0 +1,29 @@
+---
+# OS specific package names for SuSE/SLES
+java_openjdk_version: java-1_8_0-openjdk
+libXp_pkg: libXpm4
+libXext_pkg: libXext6
+libXmu_pkg: libXmu6
+libXtst_pkg: libXtst6
+browser: MozillaFirefox
+ldapclient: openldap2-client
+firewall: SuSEfirewall2
+cgrouptools: libcgroup-tools
+
+# Firewall related names for SuSE/SLES
+firewall_service_path: /usr/lib/systemd/system/SuSEfirewall2.service
+firewall_service_name: SuSEfirewall2.service
+
+## general packages that are mandatory for Viya to work
+
+packages_general:
+  - "{{ java_openjdk_version }}"
+  - numactl
+  - "{{ libXp_pkg }}"
+  - "{{ libXext_pkg }}"
+  - "{{ libXmu_pkg }}"
+  - "{{ libXtst_pkg }}"
+  - xterm             ## this is required for the xterm functions from CAS Monitor
+  - xorg-x11-xauth
+  - strace            ## may be neeeded for hadooptracer
+  - net-tools         ## you need to have netstat on the server

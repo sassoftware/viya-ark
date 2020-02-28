@@ -176,7 +176,8 @@ class _HostDetailsKeys(object):
     :cvar str SAS_PACKAGES:       Key referencing *sas_packages* (dict) in *sas_host_details* (dict).
     :cvar str SAS_SERVICES:       Key referencing *sas_services* (dict) in *sas_host_details* (dict).
     :cvar str UNREACHABLE:        Key referencing *_unreachable* (bool) in *sas_host_details* (dict).
-    :cvar str FAILED:             Key referencing *_failed* (bool) in *sas_host_details* (dict)
+    :cvar str FAILED:             Key referencing *_failed* (bool) in *sas_host_details* (dict).
+    :cvar str SAS_INSTALLED       Key referencing *_sas_installed* (bool) in *sas_host_details (dict).
     """
     ID = '_id'
     IPV4 = 'ipv4'
@@ -189,6 +190,7 @@ class _HostDetailsKeys(object):
     SAS_SERVICES = 'sas_services'
     UNREACHABLE = '_unreachable'
     FAILED = '_failed'
+    SAS_INSTALLED = '_sas_installed'
 
     # =====
     # Class: OSKeys(object)
@@ -939,6 +941,9 @@ def main():
     # and only reset once all data gathering is done
     host_details[_HostDetailsKeys.FAILED] = True
 
+    # assume that SAS software was installed on host until determined otherwise
+    host_details[_HostDetailsKeys.SAS_INSTALLED] = True
+
     # set ipv4
     host_details[_HostDetailsKeys.IPV4] = ipv4
 
@@ -962,6 +967,49 @@ def main():
     except ValueError:
         pass  # do nothing
     host_details[_HostDetailsKeys.HOST_GROUPS] = ansible_host_groups
+
+    # make sure SAS is installed on this host
+    # if not, mark it so it can be relayed in the final report
+    if not os.path.exists('/opt/sas'):
+        # set failed to false, nothing was installed so we can't report on this host
+        # but that isn't a failure
+        host_details[_HostDetailsKeys.FAILED] = False
+
+        # not that SAS software cannot be installed yet
+        host_details[_HostDetailsKeys.SAS_INSTALLED] = False
+
+        results = {
+            hostname: host_details
+        }
+
+        # exit with the current information
+        module.exit_json(changed=False, sas_host_details=results)
+
+    # as a fall back, make sure packages were installed before continuing
+    proc = subprocess.Popen('rpm -qg SAS', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, bufsize=-1)
+
+    try:
+        proc.communicate()
+    except OSError:
+        proc.kill()
+        stdout, stderr = proc.communicate()
+        message = "Command {0} failed.".format('rpm -qg SAS')
+        module.fail_json(msg=message, command_stderr=stderr)
+
+    if proc.returncode == 1:
+        # set failed to false, nothing was installed so we can't report on this host
+        # but that isn't a failure
+        host_details[_HostDetailsKeys.FAILED] = False
+
+        # not that SAS software cannot be installed yet
+        host_details[_HostDetailsKeys.SAS_INSTALLED] = False
+
+        results = {
+            hostname: host_details
+        }
+
+        # exit with the current information
+        module.exit_json(changed=False, sas_host_details=results)
 
     # set host resource_check info
     host_details[_HostDetailsKeys.RESOURCE_CHECK] = {
@@ -1022,7 +1070,7 @@ def _get_filesystems_info(module):
     }
 
     # execute the command to retrieve filesystem information
-    cmd_stdout = _execute_command("df -P --print-type", module)
+    cmd_stdout = _execute_command("df -P --print-type", module, additional_rc=1)
 
     # split stdout by each line
     all_filesystems = cmd_stdout.split('\n')[1:]
@@ -1178,7 +1226,7 @@ def _get_sas_root_info(module):
         _HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.USED_RATIO: '',
     }
 
-    root_du_stdout = _execute_command("du --summarize " + SAS_ROOT_PATH, module)
+    root_du_stdout = _execute_command("du --summarize " + SAS_ROOT_PATH, module, additional_rc=1)
     root_du = root_du_stdout.split()
 
     root_size = ''
@@ -1187,7 +1235,7 @@ def _get_sas_root_info(module):
         root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.SIZE] = _bytesHumanReadable(root_size)
         root_results[_HostDetailsKeys.ResourceCheckKeys.SASRootResultsKeys.PATH] = root_du[1]
 
-    root_df_stdout = _execute_command("df -P --print-type " + SAS_ROOT_PATH, module)
+    root_df_stdout = _execute_command("df -P --print-type " + SAS_ROOT_PATH, module, additional_rc=1)
     root_df = root_df_stdout.split("\n")[1:]
 
     fs_size = ''
@@ -1333,7 +1381,7 @@ def _get_process_memory_info(pid, module):
 
     for row in processes:
         # skip blank lines
-        if row is '':
+        if row is '' or not row:
             continue
 
         nfields = len(row.split()) - 1
@@ -1687,7 +1735,7 @@ def _execute_command(command, module, additional_rc=0, shell=True):
         message = "Command {0} failed.".format(command)
         module.fail_json(msg=message, command_stderr=stderr)
 
-    return stdout
+    return stdout.decode('utf-8')
 
 
 # =====

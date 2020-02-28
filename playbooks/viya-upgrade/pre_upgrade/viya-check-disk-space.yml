@@ -40,7 +40,29 @@
     - varcache_location: >
        /var/cache/yum
 
+    - no_opt_sas_message: >
+       SAS has not been installed on this machine.  
+
+    - skip_check: >
+       Skipping disk space check. /opt/sas not found. 
+
   tasks:
+
+  - name: Check that /opt/sas exists
+    stat:
+      path: '/opt/sas'
+    register: optsas_result
+
+  - name: Set message if /opt/sas does not exist
+    set_fact:
+      sum_msg: "{{ skip_check }}"
+      det_msg: "{{ no_opt_sas_message }}"
+    when: optsas_result.stat.exists == False
+
+  - name: Exit on this host if /opt/sas does not exist
+    meta: end_host
+    when: optsas_result.stat.exists == False
+
   - name: test for available disk space in /opt/sas
     command: df -BG /opt/sas
     register: opt_sas_result
@@ -90,7 +112,7 @@
     set_fact:
       sum_msg: "{{ warning_message }}"
       det_msg: "{{ detail_message }}"
-    when: (opt_sas_partition == var_cache_partition) and (opt_sas_avail|int < total_mem_needed|int) 
+    when: (opt_sas_partition == var_cache_partition) and (opt_sas_avail|int < total_mem_needed|int)
 
   - name: Report space okay on both partitions
     vars:

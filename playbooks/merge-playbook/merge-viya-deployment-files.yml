@@ -22,8 +22,8 @@
 # to the desired state, run:
 #        ansible-playbook merge-viya-deployment-files.yml
 #
-# with the following two options:
-# -e "current_inventory_file=/viya3.3/sas_viya_playbook/myinventory.ini"
+# with the following three options:
+# -e "current_inventory_file=/viya3.5/sas_viya_playbook/myinventory.ini"
 #
 # The vars.yml and ansible.cfg deployment files must exist in the
 # same directory.
@@ -31,6 +31,8 @@
 # Optional: The tenantID_vars.yml files can be merged. Run:
 # -e "tenantID_list=administration,cargo,maintenance"
 #
+# Optional: The default_host can be designated for newly created host groups. Run:
+# -e "merge_default_host=deployTarget"
 #
 ####################################################################
 ---
@@ -68,6 +70,20 @@
         that: current_inventory_file_path.stat.exists and current_inventory_file_path.stat.isreg
         msg: "The specified location is not a fully qualified path name to an inventory file."
 
+    - name: Inquire the deployment target in the current inventory file
+      shell: 'ansible all -i "{{ current_inventory_file }}" --list-hosts'
+      ignore_errors: yes
+      register: deploymenttarget_ret
+
+    - debug:
+       msg: "{{ deploymenttarget_ret.stdout }}"
+
+    - name: Set a deployTaget host name when a single machine deployment is detected
+      set_fact:
+        merge_default_host: "{{ deploymenttarget_ret.stdout_lines[1].strip() }}"
+      run_once: yes
+      when: "'hosts (1)' in deploymenttarget_ret.stdout" 
+
     - name: Define a variable for the merged_files folder
       set_fact:
         merged_folder: "{{ playbook_dir }}/merged_files/{{ timestamp.stdout }}"
@@ -83,6 +99,11 @@
     - name: Set an current ansible.cfg file variable
       set_fact:
         current_ansible_cfg: "{{ current_files_dir }}/ansible.cfg"
+
+    - name: Set a merge_default_host variable
+      set_fact:
+        merge_default_host: "{{ merge_default_host }}"
+      when: merge_default_host is defined and merge_default_host|length>0
 
     - name: Set a tenant ID list variable
       set_fact:
@@ -259,7 +280,7 @@
         path: "{{ merged_vars_yml }}"
         regexp: "{{ item.regexp }}"
         replace: "{{ item.line }}"
-      when: catout.stdout | regex_search ("(?<!#)\\" + item.line)
+      when: catout.stdout | regex_search ("(?<!#)" + item.line)
       with_items:
         - { regexp: '#appserver', line: 'appserver' }
         - { regexp: '#CAS_DISK_CACHE', line: 'CAS_DISK_CACHE' }
@@ -306,7 +327,7 @@
         path: "{{ merged_vars_yml }}"
         regexp: "{{ item.regexp }}"
         replace: "{{ item.line }}"
-      when: catout.stdout | regex_search ( item.regexp) and catout.stdout | regex_search ( "(?<!#)\\CAS_SETTINGS:")
+      when: catout.stdout | regex_search ( item.regexp) and catout.stdout | regex_search ( "(?<!#)CAS_SETTINGS:")
       with_items:
         - { regexp: '#5: LD_LIBRARY_PATH', line: '5: LD_LIBRARY_PATH' }
 
@@ -315,7 +336,7 @@
         path: "{{ merged_vars_yml }}"
         regexp: "{{ item.regexp }}"
         replace: "{{ item.line }}"
-      when: catout.stdout | regex_search ( item.regexp) and catout.stdout | regex_search ( "(?<!#)\\CAS_CONFIGURATION:") and catout.stdout | regex_search ( "(?<!#)\\cfg:")
+      when: catout.stdout | regex_search ( item.regexp) and catout.stdout | regex_search ( "(?<!#)CAS_CONFIGURATION:") and catout.stdout | regex_search ( "(?<!#)cfg:")
       with_items:
         - { regexp: '#SERVICESBASEURL', line: 'SERVICESBASEURL' }
 
@@ -336,10 +357,12 @@
         path: "{{ merged_vars_yml }}"
         line: "{{ item }}"
         state: absent
-      when: catout.stdout | regex_search ("(?<!#)\\FOUNDATION_CONFIGURATION")
+      when: catout.stdout | regex_search ("(?<!#)FOUNDATION_CONFIGURATION")
       with_items:
       - "  #1: '# Comment about KEY'"
       - "  #2: KEY=value"
+      
+
 
     - name: Detect if backward merging is attempted
       assert:
@@ -352,8 +375,10 @@
         hostvars: "{{ hostvars | to_json }}"
         current_inventory_file: "{{ temp_current_inventory_file }}"
         current_files_dir: "{{ current_files_dir }}"
+        add_ha_properties: "{{ ha_properties_exist.changed }}"
         log_file_name: "{{ merged_folder }}/merge_viya_deployment_files.log"
         tenant_id_string: "{{ tenant_id_string if tenantID_list is defined | default(false) else omit }}"
+        merge_default_host: "{{ merge_default_host if merge_default_host is defined | default(false) else omit }}"
       register: merge_result
 
     - name: Remove the --- line in the vars.yml file
@@ -367,7 +392,7 @@
         path: "{{ merged_vars_yml }}"
         line: "{{ item }}"
         insertafter: 'FOUNDATION_CONFIGURATION:'
-      when: catout.stdout | regex_search ("(?<!#)\\FOUNDATION_CONFIGURATION")
+      when: catout.stdout | regex_search ("(?<!#)FOUNDATION_CONFIGURATION")
       with_items:
       - "  #2: KEY=value"
       - "  #1: '# Comment about KEY'"
@@ -377,7 +402,7 @@
         path: "{{ merged_vars_yml }}"
         line: "{{ item }}"
         insertafter: 'CAS_SETTINGS:'
-      when: catout.stdout | regex_search ("(?<!#)\\CAS_SETTINGS")
+      when: catout.stdout | regex_search ("(?<!#)CAS_SETTINGS")
       with_items:
       - "   #5: LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ORACLE_HOME/lib:$JAVA_HOME/lib/amd64/server:$ODBCHOME/lib"
       - "   #4: JAVA_HOME=/usr/lib/jvm/jre-1.8.0"
@@ -445,7 +470,7 @@
     - name: Check whether the cpsdatasvrc property exists in the current inventory file
       lineinfile:
         path: "{{ current_inventory_file }}"
-        regexp: 'cpsdatasvrc:'
+        regexp: 'cpsdatasvrc'
         state: absent
       register: cpspostgres_props_exist
       check_mode: yes
@@ -459,7 +484,7 @@
       set_fact:
         cps_invocation: "{{ INVOCATION_VARIABLES['deployTarget']['cpspgpoolc'] | default([]) }}"
 
-    # case 2
+    # case 2-1
     - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
       blockinfile:
         path: "{{ merged_vars_yml }}"
@@ -478,9 +503,28 @@
                    PGPOOL_PORT: '5441'
                    SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
                    SERVICE_NAME: cpspostgres
-      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == False
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == False and merge_default_host is undefined
 
-    # case 3
+    # case 2-2
+    - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
+      blockinfile:
+        path: "{{ merged_vars_yml }}"
+        insertafter: "{{ merge_default_host }}:"
+        block: |3
+                 cpsdatasvrc:
+                 - NODE_NUMBER: '0'
+                   NODE_TYPE: P
+                   PG_PORT: '5442'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+                 cpspgpoolc:
+                 - PCP_PORT: '5440'
+                   PGPOOL_PORT: '5441'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == False and merge_default_host is defined
+
+    # case 3-1
     - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
       blockinfile:
         path: "{{ merged_vars_yml }}"
@@ -494,14 +538,35 @@
                    SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
                    SERVICE_NAME: cpspostgres
                  cpspgpoolc:
-                 - HA_PGPOOL_VIRTUAL_IP: ''"
-                   HA_PGPOOL_WATCHDOG_PORT: ''"
-                   POOL_NUMBER: '0'"
+                 - HA_PGPOOL_VIRTUAL_IP: ''
+                   HA_PGPOOL_WATCHDOG_PORT: ''
+                   POOL_NUMBER: '0'
                    PCP_PORT: '5440'
                    PGPOOL_PORT: '5441'
                    SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
                    SERVICE_NAME: cpspostgres
-      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True and merge_default_host is undefined
+
+    # case 3-2
+    - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
+      blockinfile:
+        path: "{{ merged_vars_yml }}"
+        insertafter: "{{ merge_default_host }}:"
+        block: |3
+                 cpsdatasvrc:
+                 - NODE_NUMBER: '0'
+                   PG_PORT: '5442'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+                 cpspgpoolc:
+                 - HA_PGPOOL_VIRTUAL_IP: ''
+                   HA_PGPOOL_WATCHDOG_PORT: ''
+                   POOL_NUMBER: '0'
+                   PCP_PORT: '5440'
+                   PGPOOL_PORT: '5441'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True and merge_default_host is defined
 
     - name: Check whether the NODE_TYPE property exists in the merged vars.yml
       lineinfile:
@@ -520,17 +585,7 @@
       when: node_type_exists.changed == False and merged_node_type_exists.changed == True
 
     # case 4
-    - name: Insert the pgpools HA properties to the vars.yml file
-      lineinfile:
-        path: "{{ merged_vars_yml }}"
-        line: "{{ item }}"
-        insertbefore: '- PCP_PORT:'
-      when: ha_properties_exist.changed == False
-      with_items:
-      - "      - HA_PGPOOL_VIRTUAL_IP: ''"
-      - "        HA_PGPOOL_WATCHDOG_PORT: ''"
-      - "        POOL_NUMBER: '0'"
-      when: ha_properties_exist.changed == True
+    # python script inserts the new HA properties
 
     - name: Replace the old pgpools property with a new one in the merged vars.yml
       replace:
@@ -555,6 +610,28 @@
           line: 'sas_casserver_secondary'
       when: hyphen_in_new_host_group.changed == False 
 
+    - name: Check if the host_vars folder exists in the current playbook folder
+      stat:
+        path: "{{ current_files_dir }}/host_vars"
+      register: host_vars_folder
+
+    - name: Copy the host_vars folder to the merged folder
+      copy:
+        src: "{{ host_vars_folder.stat.path }}"
+        dest: "{{ merged_folder }}"
+      when: host_vars_folder.stat.exists and host_vars_folder.stat.isdir
+
+    - name: Check if the file sitedefault.yml exists in the <current playbook folder>/roles/consul/files folder
+      stat:
+        path: "{{ current_files_dir }}/roles/consul/files/sitedefault.yml"
+      register: sitedefault_file
+
+    - name: Copy the sitedefault.yml to the merged folder when the file exists
+      copy:
+        src: "{{ sitedefault_file.stat.path }}"
+        dest: "{{ merged_folder }}"
+      when: sitedefault_file.stat.exists and sitedefault_file.stat.isreg
+
     - name: Show the differences between the original and new configuration files
       shell: diff -y -B --ignore-blank-lines "{{ item.current }}" "{{ item.new }}" > "{{ merged_folder }}/{{ item.filename }}"
       register: show_difference
@@ -576,13 +653,26 @@
     - debug:
         msg: "To review the differences between the original and new configuration files, open the files named filename_diff.txt in {{ merged_folder }}."
 
-    - name: Check whether user action is needed
+    - name: Check whether user action is needed for inventory.ini
       command: grep '^[^#]*?' "{{ merged_folder }}/inventory.ini"
-      register: user_action_required
+      register: user_action_required_inventory
       ignore_errors: true
       failed_when: false
       no_log: true
 
-    - debug:
-        msg: "[Warning] The inventory.ini file has been merged. However, you must select the target host. Be sure to edit the target host correctly in the {{ merged_folder }}/inventory.ini file before you run the playbook again. Locate the string '? choose-target-host' in the merged file, and substitute the name of a valid host that will be the target for the installation."
-      when: user_action_required.rc == 0
+    - name: Check whether user action is needed for vars.yml
+      command: grep '^[^#]*?' "{{ merged_folder }}/vars.yml"
+      register: user_action_required_vars
+      ignore_errors: true
+      failed_when: false
+      no_log: true
+
+    - pause:
+       seconds: 15
+       prompt: "[Warning] The inventory.ini file and vars.yml have been merged. However, you must specify a valid hostname for new host groups. Be sure to edit the target host correctly in the merged inventory.ini and vars.yml files at {{ merged_folder }} before you run the playbook again. Locate the string '? choose-target-host' in the merged file, and substitute the host name of a valid host machine that will be the hostname for the installation.\n\nAlternatively, you can specify a default hostname. Any new host groups are associated with the hostname that you specify. For example, include -e 'merge_default_host=deployTarget' when you run the playbook."
+      when: user_action_required_inventory.rc == 0 and user_action_required_vars.rc == 0
+
+    - pause:
+       seconds: 15
+       prompt: "[Warning] The inventory.ini file has been merged. However, you must specify a valid hostname for new host groups. Be sure to edit the target host correctly in the merged inventory.ini file at {{ merged_folder }} before you run the playbook again. Locate the string '? choose-target-host' in the merged file, and substitute the host name of a valid host machine that will be the hostname for the installation.\n\nAlternatively, you can specify a default hostname. Any new host groups are associated with the hostname that you specify. For example, include -e 'merge_default_host=deployTarget' when you run the playbook."
+      when: user_action_required_inventory.rc == 0 and user_action_required_vars.rc != 0

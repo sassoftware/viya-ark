@@ -138,3 +138,63 @@
       - { name: "root" , uid: 0 ,  group: "root",  groups: "root"}
     tags:
       - proxy_check
+      
+  - name: "Lookup for proxy server in yum.conf"
+    shell: grep 'proxy=' virk_conf_test.txt
+    check_mode: no
+    changed_when: false
+    when: (https_proxy != "") and (http_proxy != "")
+    register: "proxy_conf_exists"
+    ignore_errors: yes
+    tags:
+      - proxy_check
+            
+  - name: "Assert that proxy is set in yum.conf if https_proxy and http_proxy are set"
+    assert:
+      that:
+        - ("{{ proxy_conf_exists.stdout }}" != "" )
+      msg: 
+        The variable "proxy" is not set in yum.conf file
+    when: (https_proxy != "") and (http_proxy != "") and not ansible_check_mode
+    tags:
+      - proxy_check
+    
+  - name: "Lookup for proxy username in yum.conf"
+    shell: grep 'proxy_username' virk_conf_test.txt
+    check_mode: no
+    changed_when: false
+    when: (https_proxy != "") and (http_proxy != "")
+    register: "proxyuser_conf_exists"
+    ignore_errors: yes
+    tags:
+      - proxy_check
+    
+  - name: "Assert that proxy_username is set in yum.conf if https_proxy and http_proxy are set"
+    assert:
+      that:
+        - ("{{ proxyuser_conf_exists.stdout }}" != "" )
+      msg: 
+        The variable "proxy_username" is not set in yum.conf file
+    when: (https_proxy != "") and (http_proxy != "") and not ansible_check_mode
+    tags:
+      - proxy_check
+    
+  - name: "Lookup for proxy password in yum.conf"
+    shell: grep 'proxy_password' virk_conf_test.txt
+    check_mode: no
+    changed_when: false
+    when: (https_proxy != "") and (http_proxy != "")
+    register: "proxypass_conf_exists"
+    ignore_errors: yes
+    tags:
+      - proxy_check
+    
+  - name: "Assert that proxy_password is set in yum.conf if https_proxy and http_proxy are set"
+    assert:
+      that:
+        - ("{{ proxypass_conf_exists.stdout }}" != "" )
+      msg: 
+        The variable "proxy_password" is not set in yum.conf file.
+    when: (https_proxy != "") and (http_proxy != "") and not ansible_check_mode
+    tags:
+      - proxy_check

@@ -14,7 +14,7 @@
   - name: Run tasks to check version of available required package
     include_tasks: pre.package_version_check.yml
     loop: "{{ required_package_versions_rhel }}"
-    when: ((ansible_distribution == redhat_os_name|string or ansible_distribution == oracle_os_name|string) and viya_version is version('3.5','>='))
+    when: ((ansible_distribution == redhat_os_name|string or ansible_distribution == oracle_os_name|string) and viya_version is version('3.5','>=') and not (ansible_architecture == plx_os_architecture|string))
     tags:
       - packages
       - package_version_check
@@ -24,9 +24,7 @@
   - name: Include OS Family specific package names
     include_vars: "{{ item }}"
     with_first_found:
-      - "{{ ansible_os_family }}.yml"
-      - default.yml
-
+      - "{{ ansible_os_family }}-{{ ansible_architecture }}.yml"
     
   ## works for all OS Families
   - name: Ensures required packages are present
@@ -42,6 +40,8 @@
     ## block start determining supported version of java openjdk
     - name: Get what version of Java might be installed
       shell: java -version 2>&1 | grep version | awk '{print $3}' | sed 's/"//g'
+      check_mode: no
+      changed_when: False
       register: java_version
     
     - name: Show the installed version of Java

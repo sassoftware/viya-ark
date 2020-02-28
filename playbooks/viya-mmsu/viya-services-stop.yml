@@ -49,7 +49,6 @@
 
       - name: Stop SAS all services on a single machine deployment
         script: viya-svs.sh stop sas-viya-all-services
-        any_errors_fatal: true
         when: deployhostnum | int == 1
 
       any_errors_fatal: true
@@ -149,10 +148,12 @@
   become_user: root
   gather_facts: false
   any_errors_fatal: true
+  vars_files:
+    - viya-services-vars.yml
   tasks:
     - name: Stop SAS Configuration consul Agent(s)
       any_errors_fatal: true
-      script: viya-svs.sh stop sas-viya-consul-default
+      script: viya-svs.sh stop sas-viya-consul-default {{consul_retry_count}}
       when: psflag.stdout != "" and deployhostnum | int != 1
 
 - hosts: consul
@@ -160,6 +161,8 @@
   become_user: root
   gather_facts: false
   any_errors_fatal: true
+  vars_files:
+    - viya-services-vars.yml
   tasks:
     - name: Stop SAS Secret Manager - vault
       any_errors_fatal: true
@@ -168,7 +171,7 @@
 
     - name: Stop SAS Configuration consul Server(s)
       any_errors_fatal: true
-      script: viya-svs.sh stop sas-viya-consul-default
+      script: viya-svs.sh stop sas-viya-consul-default {{consul_retry_count}}
       when: psflag.stdout != "" and deployhostnum | int != 1
 
 - hosts: ComputeServer
@@ -208,7 +211,7 @@
             - "Please examine the following stray process(es)"
             - "If enable_stray_cleanup=true, process will be cleaned up automatically"
             - "except database processes which require fix manually to avoid data corruption."
-            - "This playbook can be rerun to clean up the child procsses."
+            - "This playbook can be rerun to clean up the child processes."
             - "{{stray_processes.stdout_lines}}"
         failed_when: stray_processes.stdout != '' and not ansible_check_mode
         when: (stray_processes.stdout != '') and (enable_stray_cleanup|bool != true)
@@ -228,3 +231,4 @@
         when: (stray_processes.stdout != '') and (enable_stray_cleanup|bool == true)
 
       when: psflag.stdout != ""
+

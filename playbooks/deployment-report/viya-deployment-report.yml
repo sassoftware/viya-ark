@@ -30,10 +30,11 @@
     report_file_name: "viya_deployment_report"
     report_data_file_name: "{{ report_file_name + '_data' }}"
     output_dir: "{{ playbook_dir + '/../../..' }}"
-    # The hotfix report has been temporarily disabled this release.
-    include_hotfix_report: False
+    include_hotfix_report: True
     hotfix_url: "http://ftp.sas.com/techsup/download/hotfix/HF2/util01/Viya/data/"
-    hotfix_master_file: "Viya_Update_Page_Index.xml"
+    #These variables cannot be overridden on the commandline.
+    legacy_products_exist: "{{ hostvars['localhost']['sas_deployment_details']['legacy_products_found'] }}"
+    products_with_no_hotfixes_exist: "{{ hostvars['localhost']['sas_deployment_details']['no_hotfixes_available'] }}"
 
   tasks:
     - name: "Check for existing data - ({{ existing_data_file }})"
@@ -68,7 +69,6 @@
         registered_dict_name: 'get_sas_host_details_results'
         include_hotfix_report: "{{ include_hotfix_report }}"
         hotfix_url: "{{ hotfix_url }}"
-        hotfix_master_file:  "{{ hotfix_master_file }}"
       delegate_to: localhost
       run_once: true
       register: process_sas_host_details_results
@@ -88,14 +88,45 @@
       delegate_facts: true
       run_once: true
 
-    - name: "Create Viya Deployment Report data file"
-      copy:
-        content: "{{ hostvars['localhost']['sas_deployment_details'] | to_nice_yaml }}"
-        dest: "{{ hostvars['localhost']['sas_viya_deployment_report_data_file'] }}"
-        mode: 0640
+    - block:
+        - name: "Create Viya Deployment Report data file"
+          copy:
+            content: "{{ hostvars['localhost']['sas_deployment_details'] | to_nice_yaml }}"
+            dest: "{{ hostvars['localhost']['sas_viya_deployment_report_data_file'] }}"
+            mode: 0640
+          delegate_to: localhost
+          run_once: true
+          when: existing_data_file == "" or not data.stat.exists
+      rescue:
+        - name: "Create Viya Deployment Report data file (formatting omitted due to error)"
+          copy:
+            content: "{{ hostvars['localhost']['sas_deployment_details'] }}"
+            dest: "{{ hostvars['localhost']['sas_viya_deployment_report_data_file'] }}"
+            mode: 0640
+          delegate_to: localhost
+          run_once: true
+          when: existing_data_file == "" or not data.stat.exists
+
+    - name: "Display legacy skipped products"
+      debug:
+        msg: "{{ hostvars['localhost']['sas_deployment_details']['hotfix_legacy_products'].split('\n')[:-1] }}"
       delegate_to: localhost
       run_once: true
-      when: existing_data_file == "" or not data.stat.exists
+      when: include_hotfix_report and legacy_products_exist|bool
+
+    - name: "Display installed products with no hotfixes"
+      debug:
+        msg: "{{ hostvars['localhost']['sas_deployment_details']['no_hotfix_products'].split('\n')[:-1] }}"
+      delegate_to: localhost
+      run_once: true
+      when: include_hotfix_report and products_with_no_hotfixes_exist|bool
+
+    - name: "Summarize hotfix report sources"
+      debug:
+        msg: "{{ hostvars['localhost']['sas_deployment_details']['hotfix_scanned_files'].split('\n')[:-1] }}"
+      delegate_to: localhost
+      run_once: true
+      when: include_hotfix_report
 
     - name: "Viya Deployment Report Data location"
       debug:
