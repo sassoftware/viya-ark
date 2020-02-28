@@ -1,7 +1,7 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
-## Viya35-ark-1.2 - February 28, 2019
+## Viya35-ark-1.2 - February 28, 2020
 - **Summary**:
   Enhancements and fixes related to Upgrade, Multi-Machine Services Utilities, Deployment Report, Pre-Installation playbooks and documentation.
 - Issues addressed:
