@@ -13,7 +13,11 @@
 
 - hosts: localhost
   tasks:
-  - name: Determine if groups with hyphens need mapped using underscores
+  - name: Determine if no groups with hyphens need mapped using underscores
+    meta: end_play
+    when: "'sas-all' not in groups"
+  
+  - name: Handle groups with hyphens needing mapped using underscores
     include_tasks: inner_handle_hostgroup_hyphens.yml
     loop: "{{ lookup('dict', groups) }}"
     loop_control:

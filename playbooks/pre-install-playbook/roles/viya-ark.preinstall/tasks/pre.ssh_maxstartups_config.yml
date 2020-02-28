@@ -18,6 +18,7 @@
   - name: Get current full SSH maxstartups settings
     shell: "sshd -T | grep maxstartups"
     changed_when: False
+    check_mode: no
     register: cur_maxstartups_settings
 
   - name: Show current full SSH maxstartups settings

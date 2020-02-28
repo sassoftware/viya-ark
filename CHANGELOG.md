@@ -1,6 +1,36 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.2 - February 28, 2019
+- **Summary**:
+  Enhancements and fixes related to Upgrade, Multi-Machine Services Utilities, Deployment Report, Pre-Installation playbooks and documentation.
+- Issues addressed:
+  - General
+    - VIYAARK-87 - Validation of Python3 support across the applicable tools.
+    - VIYAARK-63 - Improve speed of playbook when skipping hyphenated hostname [sas-all] fix
+    - VIYAARK-29 - Validation of Linux on Power hosting environment across the tools. (See main README for info on Linux on Power support in SAS Viya 3.5)
+  - SAS Viya Upgrade Tasks Playbooks
+    - VIYAARK-44 - Archive Obsolete Folders playbook: Addresses the large number of outdated service directories in the logs location for upgrade customers
+    - VIYAARK-65 - Improve merge playbook inventory and INVOCATION_VARIABLES when new hostgroups exist
+    - VIYAARK-60 - Improve handling of return codes from actions of Pre-Upgrade playbook
+    - VIYAARK-42 - Pre-Upgrade playbook disk space check needs to handle no /opt/sas path without failure
+  - SAS Multi-Machine Service Utilties 
+    - VIYAARK-55 - viya-services-stop.yml message output typo
+    - VIYAARK-40 - Honor svc-ignore entries
+    - VIYAARK-62 - Provide a reliable startup script for distributed Viya with automatic Consul cleanup
+  - SAS Viya Deployment Report
+    - VIYAARK-38 - Improve Hotfix deployment report to only show applicable hotfixes per release
+    - VIYAARK-86 - deployment-report playbook fails when remote host is using Python 3.x
+    - VIYAARK-49 - jQuery XSS vulnerability - moving from v3.3.1 to v3.4.1
+    - VIYAARK-88 - Error thrown when run against an incomplete deployment
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-27 - Correct package selection in Linux on Power hosting environment.
+    - VIYAARK-14 - Suppress RHEL package version check for Linux on Power RHEL hosting environment.
+    - VIYAARK-9  - Playbook tasks using Linux shell command incorrect recap showing Changed > 0 after multiple re-runs of playbook.
+- Ansible Support: Ansible 2.7.2 - Ansible 2.9
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.1 - December 19, 2019
 
 - **Summary**:
@@ -18,7 +48,6 @@
     - VIYAARK-25 - Non-supported Java version check done in normal mode as well as check mode
     - VIYAARK-50 - Kernel semaphore performance configuration task not adjusting settings as expected (Python 2) and failing playbook (Python 3)
 
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.0 - November 19, 2019
 

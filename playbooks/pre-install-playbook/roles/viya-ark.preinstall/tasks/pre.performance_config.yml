@@ -6,8 +6,9 @@
 
     # Query and register current individual kernel.sem setting
   - name: "Query current value of kernel.sem"
-    check_mode: no
     shell: cat /proc/sys/kernel/sem
+    check_mode: no
+    changed_when: false
     register: kernel_sem
 
   - name: "Register current SEMMSL"

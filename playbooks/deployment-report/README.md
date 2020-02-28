@@ -2,8 +2,15 @@
 
 ## Introduction
 This playbook gathers information about SAS Viya software and the hosts where it is deployed.
-The data gathered is then written to disk as a YAML-formatted data file and a static web-page 
-for easily viewing the data. 
+Furthermore, it optionally compares the packages installed on the system with the most up to 
+date versions to determine which hot fixes have not been applied.  The data gathered is then 
+written to disk as a YAML-formatted data file and a static web-page for easily viewing the data. 
+
+Hot fix information in the report include:
+* The hot fixes not applied
+* The release date of each hotfix
+* Each package and version associated with the hotfix
+* The number and title of each SASNote associated with the hotfix
 
 Deployment attributes in the report include:
 * Operating system information and architecture
@@ -13,18 +20,19 @@ Deployment attributes in the report include:
 * A listing of all system services delivered by SAS and each service's attributes
 
 The deployment report playbook does not make any changes to the hosts in the provided inventory file,
-unless that host is also the Ansible controller, where the YAML-formatted data file and static web-page
+unless that host is also the Ansible controller, where the YAML-formatted data file and static web page
 are written to disk.
 
 The output files written to the `sas_viya_playbook/` are:
 * viya_deployment_report_data_*\<timestamp\>*.yml
 * viya_deployment_report_*\<timestamp\>*.html
 
-## Prerequisites for running the Deployment Report Playbook
+## Prerequisites for Running the Deployment Report Playbook
 * Install a supported version of Ansible.
 * Install SAS Viya software using the SAS-provided `sas_viya_playbook`.
 * Obtain a local copy of the inventory file used when deploying the SAS Viya software.
 * Verify that the user has sudoers privileges.
+* Connectivity to sas.com (for the Hotfix Report Only)
 
 ## Running the Playbook
 To run the playbook, execute the following command:
@@ -53,5 +61,14 @@ To exclude the static web page and only create the report data:
 
 To force the creation of the report files into the current directory:
   ```bash
-  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e 'output_dir=./'
+  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "output_dir=./"
+  ```
+
+To exclude the hotfix report:
+  ```bash
+  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "include_hotfix_report=False"
+  ```
+To specify an alternate location for the published hotfix data:
+  ```bash
+  ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "hotfix_url=<URL_To_Hotfix_List>"
   ```

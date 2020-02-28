@@ -138,7 +138,7 @@
         set_fact:
           model_rep_version: "{{ ansible_facts.packages['sas-modelrepository'][0].version }}"
         when:
-          - ansible_facts.packages['sas-modelrepository'] | length > 0
+          - ansible_facts.packages['sas-modelrepository'] is defined
           - ansible_facts.packages['sas-modelrepository'][0].version is defined
         loop: "{{ groups['ModelServices'] }}"
 

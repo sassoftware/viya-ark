@@ -1,0 +1,170 @@
+#####################################################################################################
+#### archive_obsolete_log_folders.yml                                                            ####
+#####################################################################################################
+#### Author: SAS Institute Inc.                                                                  ####
+####                                                                                             ####
+####                                                                                             ####
+#####################################################################################################
+
+#####################################################################################################
+#
+# This playbook archives orphaned log directories.
+# The orphaned directories once belonged to services that have since been merged or made obsolete.
+#
+# This playbook is intended for use in SAS Viya 3.5 environments.
+#
+# By default these old service directories are archived to /opt/sas/viya/config/var/log/archived
+# 
+# This location can be overridden by passing an alternate path on the command line:   
+# 
+# ansible-playbook archive_obsolete_log_folders.yml -i inventory -e "viya_log_archive_path=/your/writable/path/folder"
+#
+#
+#####################################################################################################
+
+
+- hosts: sas_all
+  become: yes
+  become_user: sas
+
+  vars:
+    viya_log_path: "/opt/sas/viya/config/var/log"
+    viya_log_archive_path: "{{viya_log_path}}/archived"
+
+    folders_to_archive:
+      - analytics-components
+      - analytics-data-segmentation
+      - analytics-events
+      - analytics-flows
+      - analytics-gateway
+      - analytics-localization
+      - analytics-pipelines
+      - analytics-validation
+      - businessrules
+      - cas-management
+      - casproxy
+      - categorization
+      - category-compile
+      - category-execution-provider
+      - category-taxonomy
+      - category-validate
+      - collections
+      - concept-compile
+      - concept-execution-provider
+      - concept-taxonomy-service
+      - concept-validate
+      - dagentcont
+      - dagentmgmt
+      - data-mining-models
+      - data-preparation-plans
+      - dataflowexecutionprovider
+      - datamanagementjobmonitor
+      - datamanagementprojects
+      - datamining
+      - dataminingprojectsettings
+      - dataminingwarehouse
+      - datasources
+      - datatables
+      - decisions
+      - documents
+      - esm-webui
+      - esmagent
+      - forecastingcomparison
+      - forecastingdatadefinition
+      - forecastingevents
+      - forecastingexploration
+      - forecastingfilters
+      - forecastinggateway
+      - forecastingoverrides
+      - forecastingpipelines
+      - forecastingstrategies
+      - geodelocator
+      - home
+      - importvaspk
+      - jobdefinitions
+      - jobflowexecution
+      - parse-execution-provider
+      - parsing
+      - qkbadminui
+      - recipeexecutionprovider
+      - referencedata
+      - reportalerts
+      - reportalertseval
+      - reportImages
+      - reports
+      - reporttemplates
+      - reporttransforms
+      - restexecutionprovider
+      - rowsets
+      - sashome
+      - sasreportviewer
+      - sasvisualdatabuilder
+      - searchindex
+      - sentiment
+      - sentiment-execution-provider
+      - terms-management
+      - topic-execution-provider
+      - topic-management
+      - topics-service
+      - transformations
+      - treatmentdefinitions
+      - workflowdefinition
+      - workflowhistory
+
+    redhat_os_name: RedHat
+    oracle_os_name: OracleLinux
+    suse_os_name: Suse
+
+
+   ## do a 20 seconds pause at the beginning if not using the --check option
+    use_pause: true
+
+
+  tasks:
+
+  - name: "***WARNING: This playbook is for use in SAS Viya 3.5 deployments. Please abort if you are running with a different version of SAS Viya."
+    pause:
+      seconds: 20
+      prompt: "Press 'Ctl+C' and then 'A' to abort the process. The playbook will continue after 20 seconds"
+    when: (ansible_check_mode == False) and (use_pause == True)
+
+    # On SUSE, if the package for the corresponding log folder is still installed then we will skip archiving the log folder.
+  - name: "Checking for package existence on SUSE before attempting to archive folders"
+    shell: "zypper search --match-exact sas-{{item}}"
+    args:
+      warn: false
+    become: yes
+    become_user: root
+    loop: "{{folders_to_archive}}"
+    register: package_status_suse
+    ignore_errors: true
+    when: ansible_os_family == suse_os_name|string
+    check_mode: no
+
+    # On RHEL, if the package for the corresponding log folder is still installed, then we will skip archiving the log folder.
+  - name: "Checking for package existence on Red Hat before attempting to archive folders"
+    shell: "yum info sas-{{item}}"
+    args:
+      warn: false
+    become: yes
+    become_user: root
+    loop: "{{folders_to_archive}}"
+    register: package_status_rhel
+    ignore_errors: true   
+    when: ansible_distribution == redhat_os_name|string or ansible_distribution == oracle_os_name|string
+    check_mode: no
+
+  - name: "Create archive directory, {{viya_log_archive_path}}, if it doesn't exist"
+    file:
+      path: "{{viya_log_archive_path}}"
+      state: directory
+      mode: 0755
+  
+  - name: "Move obsolete log folders to the archive folder"
+    command: mv {{viya_log_path}}/{{item.item}} {{viya_log_archive_path}}/
+    args:
+      removes: "{{viya_log_path}}/{{item.item}}"
+    become: yes
+    become_user: root      
+    when: item.rc != 0
+    with_items: "{% if ansible_os_family == suse_os_name|string %}{{package_status_suse.results}}{% else %}{{package_status_rhel.results}}{% endif %}"

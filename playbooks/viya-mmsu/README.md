@@ -1,18 +1,18 @@
-# SAS Viya Administration Resource Kit (SAS Viya ARK) - SAS Viya Multi-Machine Services Utilities Playbooks (MMSU)
+# SAS Viya Administration Resource Kit (SAS Viya ARK) - SAS Viya Multi-Machine Services Utilities (MMSU) Playbooks 
 
 ## Introduction
 The SAS Viya Multi-Machine Services Utilities repository contains a set of playbooks to start or stop the SAS Viya services gracefully across the 1 - n machines that are identified in the inventory.ini file.
 
-## Requirements for Running the SAS Viya Multi-Machine Services Utilities Playbooks
+## Requirements for Running the MMSU Playbooks
 * All services must have an Up status after the deployment has completed.
   See "Running the Playbooks" for instructions on listing the status of SAS Viya services.
-* The SAS Viya Multi-Machine Services Utilities playbooks must be placed under the sas_viya_playbook directory where SAS Viya was deployed.
+* The MMSU playbooks must be placed under the sas_viya_playbook directory where SAS Viya was deployed.
   The directory structure of this project must be preserved.
   For example: ```sas_viya_playbook/viya-ark/playbooks/viya-mmsu/```
 * Verify that the sas-viya-all-services script is exempted from system reboots. This step prevents the script from executing automatically when the machine is restarted. This can be done by running viya-services-disable.yml playbook.
-* sas-viya-all-services script should not be run manually on any machines when using MMSU playbooks
+* sas-viya-all-services script should not be run manually on any machines when using MMSU playbooks.
 
-## Supported deployment of SAS Viya Multi-Machine Services Utilities Playbooks
+## Supported deployment of MMSU Playbooks
 * Single-machine deployment
 * Multi-machines deployment
 * Multi-tenant deployment
@@ -47,7 +47,7 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restart.yml
         "Please examine the following stray process(es)",
         "If enable_stray_cleanup=true, it will be cleaned up automatically",
 	"except database processes which require fix manually to avoid data corruption."
-        "This playbook can be rerun to clean up the child procsses",
+        "This playbook can be rerun to clean up the child processes",
         [
           ...
         ]
