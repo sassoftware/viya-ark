@@ -41,3 +41,7 @@ These specific tags run the code that performs the home directory configuration 
 * service
 * script
 * authfilemodif
+
+Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0 
+

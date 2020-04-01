@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
-# Copyright 2019 SAS Institute Inc.
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
 #
 
 ############################################################

@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 ---
 ## OS names and Minimum versions
 redhat_os_name: RedHat
@@ -58,6 +62,9 @@ core_count_command: "echo $(lscpu -e=core | sed '1 d' | wc -l)"
 
 ## SSH Max Startups
 maxstartups_val: 100
+
+## SSH ClientAliveInterval
+min_clientaliveinterval_val: 3600
 
 ## SUSE Max OS Tasks
 suse_max_os_tasks: 50000

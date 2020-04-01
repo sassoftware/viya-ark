@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 
+#
 ---
 ####################################################################
 ## User and Group Config
@@ -206,6 +210,18 @@
     tags:
       - users
 
+    # Ensure user home directory is accessible during deployment
+  - name: Ensure user's home directory has rwx permission for owner 
+    file:
+      path: "/home/{{ item.name }}"
+      state: directory
+      mode: u+rwx
+    with_items:
+       - "{{ custom_user_list }}"
+    when: create_local_cas_and_sas_accounts == true
+    tags:
+      - users
+      
   - name: Ensure umask are correctly set for users
     lineinfile:
       dest: "/home/{{ item[0].name }}/.bashrc"

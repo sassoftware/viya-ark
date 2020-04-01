@@ -3,8 +3,12 @@
 ####################################################################
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 ---
-svs_label: 3.5.20191220
+svs_label: 3.5.20200318
 #########################################
 # Variables used in playbooks
 #########################################

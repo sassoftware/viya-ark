@@ -58,4 +58,6 @@ This is a list of future checks that should be added to this playbook:
 * confirm that SSSD or similar has been configured and that there are matching users
 * support passing certificates for the connection to LDAP
 
+Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
 

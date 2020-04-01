@@ -5,7 +5,10 @@
 ####################################################################
 # ### Author: SAS Institute Inc.                                 ###
 ####################################################################
-
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 from ansible.module_utils.basic import AnsibleModule
 import ast
 import traceback

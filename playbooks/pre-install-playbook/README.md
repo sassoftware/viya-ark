@@ -70,3 +70,5 @@ The tasks controlled by the ```required_packages_config``` tag will have differe
 ### Required package version for RHEL deployments
 Starting with SAS Viya 3.5, minimum versions of certain packages are now required for standard RHEL deployments; please note that this does NOT apply to deployments on Oracle RHEL, or PowerLinux RHEL (ppc architecture).  The required packages and minimum versions can be found by examining the  ```required_package_versions_rhel``` variable in roles/viya-ark.preinstall/defaults/main.yml. These packages must either be already installed at the minimum version specified, or available in a registered repository at deployment time. The pre-install playbook will fail execution if neither of these conditions are met.
 
+Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0

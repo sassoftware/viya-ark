@@ -56,3 +56,7 @@ w - Wait time in seconds,       for example, '5' or '15'            - Optional p
 ./sds_micro_service_pg_connection_test.sh                           -> All clusters and  1 iteration,  wait  5 seconds
 ./sds_micro_service_pg_connection_test.sh -i 5 -w 15                -> All clusters and  5 iterations, wait 15 seconds
 </pre>
+
+Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0 
+

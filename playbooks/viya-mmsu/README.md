@@ -61,3 +61,5 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restart.yml
 ```
     enable_stray_cleanup: true
 ```
+Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
