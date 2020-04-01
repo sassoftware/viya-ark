@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 ---
 - import_tasks: pre.pause.yml
 - import_tasks: pre.shell_check.yml
@@ -12,6 +16,7 @@
 - import_tasks: pre.required_packages_config.yml
 - import_tasks: pre.start_services.yml
 - import_tasks: pre.ssh_maxstartups_config.yml
+- import_tasks: pre.ssh_clientaliveinterval_check.yml
 - import_tasks: pre.max_os_tasks_config.yml
 - import_tasks: pre.user_and_group_config.yml
 - import_tasks: pre.sudo_access_check.yml

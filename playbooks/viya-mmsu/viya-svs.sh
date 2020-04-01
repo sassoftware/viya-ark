@@ -3,6 +3,10 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+#
 # Used to start/stop/check SAS Viya Services
 #
 
@@ -25,7 +29,7 @@ do_stopmt()
 
 do_stopcas()
 {
-	LIST=$(ls sas-*-cascontroller-default 2>/dev/null)
+	LIST=$(ls sas-*-cascontroller-* 2>/dev/null)
 	do_stop
 }
 do_stop()
@@ -51,7 +55,7 @@ do_startmt()
 
 do_startcas()
 {
-	LIST=$(ls sas-*-cascontroller-default 2>/dev/null)
+	LIST=$(ls sas-*-cascontroller-* 2>/dev/null)
 	do_start_common
 }
 
@@ -174,21 +178,31 @@ do_startdb()
 {
 	if [[ "$viya35" == "1" ]]; then
 		dbnum=$dbarg2
-		if [[ -x "$DBDIR/pgpool${dbnum}/startall" ]]; then
-			if [[ "$DEBUG" == "" && "$dbnum" == "0" ]]; then
+		get_dbnuminfo pgpool
+		if [[ -x "$DBDIR/pgpool${dbnuminfo}/startall" ]]; then
+			if [[ "$DEBUG" == "" ]]; then
 				check_consul
 				if [[ $? == 0 ]]; then
 					#status: is running not sufficient
-					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-pgpool${dbnum} status|grep 'node_id')
-					if [[ "$dbstatus" == "" ]]; then
-						su - sas -c "$DBDIR/pgpool${dbnum}/startall"
-						FAIL=$?
+					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-pgpool${dbnuminfo} status)
+					if [[ $? == 0 ]]; then
+						dbstatus=$(echo "$dbstatus"|grep 'node_id')
+						if [[ "$dbstatus" == "" ]]; then
+							su - sas -c "$DBDIR/pgpool${dbnuminfo}/startall"
+							FAIL=$?
+						fi
+					else
+						echo "ERROR: command error: sas-viya-sasdatasvrc-${dbname}-pgpool${dbnuminfo} status"
+						exit 1
 					fi
 				else
 					echo "ERROR: consul has issue, need to be fixed before starting pgpool"
 					exit 1
 				fi
 			fi
+		else
+			echo "ERROR: postgres install issue, file not found: $DBDIR/pgpool${dbnuminfo}/startall"
+			exit 1
 		fi
 	else
 		if [[ -f "sas-viya-sasdatasvrc-${dbname}" ]]; then
@@ -207,23 +221,36 @@ do_stopdb()
 {
 	if [[ "$viya35" == "1" ]]; then
 		dbnum=$dbarg2
-		if [[ -x "$DBDIR/pgpool${dbnum}/shutdownall" ]]; then
-			if [[ "$DEBUG" == "" && "$dbnum" == "0" ]]; then
-				check_consul
-				if [[ $? == 0 ]]; then
-					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-pgpool${dbnum} status|grep 'is running')
-					if [[ "$dbstatus" != "" ]]; then
-						su - sas -c "$DBDIR/pgpool${dbnum}/shutdownall"
-						FAIL=$?
-						if [[ "$FAIL" != "0" ]]; then
-							return
+		dbtype=$dbarg3
+		if [[ "$dbtype" == "node" || "$dbtype" == "pgpool" ]]; then
+			get_dbnuminfo "$dbtype"
+			if [[ -x "$DBDIR/${dbtype}${dbnuminfo}/shutdownall" ]]; then
+				if [[ "$DEBUG" == "" ]]; then
+					check_consul
+					if [[ $? == 0 ]]; then
+						dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-${dbtype}${dbnuminfo} status)
+						if [[ $? == 0 ]]; then
+							dbstatus=$(echo "$dbstatus" | grep 'is running')
+							if [[ "$dbstatus" != "" ]]; then
+								su - sas -c "$DBDIR/${dbtype}${dbnuminfo}/shutdownall"
+								if [[ $? != 0 ]]; then
+									let "FAIL+=1"
+									return
+								fi
+							fi
+						else
+							echo "ERROR: command error: sas-viya-sasdatasvrc-${dbname}-${dbtype}${dbnuminfo} status"
+							exit 1
 						fi
-					fi
-				else
-					echo "Warning: consul is not up, skip shutdown pgpool"
-					exit 0
+					else
+						echo "Warning: consul is not up, skip shutdown database $dbtype"
+						exit 0
+					fi	
 				fi
 			fi
+		else
+			echo "ERROR: unsupported dbtype in stopdb: ($dbtype)"
+			exit 1
 		fi
 	else
 		if [[ -f "sas-viya-sasdatasvrc-${dbname}" ]]; then
@@ -269,22 +296,39 @@ do_startdbct()
 		LIST="$LIST1 $LIST2"
 		check_dbps
 		do_ps_common start
-		if [[ "$dbtype" == "node" && -x "$DBDIR/node0/startall" ]]; then
-			if [[ "$DEBUG" == "" && "$dbnum" == "0" ]]; then
+		if [[ "$dbtype" == "node" ]]; then
+		    get_dbnuminfo node
+		    if [[ -x "$DBDIR/node${dbnuminfo}/startall" ]]; then
+			if [[ "$DEBUG" == "" ]]; then
 				check_consul
 				if [[ $? == 0 ]]; then
-					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-node0 status|grep 'is running')
-					if [[ "$dbstatus" == "" ]]; then
-						su - sas -c "$DBDIR/node0/startall"
-						if [[ $? != 0 ]]; then
-							let "FAIL+=1"
+					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-node${dbnuminfo} status)
+					if [[ $? == 0 ]]; then
+						dbstatus=$(echo "$dbstatus"|grep 'is running')
+						if [[ "$dbstatus" == "" ]]; then
+							su - sas -c "$DBDIR/node${dbnuminfo}/startall"
+							if [[ $? != 0 ]]; then
+								#retry
+								echo "info: startdb retry node${dbnuminfo}"
+								su - sas -c "$DBDIR/node${dbnuminfo}/startall"
+								if [[ $? != 0 ]]; then
+									let "FAIL+=1"
+								fi
+							fi
 						fi
+					else
+						echo "ERROR: command error: sas-viya-sasdatasvrc-${dbname}-node${dbnuminfo} status"
+						exit 1
 					fi
 				else
 					echo "ERROR: consul has issue, need to be fixed before starting nodes"
 					exit 1
 				fi
 			fi
+		    else
+			echo "ERROR: postgres install issue, file not found: $DBDIR/node${dbnuminfo}/startall"
+			exit 1
+		    fi
 		fi
 	else
 		LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c3-)
@@ -297,27 +341,13 @@ do_stopdbct()
 {
 	if [[ "$viya35" == "1" ]]; then
 		dbtype=$dbarg2
-		if [[ "$dbtype" == "node" && -x "$DBDIR/node0/shutdownall" ]]; then
-			if [[ "$DEBUG" == "" ]]; then
-				check_consul
-				if [[ $? == 0 ]]; then
-					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-node0 status|grep 'is running')
-					if [[ "$dbstatus" != "" ]]; then
-						su - sas -c "$DBDIR/node0/shutdownall"
-						if [[ $? != 0 ]]; then
-							let "FAIL+=1"
-							return
-						fi
-					fi
-				else
-					echo "Warning: consul is not up, skip stopping database nodes"
-					exit 0
-				fi	
-			fi
-		fi
-		LIST1=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}[[:digit:]]*-consul-template-operation_node"| cut -c3-|sort)
-		LIST2=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}[[:digit:]]*-consul-template-*_hba"| cut -c3-|sort)
-		LIST="$LIST2 $LIST1"
+		LIST=
+		for dbtype in pgpool node
+		do
+			LIST1=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}[[:digit:]]*-consul-template-operation_node"| cut -c3-|sort)
+			LIST2=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}[[:digit:]]*-consul-template-*_hba"| cut -c3-|sort)
+			LIST="$LIST2 $LIST1 $LIST"
+		done
 		do_ps_common stop
 	else
 		LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c 3-)
@@ -345,6 +375,16 @@ clean_dbps()
 	do_cleanps
 }
 
+get_dbnuminfo()
+{
+	local dbtype=$1
+	cd "$DBDIR"
+	dbnuminfo=$(ls -d ${dbtype}* |sed -e "s/$dbtype//" |sort -n|head -1)
+	if [[ "$dbnuminfo" == "" ]]; then
+		echo "ERROR: postgres install issue in $DBDIR can't get corresponding $dbype number"
+		exit 1
+	fi
+}
 do_cleanps()
 {
 	local flag=$1
@@ -468,9 +508,9 @@ do_deregconsul()
 		echo "$idlist" | grep 'ERROR: Unable to retrieve' > /dev/null 2>&1
 		if [[ $? != 0 ]]; then
 			idlist=$(echo "$idlist"|grep '"ID":'|grep -v -E 'postgres-'|awk '{print $2}'|sed -e 's/["|,| ]//g')
+			echo "info: consul deregister: idlist ($idlist)"
 			for id in $idlist
 			do
-				echo "$id"
 				$BT agent service deregister $id
 			done
 			break
@@ -534,6 +574,7 @@ case "$OPT" in
 		shift 1
 		dbname=$1
 		dbarg2=$2
+		dbarg3=$3
 		initdb
 		FAIL=0; do_$OPT; exit $FAIL ;;
 	checkdb)

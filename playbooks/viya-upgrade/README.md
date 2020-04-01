@@ -70,3 +70,7 @@ ansible-playbook archive_obsolete_log_folders.yml -i inventory -e "viya_log_arch
 * ```--tags <tag-name>,<another-tag>```: Runs only task(s) with specific tag(s), comma separated if more than one.
 * ```--skip-tags <tag-name>,<another-tag>```: Skips task(s) with specific tag(s), comma separated if more than one.
 * ```--list-tasks```: Displays all tags in a playbook.
+
+Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0
+

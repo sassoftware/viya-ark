@@ -4,6 +4,9 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
+# Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 ####################################################################
 #
 # This playbook will automatically apply the Postgres CVE-2017-7547

@@ -72,3 +72,5 @@ To specify an alternate location for the published hotfix data:
   ```bash
   ansible-playbook viya-ark/playbooks/deployment-report/viya-deployment-report.yml -e "hotfix_url=<URL_To_Hotfix_List>"
   ```
+Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0

@@ -1,3 +1,7 @@
+#
+# Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 - block:
     - name: "Ping host {{ host }} from deployment host using gathered shortname"
       command: "ping -c 3 {{ hostname_results.stdout_lines[0] }}"

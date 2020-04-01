@@ -7,7 +7,10 @@
 ####           with Ansible 2.5 and above.                      ####
 ####                                                            ####
 ####################################################################
-
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0 
+#
 ####################################################################
 #
 # For each machine in a deployment:
@@ -59,74 +62,74 @@
       det_msg: "{{ no_opt_sas_message }}"
     when: optsas_result.stat.exists == False
 
-  - name: Exit on this host if /opt/sas does not exist
-    meta: end_host
-    when: optsas_result.stat.exists == False
+  - name: Check disk space on hosts where /opt/sas exist
+    block:
+      - name: test for available disk space in /opt/sas
+        command: df -BG /opt/sas
+        register: opt_sas_result
 
-  - name: test for available disk space in /opt/sas
-    command: df -BG /opt/sas
-    register: opt_sas_result
+      - name: Check for results of df command
+        assert:
+          that:
+            - opt_sas_result.stdout
+          msg: "The command df -BG /opt/sas did not work"
 
-  - name: Check for results of df command
-    assert:
-      that:
-        - opt_sas_result.stdout
-      msg: "The command df -BG /opt/sas did not work"
+      - name: Get available disk space and partition from /opt/sas
+        set_fact:
+          opt_sas_avail: "{{ opt_sas_result.stdout.split()[10].rstrip('G')|trim|int }}"
+          opt_sas_partition: "{{ opt_sas_result.stdout.split()[7]|trim }}"
 
-  - name: Get available disk space and partition from /opt/sas
-    set_fact:
-      opt_sas_avail: "{{ opt_sas_result.stdout.split()[10].rstrip('G')|trim|int }}"
-      opt_sas_partition: "{{ opt_sas_result.stdout.split()[7]|trim }}"
+      - name: Check for SLES OS
+        set_fact:
+          varcache_location: "/var/cache/zypp"
+        when: ansible_distribution == "SLES"
 
-  - name: Check for SLES OS
-    set_fact:
-      varcache_location: "/var/cache/zypp"
-    when: ansible_distribution == "SLES"
+      - name: test for available disk space in {{ varcache_location }}
+        command: df -BG {{ varcache_location }}
+        register: var_cache_result
 
-  - name: test for available disk space in {{ varcache_location }}
-    command: df -BG {{ varcache_location }}
-    register: var_cache_result
+      - name: Check for results of df command
+        assert:
+          that:
+            - var_cache_result.stdout
+          msg: "The command df -BG {{ varcache_location }} did not work"
 
-  - name: Check for results of df command
-    assert:
-      that:
-        - var_cache_result.stdout
-      msg: "The command df -BG {{ varcache_location }} did not work"
+      - name: Get available disk space and partition from {{ varcache_location }} 
+        set_fact:
+          var_cache_avail: "{{ var_cache_result.stdout.split()[10].rstrip('G')|trim|int }}"
+          var_cache_partition: "{{ var_cache_result.stdout.split()[7]|trim }}"
 
-  - name: Get available disk space and partition from {{ varcache_location }} 
-    set_fact:
-      var_cache_avail: "{{ var_cache_result.stdout.split()[10].rstrip('G')|trim|int }}"
-      var_cache_partition: "{{ var_cache_result.stdout.split()[7]|trim }}"
+      - name: Report space is okay on same partition
+        vars:
+          total_mem_needed: "{{ OPT_SAS_MIN|int + VAR_CACHE_YUM_MIN|int }}"
+        set_fact:
+          sum_msg: "{{ good_space_message }}"
+          det_msg: "{{ detail_message }}"
+        when: (opt_sas_partition == var_cache_partition) and (opt_sas_avail|int >= total_mem_needed|int)
 
-  - name: Report space is okay on same partition
-    vars:
-      total_mem_needed: "{{ OPT_SAS_MIN|int + VAR_CACHE_YUM_MIN|int }}"
-    set_fact:
-      sum_msg: "{{ good_space_message }}"
-      det_msg: "{{ detail_message }}"
-    when: (opt_sas_partition == var_cache_partition) and (opt_sas_avail|int >= total_mem_needed|int)
+      - name: Report space need on same partition
+        vars:
+          total_mem_needed: "{{ OPT_SAS_MIN|int + VAR_CACHE_YUM_MIN|int }}"
+        set_fact:
+          sum_msg: "{{ warning_message }}"
+          det_msg: "{{ detail_message }}"
+        when: (opt_sas_partition == var_cache_partition) and (opt_sas_avail|int < total_mem_needed|int)
 
-  - name: Report space need on same partition
-    vars:
-      total_mem_needed: "{{ OPT_SAS_MIN|int + VAR_CACHE_YUM_MIN|int }}"
-    set_fact:
-      sum_msg: "{{ warning_message }}"
-      det_msg: "{{ detail_message }}"
-    when: (opt_sas_partition == var_cache_partition) and (opt_sas_avail|int < total_mem_needed|int)
+      - name: Report space okay on both partitions
+        vars:
+          total_mem_needed: "{{ OPT_SAS_MIN|int + VAR_CACHE_YUM_MIN|int }}"
+        set_fact:
+          sum_msg: "{{ good_space_message }}"
+          det_msg: "{{ detail_message }}"
+        when: (opt_sas_partition != var_cache_partition) and (OPT_SAS_MIN|int <= opt_sas_avail|int) and (VAR_CACHE_YUM_MIN|int <= var_cache_avail|int)
 
-  - name: Report space okay on both partitions
-    vars:
-      total_mem_needed: "{{ OPT_SAS_MIN|int + VAR_CACHE_YUM_MIN|int }}"
-    set_fact:
-      sum_msg: "{{ good_space_message }}"
-      det_msg: "{{ detail_message }}"
-    when: (opt_sas_partition != var_cache_partition) and (OPT_SAS_MIN|int <= opt_sas_avail|int) and (VAR_CACHE_YUM_MIN|int <= var_cache_avail|int)
+      - name: Report space need on a partition
+        set_fact:
+          sum_msg: "{{ warning_message }}"
+          det_msg: "{{ detail_message }}"
+        when: (opt_sas_partition != var_cache_partition) and ((OPT_SAS_MIN|int > opt_sas_avail|int) or (VAR_CACHE_YUM_MIN|int > var_cache_avail|int))
+    when: optsas_result.stat.exists == True
 
-  - name: Report space need on a partition
-    set_fact:
-      sum_msg: "{{ warning_message }}"
-      det_msg: "{{ detail_message }}"
-    when: (opt_sas_partition != var_cache_partition) and ((OPT_SAS_MIN|int > opt_sas_avail|int) or (VAR_CACHE_YUM_MIN|int > var_cache_avail|int))
 
 - name: Output disk space status
   hosts: localhost

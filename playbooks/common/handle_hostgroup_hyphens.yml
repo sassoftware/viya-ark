@@ -10,7 +10,10 @@
 #  tasks:
 #  - debug:
 #      msg: "{{ hostvars[groups['sas_casserver_primary'][0]]['ansible_hostname'] }}"
-
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 - hosts: localhost
   tasks:
   - name: Determine if no groups with hyphens need mapped using underscores

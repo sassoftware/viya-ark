@@ -1,6 +1,24 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.3 - April 1, 2020
+- **Summary**:
+  Enhancements and fixes related to Upgrade, Multi-Machine Services Utilities, Pre-Installation playbooks.
+- Issues addressed:
+  - SAS Viya Upgrade Tasks Playbooks
+    - VIYAARK-121 - Pre-upgrade failure due to Ansible 2.7 incompatible function.
+    - VIYAARK-105 - hostname comparison should be case insensitive
+    - VIYAARK-89  - Merge Playbook should handle multi-NIC inventory/vars 
+  - SAS Multi-Machine Service Utilties
+    - VIYAARK-118 - Improving code for multiple CAS controllers
+    - VIYAARK-113 - Support MMSU when DB node0/pgpool0 is down and DB is functional
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-83  - Check that the SSH ClientAliveInterval is adequate
+    - VIYAARK-5   - Catch when no permission to SAS home directory
+- Ansible Support: Ansible 2.7.2 - Ansible 2.9
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.2 - February 28, 2020
 - **Summary**:
   Enhancements and fixes related to Upgrade, Multi-Machine Services Utilities, Deployment Report, Pre-Installation playbooks and documentation.
@@ -29,7 +47,6 @@
     - VIYAARK-9  - Playbook tasks using Linux shell command incorrect recap showing Changed > 0 after multiple re-runs of playbook.
 - Ansible Support: Ansible 2.7.2 - Ansible 2.9
 
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.1 - December 19, 2019
 

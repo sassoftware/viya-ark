@@ -3,6 +3,10 @@
 ####################################################################
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 ---
 - import_playbook: ../common/handle_hostgroup_hyphens.yml
   tags:
@@ -89,7 +93,17 @@
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: "stopdb"
           dbnum: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['POOL_NUMBER']|default([])}}"
+          dbtype: pgpool
         when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined
+
+      - name: Stop SAS Infrastructure Data Server Node
+        include_tasks: viya-db.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: "stopdb"
+          dbnum: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['NODE_NUMBER']|default([])}}"
+          dbtype: node
+        when: INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] is defined
 
       - name: Stop SAS Infrastructure Data Server Consul Template
         include_tasks: viya-dbct.yml
@@ -99,7 +113,7 @@
           dbtype: pgpool
         when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
 
-      - name: Stop SAS Infrastructure Data Server Consul Template
+      - name: Stop SAS Infrastructure Data Server Node Consul Template
         include_tasks: viya-dbct.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['SERVICE_NAME']|default([])}}"
@@ -113,7 +127,17 @@
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: "stopdb"
           dbnum: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['POOL_NUMBER']|default([])}}"
+          dbtype: pgpool
         when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined
+
+      - name: Stop SAS Infrastructure Data Server Node
+        include_tasks: viya-db.yml
+        vars:
+          dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+          dbaction: "stopdb"
+          dbnum: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['NODE_NUMBER']|default([])}}"
+          dbtype: node
+        when: INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'] is defined
 
       - name: Stop SAS Infrastructure Data Server Consul Template
         include_tasks: viya-dbct.yml
@@ -122,7 +146,8 @@
           dbaction: stopdbct
           dbtype: pgpool
         when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
-      - name: Stop SAS Infrastructure Data Server Consul Template
+
+      - name: Stop SAS Infrastructure Data Server Node Consul Template
         include_tasks: viya-dbct.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['SERVICE_NAME']|default([])}}"

@@ -46,3 +46,6 @@ The merged configuration files, differences between the current configuration fi
 * ```ansible_cfg_diff.txt```
 * ```<tenantID>_vars.yml```
 * ```<tenantID>_vars_yml_diff.txt```
+
+Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0

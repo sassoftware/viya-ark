@@ -4,7 +4,10 @@
 #### Author: SAS Institute Inc.                                 ####
 ####                                                            ####
 ####################################################################
-
+#
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 ####################################################################
 ####                                                           #####
 # This playplay verifies the health of the SAS Viya PostgreSQl #####
@@ -188,17 +191,22 @@
       register: obtain_postgres_secondary_hostname
       when: postgresinit.stat.exists
 
+    - name: Set ansible_fqdn value to lower case
+      set_fact:
+        lower_ansible_fqdn: "{{ ansible_fqdn | lower }}"
+      run_once: yes
+
     - block:
         - name: Compare the primary node_type between the output from the PostgreSQL status check and vars.yml
           assert:
-            that: obtain_postgres_primary_hostname.stdout == ansible_fqdn
+            that: obtain_postgres_primary_hostname.stdout | lower == lower_ansible_fqdn
             msg: "{{ primary_node_type_unmatched }}"
           register: assert_primary_host
           when: postgresinit.stat.exists and sasdatasvrc_type == "P"
 
         - name: Compare the secondary node_type between the PostgreSQL check output and vars.yml
           assert:
-            that: ansible_fqdn in obtain_postgres_secondary_hostname.stdout
+            that: lower_ansible_fqdn in obtain_postgres_secondary_hostname.stdout | lower
             msg: "{{ secondary_node_type_unmatched }}"
           register: assert_secondary_host
           when: postgresinit.stat.exists and sasdatasvrc_type == "S"
@@ -206,7 +214,7 @@
 
     - name: Compare the host names from the PostgreSQL check with the host names in the inventory file
       assert:
-        that: ansible_fqdn in obtain_postgres_hostname.stdout
+        that: lower_ansible_fqdn in obtain_postgres_hostname.stdout | lower
         msg: "{{ hostname_unmatched_postgres_output }}"
       register: assert_hostnames
       when: postgresinit.stat.exists

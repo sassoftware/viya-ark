@@ -1,0 +1,51 @@
+#
+# Copyright (c) 2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+---
+####################################################################
+## SSH clientaliveinterval Config
+####################################################################
+- block:
+  ## block start
+
+  - name: Capture current SSH clientaliveinterval value
+    shell: "sshd -T | grep -i ClientAliveInterval | cut -f2 -d ' '"
+    changed_when: False
+    check_mode: no
+    register: cur_clientaliveinterval
+
+  - name: Show the current value for SSH clientaliveinterval
+    debug: var=cur_clientaliveinterval.stdout
+
+  - name: Show the minimum value for SSH clientaliveinterval
+    debug: var=min_clientaliveinterval_val
+
+  ## case 1: current value is 0 - infinite, we leave as-is
+  - block:
+    - name: Display information about SSH clientaliveinterval when set to 'infinite'
+      debug:
+        msg:
+          - "Your current SSH clientaliveinterval value ({{cur_clientaliveinterval.stdout}}) is set to 'infinite'."
+          - " No update is needed."
+    when: cur_clientaliveinterval is defined and ((cur_clientaliveinterval.stdout | int) == 0)
+
+  ## case 2: current value is bigger, we leave as-is
+  - block:
+    - name: Display information about SSH clientaliveinterval when set to sufficiently high value
+      debug:
+        msg:
+          - "Your current SSH clientaliveinterval value ({{cur_clientaliveinterval.stdout}}) is larger than or equal to the desired clientaliveinterval value ({{min_clientaliveinterval_val}})."
+          - " No update is needed."
+    when: cur_clientaliveinterval is defined and ((cur_clientaliveinterval.stdout | int) >= min_clientaliveinterval_val|int)
+
+  ## case 3: current value is smaller, we update
+  - block:
+      - fail:
+          msg: "Your current SSH clientaliveinterval value ({{cur_clientaliveinterval.stdout}}) is smaller than the recommended value of {{min_clientaliveinterval_val}}. SAS Viya tasks can take some time, and given this low value, they may time out before completion. Either update the value of clientaliveinterval in your SSHD config file, or, if you prefer to suppress this warning, re-run the playbook with a lower threshold by adding -e 'min_ssh_client_alive_internal=1' to the playbook execution command line."
+        run_once: true
+    when: cur_clientaliveinterval is defined and ((cur_clientaliveinterval.stdout | int) > 0) and ((cur_clientaliveinterval.stdout | int) < min_clientaliveinterval_val|int)
+
+  ## block end
+  tags:
+    - ssh_clientaliveinterval_config

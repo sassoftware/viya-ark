@@ -7,7 +7,10 @@
 ####           with Ansible 2.5 and above.                      ####
 ####                                                            ####
 ####################################################################
-
+#
+# Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
 ####################################################################
 #
 # This playbook defines the pre-update tasks for saving SAS Visual
