@@ -1,6 +1,7 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+<<<<<<< HEAD
 ## Viya35-ark-1.3 - April 1, 2020
 - **Summary**:
   Enhancements and fixes related to Upgrade, Multi-Machine Services Utilities, Pre-Installation playbooks.
@@ -117,6 +118,8 @@
 - Issues addressed:
     - DEPENB-2009 - Do not update systemd on RHEL7 with pre-install playbook. 
 - Ansible Support: Ansible 2.5 - Ansible 2.7
+
+<!-- LATEST RELEASE END -->
 
 ## Viya34-ark-1.5 - July 11, 2019
 
