@@ -22,10 +22,8 @@
 
   tasks:
     - name: Check any SAS process running
-      #shell: "{{sasps_cmd}}|tail -1"
       script: viya-svs.sh checkps 1
       register: psflag
-      ignore_errors: true
       check_mode: no
       changed_when: false
 
@@ -46,17 +44,16 @@
 
       - name: Stop SAS microservices
         script: viya-svs.sh stopms
-        when: deployhostnum | int != 1
 
       - name: Stop SAS multi-tenant services
         script: viya-svs.sh stopmt
 
-      - name: Stop SAS all services on a single machine deployment
-        script: viya-svs.sh stop sas-viya-all-services
-        when: deployhostnum | int == 1
-
       any_errors_fatal: true
-      when: psflag.stdout != "" and not ansible_check_mode
+      when: psflag.stdout != "" and not ansible_check_mode and enable_svs_alternative|bool != true
+
+    - name: Stop SAS all services using alternative script
+      script: viya-svs-alternative.sh 1 stop
+      when: psflag.stdout != "" and not ansible_check_mode and enable_svs_alternative|bool == true
 
 - hosts: httpproxy
   become: yes
@@ -66,7 +63,7 @@
   tasks:
     - name: Stop SAS HTTP proxy service
       script: viya-svs.sh stop sas-viya-httpproxy-default
-      when: psflag.stdout != "" and deployhostnum | int != 1
+      when: psflag.stdout != ""
 
 - hosts: sas_casserver_primary
   become: yes
@@ -76,7 +73,30 @@
   tasks:
     - name: Stop SAS CAS server
       script: viya-svs.sh stopcas
-      when: psflag.stdout != "" and deployhostnum | int != 1
+      when: psflag.stdout != ""
+
+- hosts: CoreServices
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - viya-services-vars.yml
+  tasks:
+    - name: Stop cachelocator/cacheserver
+      script: viya-svs.sh stop sas-viya-cachelocator-default sas-viya-cacheserver-default
+      when: enable_svs_alternative|bool == true
+
+- hosts: rabbitmq
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Stop SAS Message Broker RabbitMQ
+      any_errors_fatal: true
+      script: viya-svs.sh stop sas-viya-rabbitmq-server-default
+      when: psflag.stdout != ""
 
 - hosts: sas_all
   become: yes
@@ -105,7 +125,7 @@
           dbtype: node
         when: INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] is defined
 
-      - name: Stop SAS Infrastructure Data Server Consul Template
+      - name: Stop SAS Infrastructure Data Server Pgpool Consul Template
         include_tasks: viya-dbct.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
@@ -139,7 +159,7 @@
           dbtype: node
         when: INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'] is defined
 
-      - name: Stop SAS Infrastructure Data Server Consul Template
+      - name: Stop SAS Infrastructure Data Server Pgpool Consul Template
         include_tasks: viya-dbct.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
@@ -155,18 +175,7 @@
           dbtype: node
         when: INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'] is defined
 
-      when: psflag.stdout != "" and deployhostnum | int != 1 and INVOCATION_VARIABLES[inventory_hostname] is defined
-
-- hosts: rabbitmq
-  become: yes
-  become_user: root
-  gather_facts: false
-  any_errors_fatal: true
-  tasks:
-    - name: Stop SAS Message Broker RabbitMQ
-      any_errors_fatal: true
-      script: viya-svs.sh stop sas-viya-rabbitmq-server-default
-      when: psflag.stdout != "" and deployhostnum | int != 1
+      when: psflag.stdout != "" and INVOCATION_VARIABLES[inventory_hostname] is defined
 
 - hosts: sas_all:!consul
   become: yes
@@ -179,7 +188,7 @@
     - name: Stop SAS Configuration consul Agent(s)
       any_errors_fatal: true
       script: viya-svs.sh stop sas-viya-consul-default {{consul_retry_count}}
-      when: psflag.stdout != "" and deployhostnum | int != 1
+      when: psflag.stdout != ""
 
 - hosts: consul
   become: yes
@@ -192,12 +201,12 @@
     - name: Stop SAS Secret Manager - vault
       any_errors_fatal: true
       script: viya-svs.sh stop sas-viya-vault-default
-      when: psflag.stdout != "" and deployhostnum | int != 1
+      when: psflag.stdout != ""
 
     - name: Stop SAS Configuration consul Server(s)
       any_errors_fatal: true
       script: viya-svs.sh stop sas-viya-consul-default {{consul_retry_count}}
-      when: psflag.stdout != "" and deployhostnum | int != 1
+      when: psflag.stdout != ""
 
 - hosts: ComputeServer
   become: yes

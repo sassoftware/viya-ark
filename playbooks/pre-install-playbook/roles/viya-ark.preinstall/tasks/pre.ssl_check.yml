@@ -20,7 +20,7 @@
 
 - block:
   - name: "Get status of ssl configuration directories"
-    shell: grep -vxE '[[:blank:]]*([#;].*)?' {{ item.path}}| grep -E "SSLCertificateFile"|sed 's/^[ \t]*//;s/[ \t]*$//'|cut -f2- -d' '
+    shell: grep -rvxE '[[:blank:]]*([#;].*)?' {{ item.path}}| grep -E "SSLCertificateFile"|sed 's/^[ \t]*//;s/[ \t]*$//'|cut -f2- -d' '
     become: yes
     check_mode: no
     changed_when: False
