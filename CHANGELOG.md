@@ -1,9 +1,21 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.4 - May 29, 2020
+- **Summary**:
+  Enhancements and fixes related to Upgrade & Multi-Machine Services Utilities.
+- Issues addressed:
+  - SAS Multi-Machine Service Utilties
+    - VIYAARK-122 - Support using GEL script in start/stop.
+    - VIYAARK-130 - Upon failure, playbook viya-services-stop.yml should stop instead of continue.
+  - SAS Viya Upgrade Tasks Playbooks
+    - VIYAARK-184 - Merge playbook fails to parse ansible.cfg correctly for SAS-internal deployment. 
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.3 - April 1, 2020
 - **Summary**:
-  Enhancements and fixes related to Upgrade, Multi-Machine Services Utilities, Pre-Installation playbooks.
+  Enhancements and fixes related to Upgrade & Multi-Machine Services Utilities, Pre-Installation playbooks.
 - Issues addressed:
   - SAS Viya Upgrade Tasks Playbooks
     - VIYAARK-121 - Pre-upgrade failure due to Ansible 2.7 incompatible function.
@@ -17,7 +29,6 @@
     - VIYAARK-5   - Catch when no permission to SAS home directory
 - Ansible Support: Ansible 2.7.2 - Ansible 2.9
 
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.2 - February 28, 2020
 - **Summary**:

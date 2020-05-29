@@ -210,7 +210,7 @@ def _merge_config_option(current_config, new_config, section, option):
             LOG.info("The option " + option + " will not be carried to the newer file.")
         return
 
-    value = current_config.get(section, option)
+    value = current_config.get(section, option, raw=True)
 
     if new_config.has_option(section, option):
         if '99999;' not in option:

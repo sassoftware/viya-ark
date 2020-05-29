@@ -7,6 +7,7 @@
 # Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
+
 - name: SAS Infrastructure Data Server - {{dbname}}
   script: "viya-svs.sh {{dbaction}} {{dbname}} {{dbnum}} {{dbtype}}"
   when: not ansible_check_mode
@@ -22,7 +23,7 @@
     debug: var=dbrc.stdout_lines
     when: ansible_check_mode
 
-  - name: Fail task if DB is not running - {{dbname}}
+  - name: Fail task if DB is not running for start - {{dbname}}
     fail:
       msg:
         - "ERROR: PGPool is not running"

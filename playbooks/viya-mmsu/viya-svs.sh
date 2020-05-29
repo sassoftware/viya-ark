@@ -17,23 +17,24 @@ do_usage()
 
 do_stopms()
 {
-	LIST=$(ls sas-viya-* 2>/dev/null|grep -v cascontroller)
-	do_stop
+	local LIST=$(ls sas-viya-* 2>/dev/null|grep -v cascontroller)
+	do_stop "$LIST"
 }
 
 do_stopmt()
 {
-	LIST=$(ls sas-*-all-services 2>/dev/null)
-	do_stop
+	local LIST=$(ls sas-*-all-services 2>/dev/null)
+	do_stop "$LIST"
 }
 
 do_stopcas()
 {
-	LIST=$(ls sas-*-cascontroller-* 2>/dev/null)
-	do_stop
+	local LIST=$(ls sas-*-cascontroller-* 2>/dev/null)
+	do_stop "$LIST"
 }
 do_stop()
 {
+	local LIST=$*
 	NLIST=
 	for p in $LIST
 	do
@@ -44,29 +45,32 @@ do_stop()
 	done
 
 	LIST=$NLIST
-	do_ps_common stop
+	do_ps_common stop "$LIST"
 }
 
 do_startmt()
 {
-	LIST=$(ls sas-*-all-services 2>/dev/null| grep -v '\-viya\-')
-	do_start_common
+	local LIST=$(ls sas-*-all-services 2>/dev/null| grep -v '\-viya\-')
+	do_start_common "$LIST"
 }
 
 do_startcas()
 {
-	LIST=$(ls sas-*-cascontroller-* 2>/dev/null)
-	do_start_common
+	local LIST=$(ls sas-*-cascontroller-* 2>/dev/null)
+	do_start_common "$LIST"
 }
 
 do_start_common()
 {
-	do_ps_common start
+	local LIST=$*
+	do_ps_common start "$LIST"
 }
 
 do_ps_common()
 {
-	ACTION=$1
+	local ACTION=$1
+	shift
+	local LIST=$*
 	LIST=$(echo $LIST)
 
         if [[ "$LIST" == "" ]]; then
@@ -183,6 +187,8 @@ do_startdb()
 			if [[ "$DEBUG" == "" ]]; then
 				check_consul
 				if [[ $? == 0 ]]; then
+				    check_vault
+				    if [[ $? == 0 ]]; then
 					#status: is running not sufficient
 					dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-pgpool${dbnuminfo} status)
 					if [[ $? == 0 ]]; then
@@ -195,6 +201,9 @@ do_startdb()
 						echo "ERROR: command error: sas-viya-sasdatasvrc-${dbname}-pgpool${dbnuminfo} status"
 						exit 1
 					fi
+				    else
+					echo "ERROR: vault service is not running or not ready"
+				    fi
 				else
 					echo "ERROR: consul has issue, need to be fixed before starting pgpool"
 					exit 1
@@ -212,14 +221,21 @@ do_startdb()
 			sas-viya-sasdatasvrc-${dbname}-pgpool0-ct-pool_hba
 			sas-viya-sasdatasvrc-${dbname}
 			"
-			do_ps_common start
+			do_ps_common start "$LIST"
 		fi
 	fi
 }
 
 do_stopdb()
 {
+	local LIST
 	if [[ "$viya35" == "1" ]]; then
+		check_vault
+		if [[ $? != 0 ]]; then
+			echo "Warning: vault service is not running"
+			return
+		fi
+		
 		dbnum=$dbarg2
 		dbtype=$dbarg3
 		if [[ "$dbtype" == "node" || "$dbtype" == "pgpool" ]]; then
@@ -228,6 +244,8 @@ do_stopdb()
 				if [[ "$DEBUG" == "" ]]; then
 					check_consul
 					if [[ $? == 0 ]]; then
+					    check_vault
+					    if [[ $? == 0 ]]; then
 						dbstatus=$(/etc/init.d/sas-viya-sasdatasvrc-${dbname}-${dbtype}${dbnuminfo} status)
 						if [[ $? == 0 ]]; then
 							dbstatus=$(echo "$dbstatus" | grep 'is running')
@@ -242,6 +260,9 @@ do_stopdb()
 							echo "ERROR: command error: sas-viya-sasdatasvrc-${dbname}-${dbtype}${dbnuminfo} status"
 							exit 1
 						fi
+					    else
+						echo "ERROR: vault service is not running or not ready"
+					    fi
 					else
 						echo "Warning: consul is not up, skip shutdown database $dbtype"
 						exit 0
@@ -263,12 +284,14 @@ do_stopdb()
 		fi
 	fi
 
-	do_ps_common stop
+	do_ps_common stop "$LIST"
 }
 
 check_dbps()
 {
-	for f in $LIST
+	LIST=$*
+	local skip
+	for f in "$LIST"
 	do
 		skip=0
 		if [[ -f "$PIDROOT/$f.pid" ]]; then
@@ -289,13 +312,14 @@ check_dbps()
 
 do_startdbct()
 {
+	local LIST
 	if [[ "$viya35" == "1" ]]; then
 		dbtype=$dbarg2
 		LIST1=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}*-consul-template-operation_node"| cut -c3-|sort)
 		LIST2=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}*-consul-template-*_hba"| cut -c3-|sort)
 		LIST="$LIST1 $LIST2"
-		check_dbps
-		do_ps_common start
+		check_dbps "$LIST"
+		do_ps_common start "$LIST"
 		if [[ "$dbtype" == "node" ]]; then
 		    get_dbnuminfo node
 		    if [[ -x "$DBDIR/node${dbnuminfo}/startall" ]]; then
@@ -308,7 +332,7 @@ do_startdbct()
 						if [[ "$dbstatus" == "" ]]; then
 							su - sas -c "$DBDIR/node${dbnuminfo}/startall"
 							if [[ $? != 0 ]]; then
-								#retry
+								#retry: work around consul template issue
 								echo "info: startdb retry node${dbnuminfo}"
 								su - sas -c "$DBDIR/node${dbnuminfo}/startall"
 								if [[ $? != 0 ]]; then
@@ -332,27 +356,32 @@ do_startdbct()
 		fi
 	else
 		LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c3-)
-		do_ps_common start
+		do_ps_common start "$LIST"
 	fi
 
 }
 
 do_stopdbct()
 {
+	local LIST
+	LIST=
 	if [[ "$viya35" == "1" ]]; then
 		dbtype=$dbarg2
-		LIST=
-		for dbtype in pgpool node
-		do
+		check_vault
+		if [[ $? == 0 ]]; then
+		    for dbtype in pgpool node
+		    do
 			LIST1=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}[[:digit:]]*-consul-template-operation_node"| cut -c3-|sort)
 			LIST2=$(find . -name "sas-viya-sasdatasvrc-${dbname}-${dbtype}[[:digit:]]*-consul-template-*_hba"| cut -c3-|sort)
 			LIST="$LIST2 $LIST1 $LIST"
-		done
-		do_ps_common stop
+		    done
+		else
+		    echo "Warning: vault service is not running or not ready"
+		fi
 	else
 		LIST=$(find . -name "sas-viya-sasdatasvrc-${dbname}-node*-ct-*"| cut -c 3-)
-		do_ps_common stop
 	fi
+	do_ps_common stop "$LIST"
 }
 
 checkspace()
@@ -371,8 +400,8 @@ checkspace()
 
 clean_dbps()
 {
-	LIST=$(ps -e -o "user pid ppid cmd" |grep -E 'sds_consul_health_check|sas-crypto-management'|grep -v grep)
-	do_cleanps
+	local LIST=$(ps -e -o "user pid ppid cmd" |grep -E 'sds_consul_health_check|sas-crypto-management'|grep -v grep)
+	do_cleanps "$LIST"
 }
 
 get_dbnuminfo()
@@ -387,15 +416,33 @@ get_dbnuminfo()
 }
 do_cleanps()
 {
-	local flag=$1
-	NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
+	local flag
+	local NLIST
+	local LIST=$*
+	if [[ "$LIST" == "" ]]; then
+		return
+	fi
+	if [[ "$1" == "-s" ]]; then
+		flag=$1
+		shift
+		LIST=$*
+		NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
+	elif [[ "$1" == "-p" ]]; then
+		shift
+		NLIST=$*
+	else
+		NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
+	fi
 
 	for p in $NLIST
 	do
 		if [[ "$flag" == "" ]]; then
 			echo "kill -KILL $p"
 		fi
-		kill -KILL $p 2>/dev/null
+		ps -p $p > /dev/null
+		if [[ $? == 0 ]]; then
+			kill -KILL $p 2>/dev/null
+		fi
 	done
 	return 0
 }
@@ -431,9 +478,24 @@ initdb()
 	fi
 }
 
+check_vault()
+{
+	local CONF=/opt/sas/viya/config/consul.conf
+	source $CONF
+	local info=$(/opt/sas/viya/home/bin/consul catalog services 2>&1)
+	local rc=$?
+	if [[ $rc == 0 ]]; then
+		echo "$info"| grep "^vault$" > /dev/null
+		return $?
+	else
+		echo "$info"
+		return $rc
+	fi
+}
+
 check_consul()
 {
-	CMD=/etc/init.d/sas-viya-consul-default
+	local CMD=/etc/init.d/sas-viya-consul-default
 	if [[ ! -x "$CMD" ]]; then
 		echo "ERROR: command not found: $CMD"
 		exit 2
@@ -444,7 +506,7 @@ check_consul()
 		return 255
 	fi
 	
-	CONF=/opt/sas/viya/config/consul.conf
+	local CONF=/opt/sas/viya/config/consul.conf
 	if [[ ! -f "$CONF" ]]; then
 		echo "ERROR: consul config file is missing ($CONF)"
 		exit 1
@@ -452,12 +514,20 @@ check_consul()
 
 	source $CONF
 	local info
-	info=$(/opt/sas/viya/home/bin/consul members)
+	info=$(/opt/sas/viya/home/bin/consul members 2>&1)
 	rc=$?
 	if [[ $rc != 0 ]]; then
-		echo "ERROR: consul has error, please check consul log."
-		exit $rc
-		#return $rc
+		#retry: work around with consul bug
+		do_ps_common stop sas-viya-consul-default
+		do_ps_common start sas-viya-consul-default
+		sleep 1
+		info=$(/opt/sas/viya/home/bin/consul members)
+		rc=$?
+		if [[ $rc != 0 ]]; then
+			echo "ERROR: consul may have a slow start, please rerun the playbook. If the problem is persisted, please check the consul log."
+			exit $rc
+			#return $rc
+		fi
 	fi
 
 	local cnt
@@ -486,12 +556,13 @@ do_deregconsul()
 		return
 	fi
 
-	local rc=$(do_service start $SNAME)
+	local rc=$(/etc/init.d/$SNAME status|grep 'is running')
 	if [[ "$rc" != "0" ]]; then
-		wait $rc
+                echo "deregconsul: $rc"
+		return
 	fi
 
-        CONF=/opt/sas/viya/config/consul.conf
+        local CONF=/opt/sas/viya/config/consul.conf
         if [[ ! -f "$CONF" ]]; then
                 echo "Warning: consul config file is missing ($CONF)"
                 return
@@ -527,9 +598,9 @@ do_deregconsul()
 		wait $rc
 	fi
 
-	LIST=$(ps -e -o "user pid ppid cmd"|grep -E '/opt/sas/spre/|/opt/sas/viya/'| \
+	local LIST=$(ps -e -o "user pid ppid cmd"|grep -E '/opt/sas/spre/|/opt/sas/viya/'| \
 		grep -E 'sds_consul_health_check|sas-crypto-management|kill_consul_helper|sas-bootstrap-config'|grep -v grep)
-	do_cleanps -s
+	do_cleanps -s "$LIST"
 }
 
 check_svcignore()
@@ -585,32 +656,57 @@ case "$OPT" in
 		do_$OPT; exit $? ;;
 	start|stop)
 		shift 1
-		TLIST=$*
-		consul_retry_counter=$1
+		consul_retry_counter=0
+		if [[ "$OPT" == "stop" && "$1" == "sas-viya-consul-default" ]]; then
+			consul_retry_counter=$2
+			TLIST=sas-viya-consul-default
+		else
+			TLIST=$*
+		fi
 		LIST=
 		for l in $TLIST
 		do
 			if [[ -x "/etc/init.d/$l" ]]; then
 				LIST="$l $LIST"
+			else
+				echo "ERROR: command not found: $l"
+				exit 1
 			fi
 		done
 
-		do_ps_common $OPT
+		do_ps_common $OPT "$LIST"
 
-		if [[ "$TLIST" =~ "sas-viya-consul-default" ]]; then
-			if [[ "$OPT" == "stop" ]]; then
-				clean_dbps
-				do_deregconsul
+		if [[ $consul_retry_counter > 0 ]]; then
+			do_deregconsul
+			if [[ -d /var/run/sas ]]; then
+				PLIST=
+				SLIST=
+				cd /var/run/sas
+				FILES=$(ls sas*.pid|grep -v sas-viya-all-services)
+				for f in $FILES
+				do
+					p=$(cat $f)
+					ps -p $p >/dev/null 2>&1
+					if [[ $? == 0 ]]; then
+						PLIST="$PLIST $p"
+						pname=$(echo "$f" | sed 's/.pid//')
+						SLIST="$SLIST $pname"
+					fi
+				done
+				do_ps_common stop "$SLIST"
+				do_cleanps -p "$PLIST"
+				/bin/rm -f "$FILES"
 			fi
+			clean_dbps
 		fi
 		;;
 	cleanps)
 		LIST=$(ps -e -o "user pid ppid cmd"|grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep -v -E 'grep|pgpool|postgres')
-		do_cleanps
+		do_cleanps "$LIST"
 		;;
 	cleancomp)
 		LIST=$(ps -e -o "user pid ppid cmd" |grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep compsrv|grep -v grep)
-		do_cleanps
+		do_cleanps "$LIST"
 		;;
 	checkspace)
 		DIR=$2; SIZE=$3

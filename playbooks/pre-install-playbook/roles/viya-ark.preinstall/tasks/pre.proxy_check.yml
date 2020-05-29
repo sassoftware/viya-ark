@@ -144,7 +144,7 @@
       - proxy_check
       
   - name: "Lookup for proxy server in yum.conf"
-    shell: grep 'proxy=' virk_conf_test.txt
+    shell: grep 'proxy='  /etc/yum.conf
     check_mode: no
     changed_when: false
     when: (https_proxy != "") and (http_proxy != "")
@@ -160,11 +160,12 @@
       msg: 
         The variable "proxy" is not set in yum.conf file
     when: (https_proxy != "") and (http_proxy != "") and not ansible_check_mode
+    ignore_errors: yes
     tags:
       - proxy_check
     
   - name: "Lookup for proxy username in yum.conf"
-    shell: grep 'proxy_username' virk_conf_test.txt
+    shell: grep 'proxy_username'  /etc/yum.conf
     check_mode: no
     changed_when: false
     when: (https_proxy != "") and (http_proxy != "")
@@ -180,11 +181,12 @@
       msg: 
         The variable "proxy_username" is not set in yum.conf file
     when: (https_proxy != "") and (http_proxy != "") and not ansible_check_mode
+    ignore_errors: yes
     tags:
       - proxy_check
     
   - name: "Lookup for proxy password in yum.conf"
-    shell: grep 'proxy_password' virk_conf_test.txt
+    shell: grep 'proxy_password'  /etc/yum.conf
     check_mode: no
     changed_when: false
     when: (https_proxy != "") and (http_proxy != "")
@@ -200,5 +202,6 @@
       msg: 
         The variable "proxy_password" is not set in yum.conf file.
     when: (https_proxy != "") and (http_proxy != "") and not ansible_check_mode
+    ignore_errors: yes
     tags:
       - proxy_check
