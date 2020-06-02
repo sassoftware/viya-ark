@@ -7,7 +7,14 @@
 - Issues addressed:
   - SAS Multi-Machine Service Utilties
     - VIYAARK-122 - Support using GEL script in start/stop.
+    - VIYAARK-124 - Consul logging need to be redirected to stdout.
+    - VIYAARK-125 - Rewording message when consul has a slow start.
+    - VIYAARK-126 - Tool may not work properly for single machine deployment.
+    - VIYAARK-128 - Performance improvement when rerun viya-services-stop.yml.
+    - VIYAARK-129 - When running playbook stop, rabbitmq may have process left behind.
     - VIYAARK-130 - Upon failure, playbook viya-services-stop.yml should stop instead of continue.
+    - VIYAARK-150 - Parameter LIST should be quoted.
+    - VIYAARK-151 - User request to update task name for Data Server Consul Template.
   - SAS Viya Upgrade Tasks Playbooks
     - VIYAARK-184 - Merge playbook fails to parse ansible.cfg correctly for SAS-internal deployment. 
 
