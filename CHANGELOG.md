@@ -1,6 +1,16 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.5 - June 4, 2020
+- **Summary**:
+  Update Support statement and revise Change Log from prior release.
+- Issues addressed:
+  - General
+    - VIYAARK-190 - Update Viya ARK support statement.
+- Ansible Support: Ansible 2.7.2 - Ansible 2.9
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.4 - May 29, 2020
 - **Summary**:
   Enhancements and fixes related to Upgrade & Multi-Machine Services Utilities.
@@ -17,8 +27,7 @@
     - VIYAARK-151 - User request to update task name for Data Server Consul Template.
   - SAS Viya Upgrade Tasks Playbooks
     - VIYAARK-184 - Merge playbook fails to parse ansible.cfg correctly for SAS-internal deployment. 
-
-<!-- LATEST RELEASE END -->
+- Ansible Support: Ansible 2.7.2 - Ansible 2.9
 
 ## Viya35-ark-1.3 - April 1, 2020
 - **Summary**:
