@@ -20,9 +20,8 @@
 - import_tasks: pre.max_os_tasks_config.yml
 - import_tasks: pre.user_and_group_config.yml
 - import_tasks: pre.sudo_access_check.yml
-## ssl and proxy check tasks should not be used.  Future enhancements.
-#- import_tasks: pre.ssl_check.yml
-#- import_tasks: pre.proxy_check.yml
+- import_tasks: pre.ssl_check.yml
+- import_tasks: pre.proxy_check.yml
 - import_tasks: pre.selinux_config.yml
 - import_tasks: pre.ulimit_config.yml
 - import_tasks: pre.os_firewall_config.yml
