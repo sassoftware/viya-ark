@@ -18,6 +18,9 @@ The SAS Viya Multi-Machine Services Utilities repository contains a set of playb
 * Multi-tenant deployment
 * Clustered database deployment
 
+## UnSupported Viya deployment
+* Programming-only deployment
+
 ## Running the Playbooks
 To list the status of all SAS Viya services and URLs, execute:
 ```
