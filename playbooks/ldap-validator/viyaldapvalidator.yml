@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -164,7 +164,7 @@
 
   - name: "Do an ldapsearch with the parameters provided"
     #shell: "{{ldapsearchstring_bind}} -b '' -z 5 "
-    shell: "{{ldapsearchstring_bind}} -z {{sizelimit}} "
+    shell: "{{ldapsearchstring_bind}} -z {{sizelimit}} -b {{ldap_group_basedn}}"
     ignore_errors: yes
     failed_when: ldapsearch_result.rc != 0 and ldapsearch_result.rc != 4
     changed_when: false
