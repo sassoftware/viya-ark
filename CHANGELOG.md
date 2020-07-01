@@ -1,7 +1,7 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
-## Viya35-ark-1.6 - Juky 1, 2020
+## Viya35-ark-1.6 - July 1, 2020
 - **Summary**:
   Enhancements and fixes related to Pre-Install playbook, MMSU & LDAP Validator.
 - Issues addressed:
