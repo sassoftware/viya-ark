@@ -1,15 +1,30 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.6 - Juky 1, 2020
+- **Summary**:
+  Enhancements and fixes related to Pre-Install playbook, MMSU & LDAP Validator.
+- Issues addressed:
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-11  - SSL Certificate check and validation.
+    - VIYAARK-30  - HTTP/HTTPS proxy check and validation.
+    - VIYAARK-169 - Import SSL and proxy check tasks to playbook. 
+  - SAS Multi-Machine Service Utilties
+    - VIYAARK-201 - Update README: programming-only deployment not supported.
+  - SAS LDAP Validator
+    - VIYAARK-202 - Input (-b) needed for basic connection tasks to work.
+- Ansible Support: Ansible 2.7.2 - Ansible 2.9
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.5 - June 4, 2020
 - **Summary**:
   Update Support statement and revise Change Log from prior release.
 - Issues addressed:
   - General
     - VIYAARK-190 - Update Viya ARK support statement.
-- Ansible Support: Ansible 2.7.2 - Ansible 2.9
+- Ansible Support: Ansible 2.7.2 - Ansible 2.9 
 
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.4 - May 29, 2020
 - **Summary**:
