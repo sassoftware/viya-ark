@@ -16,9 +16,6 @@
       - oddjob-mkhomedir
     mkhomedir_script: /etc/pam.d/sasauth-mkhomedir.sh
     sasauth_locations:
-      - /etc/pam.d/sasauth-spre
-      - /etc/pam.d/sasauth-viya
-      - /etc/pam.d/cas
       - /etc/pam.d/sasauth
 
   tasks:
