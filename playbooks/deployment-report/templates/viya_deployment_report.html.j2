@@ -314,6 +314,7 @@ div.no-software-installed {
                         </div>
 
                         <!-- SAS Notes Accordion {{ hotfix[0]  }} -->
+{% if hotfix[1].sas_notes|length > 0 %}
                         <div class="accordion sasnotes-accordion" id="{{ hotfix[0] }}-sasnotes-accordion">
                         <h3 id="{{ hotfix[0] }}-hotfix-details-accordion-sasnotes-header">SAS Notes (<b>total</b>: {{ hotfix[1].sas_notes | length }})</h3>
                             <div>
@@ -333,6 +334,7 @@ div.no-software-installed {
                             </div>
                         <!-- End {{ hotfix[0] }}-sasnotes-accordion -->
                         </div>
+{% endif %}
 
                      <!-- End hotfix-{{ hotfix[0] }}-details section -->
                     </div>
@@ -381,6 +383,7 @@ div.no-software-installed {
                         </div>
 
                         <!-- SAS Notes Accordion {{ hotfix[0] }} -->
+{% if hotfix[1].sas_notes|length > 0 %}
                         <div class="accordion sasnotes-accordion" id="{{ hotfix[0] }}-sasnotes-accordion">
                         <h3 id="{{ hotfix[0] }}-hotfix-details-accordion-sasnotes-header">SAS Notes (<b>total</b>: {{ hotfix[1].sas_notes | length }})</h3>
                             <div>
@@ -400,6 +403,7 @@ div.no-software-installed {
                             </div>
                         <!-- End {{ hotfix[0] }}-sasnotes-accordion -->
                         </div>
+{% endif %}
 
                      <!-- End hotfix-{{ hotfix[0] }}-details section -->
                     </div>

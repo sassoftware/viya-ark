@@ -796,17 +796,18 @@ def main():
                             results[hotfix_dict_to_use][currentHotfix]["packages"].append(temp_dict)
                 # Format the SAS Note description so that we can respect any HTML tags that are included in the text.
                 results[hotfix_dict_to_use][currentHotfix]["sas_notes"] = {}
-                for current_number in fullReport[currentHotfix]["sasnote"]:
-                    # Honor any html that is coming through.
-                    temp_sasnote_description = fullReport[currentHotfix]["sasnote"][current_number].decode('utf-8')
-                    temp_sasnote_description = temp_sasnote_description.replace("&lt;", "<")
-                    temp_sasnote_description = temp_sasnote_description.replace("&gt;", ">")
-                    # Build a link to the URL for the SAS Note.
-                    hot_fix_prefix = current_number[:2]
-                    hot_fix_postfix = current_number[2:]
-                    sas_note_url = "http://support.sas.com/kb/" + hot_fix_prefix + "/" + hot_fix_postfix + ".html"
-                    sas_note_html_link = "<a href=\"" + sas_note_url + "\"\>" + current_number + "</a>"
-                    results[hotfix_dict_to_use][currentHotfix]["sas_notes"][current_number] = {"sas_note_link":sas_note_html_link, "description":temp_sasnote_description}
+                if "sasnote" in fullReport[currentHotfix]:
+                    for current_number in fullReport[currentHotfix]["sasnote"]:
+                        # Honor any html that is coming through.
+                        temp_sasnote_description = fullReport[currentHotfix]["sasnote"][current_number].decode('utf-8')
+                        temp_sasnote_description = temp_sasnote_description.replace("&lt;", "<")
+                        temp_sasnote_description = temp_sasnote_description.replace("&gt;", ">")
+                        # Build a link to the URL for the SAS Note.
+                        hot_fix_prefix = current_number[:2]
+                        hot_fix_postfix = current_number[2:]
+                        sas_note_url = "http://support.sas.com/kb/" + hot_fix_prefix + "/" + hot_fix_postfix + ".html"
+                        sas_note_html_link = "<a href=\"" + sas_note_url + "\"\>" + current_number + "</a>"
+                        results[hotfix_dict_to_use][currentHotfix]["sas_notes"][current_number] = {"sas_note_link":sas_note_html_link, "description":temp_sasnote_description}
 
     if len(files_to_scan) == 0:
         formatted_file_output = "Installed products analyzed; no applicable hotfix files to report on.\n"
