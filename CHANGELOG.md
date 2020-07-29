@@ -1,6 +1,21 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.7 - July 29, 2020
+- **Summary**:
+  Enhancements and fixes related to Pre-Install playbook & Deployment Report.
+- Issues addressed:
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-56  - Multi-nic limitation checks removed.
+  - SAS Viya Deployment Report
+    - VIYAARK-207 - Deployment Report not working when including hotfixes.
+  - General
+    - VIYAARK-200 - Develop a list of data to be submitted with github issues.
+    - VIYAARK-205 - Home Directory Creator tool removed from SAS Viya ARK.
+- Ansible Support: Ansible 2.7.2 - Ansible 2.9
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.6 - July 1, 2020
 - **Summary**:
   Enhancements and fixes related to Pre-Install playbook, MMSU & LDAP Validator.
@@ -14,8 +29,6 @@
   - SAS LDAP Validator
     - VIYAARK-202 - Input (-b) needed for basic connection tasks to work.
 - Ansible Support: Ansible 2.7.2 - Ansible 2.9
-
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.5 - June 4, 2020
 - **Summary**:
