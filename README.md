@@ -29,7 +29,6 @@ Tool support for the latest release of SAS Viya:
 * [SAS Viya Multi-Machine Services Utilities](playbooks/viya-mmsu)
 * [SAS Viya Upgrade Task Playbooks](playbooks/viya-upgrade)
 * [Merge SAS Viya Deployment Files](playbooks/merge-playbook)
-* [Home Directory Creator](playbooks/home-directory-creator)
 * [SAS Data Server Utility Script](utilities/postgres/viya)
 * [SAS Viya LDAP Validator](playbooks/ldap-validator)
 
