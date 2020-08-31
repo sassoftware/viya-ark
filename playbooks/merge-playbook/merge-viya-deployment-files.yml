@@ -278,6 +278,28 @@
       check_mode: yes
       failed_when: false
 
+    - name: Check whether the PERMS_OVERRIDE property exists in the pre merged vars.yml
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        regexp: 'PERMS_OVERRIDE:'
+        state: absent
+      register: perms_override_property_exists
+      check_mode: yes
+      failed_when: false
+
+    - name: Check whether the PERMS_OVERRIDE property exists in the current vars.yml
+      lineinfile:
+        path: "{{ current_vars_yml }}"
+        regexp: 'PERMS_OVERRIDE:'
+        state: absent
+      register: curr_perms_override_property_exists
+      check_mode: yes
+      failed_when: false
+
+    - set_fact:
+       add_perms_override: true
+      when: perms_override_property_exists.changed == True and curr_perms_override_property_exists.changed == False
+
     - name: Uncomment out the vars.yml properties in the merged folder if they are activated in the current vars.yml
       replace:
         path: "{{ merged_vars_yml }}"
@@ -364,8 +386,6 @@
       with_items:
       - "  #1: '# Comment about KEY'"
       - "  #2: KEY=value"
-      
-
 
     - name: Detect if backward merging is attempted
       assert:
@@ -379,6 +399,7 @@
         current_inventory_file: "{{ temp_current_inventory_file }}"
         current_files_dir: "{{ current_files_dir }}"
         add_ha_properties: "{{ ha_properties_exist.changed }}"
+        add_perms_override: "{{ add_perms_override is defined | default(false) }}"
         log_file_name: "{{ merged_folder }}/merge_viya_deployment_files.log"
         tenant_id_string: "{{ tenant_id_string if tenantID_list is defined | default(false) else omit }}"
         merge_default_host: "{{ merge_default_host if merge_default_host is defined | default(false) else omit }}"
@@ -527,7 +548,7 @@
                    SERVICE_NAME: cpspostgres
       when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == False and merge_default_host is defined
 
-    # case 3-1
+    # case 3-1-1
     - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
       blockinfile:
         path: "{{ merged_vars_yml }}"
@@ -548,9 +569,33 @@
                    PGPOOL_PORT: '5441'
                    SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
                    SERVICE_NAME: cpspostgres
-      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True and merge_default_host is undefined
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True and merge_default_host is undefined and perms_override_property_exists.changed == False
 
-    # case 3-2
+    # case 3-1-2
+    - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
+      blockinfile:
+        path: "{{ merged_vars_yml }}"
+        marker: "<!-- {mark} Modify the deploymentTarget name -->"
+        insertafter: "INVOCATION_VARIABLES"
+        block: |3
+              ? choose-target-host:
+                 cpsdatasvrc:
+                 - NODE_NUMBER: '0'
+                   PG_PORT: '5442'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+                 cpspgpoolc:
+                 - HA_PGPOOL_VIRTUAL_IP: ''
+                   HA_PGPOOL_WATCHDOG_PORT: ''
+                   PERMS_OVERRIDE: 'false'
+                   POOL_NUMBER: '0'
+                   PCP_PORT: '5440'
+                   PGPOOL_PORT: '5441'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True and merge_default_host is undefined and perms_override_property_exists.changed == True
+
+    # case 3-2-1
     - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
       blockinfile:
         path: "{{ merged_vars_yml }}"
@@ -564,13 +609,36 @@
                  cpspgpoolc:
                  - HA_PGPOOL_VIRTUAL_IP: ''
                    HA_PGPOOL_WATCHDOG_PORT: ''
+                   PERMS_OVERRIDE: 'false'
                    POOL_NUMBER: '0'
                    PCP_PORT: '5440'
                    PGPOOL_PORT: '5441'
                    SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
                    SERVICE_NAME: cpspostgres
-      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True and merge_default_host is defined
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True and merge_default_host is defined and perms_override_property_exists.changed == False
 
+    # case 3-2-2
+    - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
+      blockinfile:
+        path: "{{ merged_vars_yml }}"
+        insertafter: "{{ merge_default_host }}:"
+        block: |3
+                 cpsdatasvrc:
+                 - NODE_NUMBER: '0'
+                   PG_PORT: '5442'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+                 cpspgpoolc:
+                 - HA_PGPOOL_VIRTUAL_IP: ''
+                   HA_PGPOOL_WATCHDOG_PORT: ''
+                   PERMS_OVERRIDE: 'false'
+                   POOL_NUMBER: '0'
+                   PCP_PORT: '5440'
+                   PGPOOL_PORT: '5441'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True and merge_default_host is defined and perms_override_property_exists.changed == True
+   
     - name: Check whether the NODE_TYPE property exists in the merged vars.yml
       lineinfile:
         path: "{{ merged_vars_yml }}"

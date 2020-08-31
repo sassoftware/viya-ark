@@ -56,7 +56,9 @@ LOG.addHandler(ch)
 ############################################################
 HA_PGPOOL_VIRTUAL_IP_LINE    = "      - HA_PGPOOL_VIRTUAL_IP: ''\n"
 HA_PGPOOL_WATCHDOG_PORT_LINE = "        HA_PGPOOL_WATCHDOG_PORT: ''\n"
+PERMS_OVERRIDE_LINE = "        PERMS_OVERRIDE: 'false' \n"
 PCP_PORT_LINE    = "      - PCP_PORT"
+PGPOOL_PORT_LINE_BEFORE = "PGPOOL_PORT:"
 POOL_NUMBER_LINE = "        POOL_NUMBER: '0'\n"
 
 ############################################################
@@ -489,6 +491,21 @@ def add_new_properties_invocation_variable (vars_file):
                 line = HA_PGPOOL_VIRTUAL_IP_LINE + HA_PGPOOL_WATCHDOG_PORT_LINE + POOL_NUMBER_LINE +  line
             out_file.write(line)
 
+
+############################################################
+#   Add a new PERMS_OVERRIDE property to cpspgpoolc and pgpoolc in the vars.yml
+############################################################
+def add_perms_override_property_invocation_variable (vars_file):
+    with open(vars_file, "r") as in_file:
+        buf = in_file.readlines()
+
+    with open(vars_file, "w") as out_file:
+        for line in buf:
+            temp_line = line.lstrip()
+            if temp_line.startswith(PGPOOL_PORT_LINE_BEFORE):
+                line = PERMS_OVERRIDE_LINE +  line
+            out_file.write(line)
+
 ############################################################
 #   Main
 ############################################################
@@ -498,6 +515,7 @@ def main():
         "current_inventory_file": {"required": True, "type": "str"},
         "current_files_dir": {"required": True, "type": "str"},
         "add_ha_properties": {"required": True, "type": "bool"},
+        "add_perms_override": {"required": True, "type": "bool"},
         "log_file_name": {"required": True, "type": "str"},
         "tenant_id_string": {"required": False, "type": "str"},
         "merge_default_host": {"required": False, "type": "str"},
@@ -509,6 +527,7 @@ def main():
     current_inventory_file = module.params['current_inventory_file']
     current_files_dir = module.params['current_files_dir']
     add_ha_properties = module.params['add_ha_properties']
+    add_perms_override = module.params['add_perms_override']
 
     if not current_inventory_file.startswith(os.sep):
         # force working with absolution path location
@@ -602,6 +621,11 @@ def main():
     if add_ha_properties:
         add_new_properties_invocation_variable(new_vars_yml)
         LOG.info("The new postgres HA properties werer added to the newer vars.yml file.")
+
+    # add perms_override properties
+    if add_perms_override:
+        add_perms_override_property_invocation_variable(new_vars_yml)
+        LOG.info("The new postgres perms_override property was added to the newer vars.yml file.")
 
     # Get the tenant_id_list and do merge the tenant_vars.yml files
     tenant_string = module.params['tenant_id_string']
