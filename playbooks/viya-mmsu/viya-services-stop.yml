@@ -8,6 +8,17 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
+- hosts: localhost
+  gather_facts: false
+  vars_files:
+    - viya-services-vars.yml
+  tasks:
+    - name: "WARNING: All Viya services are about to be stopped!"
+      pause:
+        seconds: "{{stop_pause_timer}}"
+        prompt: "Press 'ctl+c' to interrupt the process. If no response, playbook will continue after {{stop_pause_timer}} seconds"
+      when: not ansible_check_mode 
+
 - import_playbook: ../common/handle_hostgroup_hyphens.yml
   tags:
     - always

@@ -16,6 +16,7 @@ consul_retry_count: 2                 #retry counter
 enable_stray_cleanup: false           #stray processes cleanup
 enable_svs_alternative: false         #start/stop microservices using alternative script
 log_diskspace_minimum: 2097152000     #2GB
+stop_pause_timer: 10                  #seconds
 stray_process_count: 30               #0: list all
 svas_delay_timer: 2                   #seconds
 svas_retry_count: 3                   #retry counter
