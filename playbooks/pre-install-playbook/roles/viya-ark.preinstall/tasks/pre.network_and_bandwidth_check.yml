@@ -1,16 +1,11 @@
 #
-# Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
 ####################################################################
 ## Network and Bandwidth Check
 ####################################################################
-# Test harness
-#   make it pass
-#     ansible-playbook viya_pre_install_playbook.yml --tags network_and_bandwidth_check -e "use_pause=0" -e "max_num_priv_ips=10"
-#   make it fail
-#     ansible-playbook viya_pre_install_playbook.yml --tags network_and_bandwidth_check -e "use_pause=0" -e "max_num_priv_ips=0"
 
 - block:
   ## block start
