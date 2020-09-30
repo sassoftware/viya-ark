@@ -24,7 +24,7 @@
       command: bash -c "ls -d {{ SASROOT }}/*/"
       register: caslua_files
 
-    - include: copy-user-formats-cas.yml
+    - include_tasks: copy-user-formats-cas.yml
       with_items:
         - "{{ caslua_files.stdout_lines }}"
       loop_control:
