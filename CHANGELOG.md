@@ -1,6 +1,20 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.9 - September 30, 2020
+- **Summary**:
+  Fix related to MMSU, Pre-Install & Post Upgrade.
+- Issues addressed:
+  - General
+    - VIYAARK-212 - Remove deprecated includes from codebase. MMSU & Post Upgrade.
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-209 - Clean up references to max_num_priv_ips.
+  - SAS Multi-Machine Service Utilties
+    - VIYAARK-103 - Add a confirmation before stopping
+- Ansible Support: Ansible 2.7.2 - Ansible 2.9
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.8 - August 31, 2020
 - **Summary**:
   Fix related to Merge Playbook.
@@ -9,7 +23,6 @@
     - VIYAARK-208  - Merge Playbook: Adding a new property, PERMS_OVERRIDE, to INVOCATION_VARIABLE.
 - Ansible Support: Ansible 2.7.2 - Ansible 2.9
 
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.7 - July 29, 2020
 - **Summary**:
@@ -23,6 +36,7 @@
     - VIYAARK-200 - Develop a list of data to be submitted with github issues.
     - VIYAARK-205 - Home Directory Creator tool removed from SAS Viya ARK.
 - Ansible Support: Ansible 2.7.2 - Ansible 2.9
+
 
 ## Viya35-ark-1.6 - July 1, 2020
 - **Summary**:
