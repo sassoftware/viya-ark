@@ -60,9 +60,10 @@ The following plays are run separate from the pre-upgrade and post-upgrade playb
   - The `archive_obsolete_log_folders.yml` playbook archives a specific set of directories that are related to services and components from previous SAS Viya versions that have now been discontinued or have merged with other services and components.
   - The playbook contains the list of obsoleted directories for archiving. By default, the playbook looks for these directories under _/opt/sas/viya/config/var/log_ and moves them to _/opt/sas/viya/config/var/log/archived_.
   - The playbook has `become_user` set to "sas" and all tasks are run as the sas user by default.
-  - The log directory path is set in variable `viya_log_path` and is _/opt/sas/viya/config/var/log_ by default.  The archive path is set in variable `viya_log_archive_path` and is _/opt/sas/viya/config/var/log/archived_ by default. You can override the defaults by editing the variables in the playbook file, or on the command line by setting the variables using the -e option:
+  - The log directory path is set in variable `viya_log_path` and is _/opt/sas/viya/config/var/log_ by default.  The archive path is set in variable `viya_log_archive_path` and is _/opt/sas/viya/config/var/log/archived_ by default. You can override the defaults by editing the variables in the playbook file, or on the command line by setting the variables using the -e option.
+  - The playbook creates an HTML report showing archive results. The report is written to the archive path by default. The report location can be overridden by editing the `report_output_path` variable in the playbook or on the command line using the -e option:  
 ````
-ansible-playbook archive_obsolete_log_folders.yml -i inventory -e "viya_log_archive_path=/example/writable/path"
+ansible-playbook archive_obsolete_log_folders.yml -i inventory -e "viya_log_archive_path=/example/writable/path" -e "report_output_path=/path"
 ```` 
 
 ## Useful Optional Arguments

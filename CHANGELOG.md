@@ -1,6 +1,20 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.10 - October 20, 2020 
+- **Summary**:
+  Changing range of Ansible versions supported.  Enhancing obsolete log archiving.
+- Issues addressed:
+  - General
+    - VIYAARK-188 - Support Ansible 2.10.
+    - VIYAARK-216 - Add Bug Report template to GitHub Issue submission.
+  - SAS Viya Upgrade Tasks Playbooks
+    - VIYAARK-104 - Produce summary report for Archive Obsolete Folders playbook.
+- Ansible Support: Ansible 2.8 - Ansible 2.10
+
+<!-- LATEST RELEASE END -->
+
+
 ## Viya35-ark-1.9 - September 30, 2020
 - **Summary**:
   Fix related to MMSU, Pre-Install & Post Upgrade.
@@ -13,7 +27,6 @@
     - VIYAARK-103 - Add a confirmation before stopping
 - Ansible Support: Ansible 2.7.2 - Ansible 2.9
 
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.8 - August 31, 2020
 - **Summary**:
