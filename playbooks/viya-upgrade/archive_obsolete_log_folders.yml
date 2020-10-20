@@ -16,11 +16,13 @@
 #
 # This playbook is intended for use in SAS Viya 3.5 environments.
 #
-# By default these old service directories are archived to /opt/sas/viya/config/var/log/archived
+# By default the old service directories are archived to /opt/sas/viya/config/var/log/archived
+#
+# By default the html report is written to /opt/sas/viya/config/var/log/archived
 # 
-# This location can be overridden by passing an alternate path on the command line:   
+# These location can be overridden by passing an alternate path on the command line:   
 # 
-# ansible-playbook archive_obsolete_log_folders.yml -i inventory -e "viya_log_archive_path=/your/writable/path/folder"
+# ansible-playbook archive_obsolete_log_folders.yml -i inventory -e "viya_log_archive_path=/your/writable/path/folder" -e "report_output_path=/path"
 #
 #
 #####################################################################################################
@@ -33,6 +35,9 @@
   vars:
     viya_log_path: "/opt/sas/viya/config/var/log"
     viya_log_archive_path: "{{viya_log_path}}/archived"
+    report_file_name: "archive_obsolete_log_folders_report"
+    report_output_path: "{{ viya_log_archive_path }}"
+    archival_report_file: "{{ report_output_path | realpath }}/{{ report_file_name + '_' + '%F_%H-%M-%S'|strftime(ansible_date_time.epoch) + '.html' }}"    
 
     folders_to_archive:
       - analytics-components
@@ -128,7 +133,7 @@
   - name: "***WARNING: This playbook is for use in SAS Viya 3.5 deployments. Please abort if you are running with a different version of SAS Viya."
     pause:
       seconds: 20
-      prompt: "Press 'Ctl+C' and then 'A' to abort the process. The playbook will continue after 20 seconds"
+      prompt: "Press 'Ctl+C' and then 'A' to abort the process. The playbook will continue after 20 seconds."
     when: (ansible_check_mode == False) and (use_pause == True)
 
     # On SUSE, if the package for the corresponding log folder is still installed then we will skip archiving the log folder.
@@ -168,6 +173,25 @@
     args:
       removes: "{{viya_log_path}}/{{item.item}}"
     become: yes
-    become_user: root      
+    become_user: root
+    register: moved_folder_status
     when: item.rc != 0
     with_items: "{% if ansible_os_family == suse_os_name|string %}{{package_status_suse.results}}{% else %}{{package_status_rhel.results}}{% endif %}"
+    
+  - name: Get the value of hostname -f
+    shell: "hostname -f"
+    changed_when: False
+    register: full_hostname
+
+  - name: "Create Log Folder Archive HTML Report"
+    template:
+      src: templates/archive_obsolete_log_folders_report.html.j2
+      dest: "{{ archival_report_file  }}"
+      mode: 0660
+    run_once: true
+
+  - name: "Log Folder Archive Report location"
+    debug:
+      msg: "Created {{ archival_report_file }}"
+    run_once: true
+  
