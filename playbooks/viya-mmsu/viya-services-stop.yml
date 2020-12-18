@@ -17,7 +17,7 @@
       pause:
         seconds: "{{stop_pause_timer}}"
         prompt: "Press 'ctl+c' to interrupt the process. If no response, playbook will continue after {{stop_pause_timer}} seconds"
-      when: not ansible_check_mode 
+      when: not ansible_check_mode and enable_pause_timer|bool == true
 
 - import_playbook: ../common/handle_hostgroup_hyphens.yml
   tags:
@@ -53,11 +53,11 @@
 
     - block:
 
-      - name: Stop SAS microservices
-        script: viya-svs.sh stopms
-
       - name: Stop SAS multi-tenant services
         script: viya-svs.sh stopmt
+
+      - name: Stop SAS microservices
+        script: viya-svs.sh stopms
 
       any_errors_fatal: true
       when: psflag.stdout != "" and not ansible_check_mode and enable_svs_alternative|bool != true
