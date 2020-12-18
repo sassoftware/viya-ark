@@ -159,7 +159,7 @@
     loop: "{{folders_to_archive}}"
     register: package_status_rhel
     ignore_errors: true   
-    when: ansible_distribution == redhat_os_name|string or ansible_distribution == oracle_os_name|string
+    when: ansible_os_family == redhat_os_name|string or ansible_os_family == oracle_os_name|string
     check_mode: no
 
   - name: "Create archive directory, {{viya_log_archive_path}}, if it doesn't exist"

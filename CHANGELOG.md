@@ -1,6 +1,21 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.11 - December 18, 2020 
+- **Summary**:
+  Bug fixes and a couple of enhancments.
+- Issues addressed:
+  - SAS Multi-Machine Service Utilties
+    - VIYAARK-233 - MMSU: playbook encountered issue with starting sas-viya-spawner-default in multi-tenancy env
+    - VIYAARK-234 - MMSU: provide better readable information for status in multi-tenancy env
+    - VIYAARK-236 - MMSU: provide a check variable to disable pause timer when running stop playbook
+  - SAS Viya Upgrade Tasks Playbooks
+    - VIYAARK-41  - pre_upgrade fails if Viya 3.5 software order adds ModelServices
+    - VIYAARK-222 - Archive Obsolete Log Folders Playbook Fails on Power Linux
+- Ansible Support: Ansible 2.8 - Ansible 2.10
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.10 - October 20, 2020 
 - **Summary**:
   Changing range of Ansible versions supported.  Enhancing obsolete log archiving.
@@ -11,8 +26,6 @@
   - SAS Viya Upgrade Tasks Playbooks
     - VIYAARK-104 - Produce summary report for Archive Obsolete Folders playbook.
 - Ansible Support: Ansible 2.8 - Ansible 2.10
-
-<!-- LATEST RELEASE END -->
 
 
 ## Viya35-ark-1.9 - September 30, 2020

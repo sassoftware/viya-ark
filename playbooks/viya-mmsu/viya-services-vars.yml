@@ -8,11 +8,12 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
-svs_label: 3.5.20200415
+svs_label: 3.5.20201204
 #########################################
 # Variables used in playbooks
 #########################################
 consul_retry_count: 2                 #retry counter
+enable_pause_timer: true              #pause timer
 enable_stray_cleanup: false           #stray processes cleanup
 enable_svs_alternative: false         #start/stop microservices using alternative script
 log_diskspace_minimum: 2097152000     #2GB

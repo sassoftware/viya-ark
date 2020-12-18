@@ -64,5 +64,18 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restart.yml
 ```
     enable_stray_cleanup: true
 ```
+* When running playbook viya-services-stop.yml, there is a pause message for the stop confirmation:
+```
+    TASK [WARNING: All Viya services are about to be stopped!]
+    Pausing for 10 seconds
+    (ctrl+C then 'C' = continue early, ctrl+C then 'A' = abort)
+    [WARNING: All Viya services are about to be stopped!]
+    Press 'ctl+c' to interrupt the process. If no response, playbook will continue after 10 seconds:
+```
+  User may modify viya-services-vars.yml file as following to disable the pause timer or pass the variable through the command line.
+```
+    enable_pause_timer: false
+```
+
 Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0

@@ -35,7 +35,7 @@ do_stopcas()
 do_stop()
 {
 	local LIST=$*
-	NLIST=
+	local NLIST=
 	for p in $LIST
 	do
 		if [[ $p =~ -viya-all-services|-consul-|-vault-|-httpproxy-|-rabbitmq-|-sasdatasvrc- ]]; then
@@ -51,6 +51,13 @@ do_stop()
 do_startmt()
 {
 	local LIST=$(ls sas-*-all-services 2>/dev/null| grep -v '\-viya\-')
+	if [[ -x "sas-viya-runlauncher-default" ]]; then
+		LIST="sas-viya-runlauncher-default $LIST"
+	fi
+	if [[ -x "sas-viya-spawner-default" ]]; then
+		LIST="sas-viya-spawner-default $LIST"
+	fi
+	
 	do_start_common "$LIST"
 }
 
@@ -152,7 +159,8 @@ do_svastatus()
 
 	for f in $LIST
 	do
-		/etc/init.d/$f status|sed "s|sas-services completed|$f completed|"
+		/etc/init.d/$f status| sed "s|sas-viya-all-services completed|$f completed|;\
+			s|sas-services completed|$f completed|"
 	done
 	return 0
 }
