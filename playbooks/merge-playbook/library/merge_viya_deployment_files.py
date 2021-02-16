@@ -166,17 +166,35 @@ def read_inventory(inv_file, comments):
             with open(tmp_file_name, 'w') as tmp_file:
                 tmp_file.writelines(i.replace('#', '#') for i in current_file.readlines())
 
-    inv_parser = configparser.ConfigParser(allow_no_value=True)
-    inv_parser.optionxform = lambda option: option  # preserve as case-sensitive
-    try:
-        inv_parser.read(tmp_file_name)
-    except configparser.MissingSectionHeaderError:
-        # need to inject [host-definitions] inventory section header to parse it
-        try_again = six.StringIO()
-        try_again.write('[host-definitions]\n')
-        try_again.write(open(tmp_file_name).read())
-        try_again.seek(0, os.SEEK_SET)
-        inv_parser.readfp(try_again)
+    # configparser compatability issues between python 2 and python 3 around strict
+    # parameter and DuplicateOptionError needs differential usage.   Changes were added
+    # to python 3.2.
+    if sys.version_info.major == 3 and sys.version_info.minor >= 2:  
+        # python version greater than or equal to 3.2
+        inv_parser = configparser.ConfigParser(strict=False, allow_no_value=True)
+        inv_parser.optionxform = lambda option: option  # preserve as case-sensitive
+        try:
+            inv_parser.read(tmp_file_name)
+        except (configparser.MissingSectionHeaderError, configparser.DuplicateOptionError):    
+            # need to inject [host-definitions] inventory section header to parse it
+            try_again = six.StringIO()
+            try_again.write('[host-definitions]\n')
+            try_again.write(open(tmp_file_name).read())
+            try_again.seek(0, os.SEEK_SET)
+            inv_parser.readfp(try_again)
+    else:
+        # python version less than 3.2
+        inv_parser = configparser.ConfigParser(allow_no_value=True)
+        inv_parser.optionxform = lambda option: option  # preserve as case-sensitive
+        try:
+            inv_parser.read(tmp_file_name)
+        except (configparser.MissingSectionHeaderError):
+            # need to inject [host-definitions] inventory section header to parse it
+            try_again = six.StringIO()
+            try_again.write('[host-definitions]\n')
+            try_again.write(open(tmp_file_name).read())
+            try_again.seek(0, os.SEEK_SET)
+            inv_parser.readfp(try_again)
 
     return inv_parser
 
@@ -521,7 +539,6 @@ def main():
         "merge_default_host": {"required": False, "type": "str"},
     }
     module = AnsibleModule(argument_spec=fields,
-                           check_invalid_arguments=True,
                            supports_check_mode=True)
 
     current_inventory_file = module.params['current_inventory_file']

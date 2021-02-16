@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -29,6 +29,41 @@
     include_vars: "{{ item }}"
     with_first_found:
       - "{{ ansible_os_family }}-{{ ansible_architecture }}.yml"
+
+  - block:
+    ## RHEL 8 Specific package requirements
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: The RHEL 8 Specific Compatibility Packages of interest are...
+      debug:
+        msg: "{{ compat_packages }}"
+
+    - name: Check whether Compatibility Packages are installed
+      set_fact:
+        missing_package="{{ item }}"
+      loop: "{{ compat_packages }}"
+      register: missing_package_result
+      when: item not in ansible_facts.packages
+
+    - name: Make a list of missing Compatibility Packages
+      set_fact: missing_packages="{{ missing_package_result.results | selectattr('ansible_facts', 'defined') | map(attribute='ansible_facts.missing_package') | list }}"
+
+    - debug: var=missing_packages
+
+    - name: Assert there are no missing Compatibility Packages
+      assert:
+        that:
+          - missing_packages|length == 0
+        fail_msg: There are missing Compatibility Packages. {{missing_packages}}
+        success_msg: There are no missing Compatibility Packages.
+      when: not ansible_check_mode    
+    when: ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '8'
+    # end block
+    tags:
+      - packages
+      - rhel8_package_check
     
   ## works for all OS Families
   - name: Ensures required packages are present

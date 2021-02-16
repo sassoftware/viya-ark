@@ -10,6 +10,7 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 import os
+import sys
 import datetime
 import glob
 import subprocess
@@ -44,6 +45,12 @@ options:
             This option will greatly increase the size of the data being returned.
         default: false
         required: false
+    locale_encoding:
+        description: >
+            Encoding to use for text returned to the module that may be localized for the locale of the
+            deployed software. The value must be an encoding supported by Python.
+        default: None
+        required: false
 '''
 
 EXAMPLES = '''
@@ -57,6 +64,12 @@ EXAMPLES = '''
   get_sas_host_details:
     hostvars: "{{ hostvars[inventory_hostname] }}"
     include_package_files: true
+
+# Get SAS deployment information with custom locale encoding
+- name: Inspect SAS deployment
+  get_sas_host_details:
+    hostvars: "{{ hostvars[inventory_hostname] }}"
+    locale_encoding: "macroman"
 '''
 
 RETURN = '''
@@ -751,6 +764,7 @@ class _ModuleParamKeys(object):
     """
     HOSTVARS = 'hostvars'
     INCL_PKG_FILES = 'include_package_files'
+    LOCALE_ENCODING = 'locale_encoding'
 
 
 # =====
@@ -895,13 +909,15 @@ def main():
     # supports check mode
     module = AnsibleModule(
         argument_spec={_ModuleParamKeys.HOSTVARS: dict(type='raw', required=True),
-                       _ModuleParamKeys.INCL_PKG_FILES: dict(type=bool, default=False, required=False)},
+                       _ModuleParamKeys.INCL_PKG_FILES: dict(type=bool, default=False, required=False),
+                       _ModuleParamKeys.LOCALE_ENCODING: dict(type='str', default=None, required=False)},
         supports_check_mode=True
     )
 
     # get module parameters
     hostvars = module.params[_ModuleParamKeys.HOSTVARS]
     include_package_files = module.params[_ModuleParamKeys.INCL_PKG_FILES]
+    locale_encoding = module.params[_ModuleParamKeys.LOCALE_ENCODING]
 
     # Starting in Ansible 2.8.1, there is the potential for hostvars
     # to be passed as a byte string, if the dict is too large
@@ -1435,13 +1451,14 @@ def _get_process_memory_info(pid, module):
 # =====
 # _get_sas_package_info(AnsibleModule, bool)
 # =====
-def _get_sas_package_info(module, package_manager, include_installed_files=False):
+def _get_sas_package_info(module, package_manager, include_installed_files=False, locale_encoding=False):
     """
     Retrieves package information for all installed SAS packages and returns the values as a dict.
 
     :param AnsibleModule module: The AnsibleModule object representing the current module.
     :param bool include_installed_files: Toggles whether information about the package's installed files should be
                                        included.
+    :param locale_encoding: A custom locale encoding that should be used to decode potentially localized text.
     :return: A dict of package names mapped to a dict containing package attribute names and their values.
     :rtype dict:
     """
@@ -1449,12 +1466,12 @@ def _get_sas_package_info(module, package_manager, include_installed_files=False
     # -- package info -- #
 
     # get installed package info via rpm
-    results = _get_installed_package_info(module, include_installed_files)
+    results = _get_installed_package_info(module, include_installed_files, locale_encoding)
 
     if package_manager == _PackageManagers.ZYPPER:
-        update_results = _get_sas_package_update_info_zypper(module)
+        update_results = _get_sas_package_update_info_zypper(module, locale_encoding)
     else:
-        update_results = _get_sas_package_update_info_yum(module)
+        update_results = _get_sas_package_update_info_yum(module, locale_encoding)
 
     for package_name, update_info in update_results.items():
         results[package_name][_HostDetailsKeys.SASPackageKeys.UPDATE_STATUS] = update_info
@@ -1466,13 +1483,14 @@ def _get_sas_package_info(module, package_manager, include_installed_files=False
 # =====
 # _get_installed_package_info(AnsibleModule)
 # =====
-def _get_installed_package_info(module, include_installed_files):
+def _get_installed_package_info(module, include_installed_files, locale_encoding):
     """
     Retrieves package information via rpm for all installed SAS Packages and returns the values as a dict.
 
     :param module: The AnsibleModule object representing the current module.
     :param bool include_installed_files: Toggles whether information about the package's installed files should be
                                        included.
+    :param locale_encoding: A custom locale encoding that should be used to decode potentially localized text.
     :return: A dict of package names mapped to a dict of package attributes and their values.
     :rtype dict:
     """
@@ -1509,7 +1527,8 @@ def _get_installed_package_info(module, include_installed_files):
         # get the package name (first line in each block of output)
         try:
             package_name_line = package_info_lines.pop(0)
-            package_name_attr = str(package_name_line).split(delim)
+            package_name_line = _decode_str(package_name_line, locale_encoding)
+            package_name_attr = package_name_line.split(delim)
             if len(package_name_attr) == 2 and package_name_attr[0] == \
                     _HostDetailsKeys.SASPackageKeys.PackageAttributesKeys.NAME:
                 package_name = package_name_attr[1]
@@ -1528,7 +1547,8 @@ def _get_installed_package_info(module, include_installed_files):
             for line in package_info_lines:
 
                 # split line by delimiter to get key and value
-                attr = str(line).split(delim)
+                line = _decode_str(line, locale_encoding)
+                attr = line.split(delim)
 
                 if len(attr) == 2:
                     key = attr[0]
@@ -1575,11 +1595,12 @@ def _get_installed_package_info(module, include_installed_files):
 # =====
 # _get_sas_package_update_info_yum(AnsibleModule)
 # =====
-def _get_sas_package_update_info_yum(module):
+def _get_sas_package_update_info_yum(module, locale_encoding=None):
     """
     Retrieves package information via yum for all installed SAS packages and returns the values as a dict.
 
     :param AnsibleModule module: The AnsibleModule object representing the current module.
+    :param locale_encoding: A custom locale encoding that should be used to decode potentially localized text.
     :return: A dict of package names mapped to a dict containing package attribute names and their values.
     :rtype dict:
     """
@@ -1602,14 +1623,16 @@ def _get_sas_package_update_info_yum(module):
     for line in all_update_info:
 
         # skip empty lines
-        if not str(line).strip().startswith('sas-'):
+        line = _decode_str(line, locale_encoding)
+        if not line.strip().startswith('sas-'):
             continue
 
         # replace multiple consecutive whitespaces delim character
         line = re.sub(' +', ':::', line)
 
         # split line by delimiter to get key and value
-        attr = str(line).split(':::')
+        line = _decode_str(line, locale_encoding)
+        attr = line.split(':::')
 
         if len(attr) == 3:
             # define a dictionary to map package update attributes to their respective key
@@ -1629,11 +1652,12 @@ def _get_sas_package_update_info_yum(module):
 # =====
 # _get_sas_package_update_info_zypper(AnsibleModule)
 # =====
-def _get_sas_package_update_info_zypper(module):
+def _get_sas_package_update_info_zypper(module, locale_encoding=None):
     """
     Retrieves package information via zypper for all installed SAS packages and returns the values as a dict.
 
     :param AnsibleModule module: The AnsibleModule object representing the current module.
+    :param locale_encoding: A custom locale encoding that should be used to decode potentially localized text.
     :return: A dict of package names mapped to a dict containing package attribute names and their values.
     :rtype dict:
     """
@@ -1658,7 +1682,8 @@ def _get_sas_package_update_info_zypper(module):
         line = re.sub(' +', ' ', line)
 
         # split line by delimiter to get key and value
-        attr = str(line).split(" | ")
+        line = _decode_str(line, locale_encoding)
+        attr = line.split(" | ")
 
         if len(attr) == 6:
             # define a dictionary to map package update attributes to their respective key
@@ -1782,6 +1807,32 @@ def _bytesHumanReadable(num_bytes, unit_step=1024.0):
         num_bytes = int(0)
 
     return str(num_bytes) + ' ' + unit
+
+
+# =====
+# Handle decoding strings that may contain encoded characters
+# =====
+def _decode_str(value, locale_encoding=None):
+    # no need to decode in Python3
+    if sys.version_info[0] >= 3:
+        return value
+
+    # encodings to try
+    encodings = ['ascii', 'utf-8', 'iso-8859-1']
+
+    for encoding in encodings:
+        try:
+            return value.decode(encoding).encode('utf-8')
+        except UnicodeDecodeError:
+            pass
+
+    # try the provided locale encoding if none of the default encodings worked
+    if locale_encoding is not None:
+        # if this raises an error, let it surface to make it known that the provided value wasn't accepted
+        return value.decode(locale_encoding).encode('utf-8')
+
+    # if no strict decode worked, decode to utf-8 and ignore unknown chars
+    return value.decode('utf-8', 'ignore').encode('utf-8')
 
 
 # =====

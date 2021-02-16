@@ -1,6 +1,29 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.12 - February 16, 2021 
+- **Summary**:
+  RHEL8 Support and bug fixes.
+- Issues addressed:
+  - SAS Multi-Machine Service Utilties
+    - VIYAARK-226 - MMSU: Validate RHEL8 
+  - SAS Viya Upgrade Tasks Playbooks
+    - VIYAARK-227 - Validate RHEL8
+    - VIYAARK-237 - Merge playbook using check_invalid_arguments which was removed in Ansible 2.10
+    - VIYAARK-240 - Merge Playbook ConfigParser Python2 Python3 Compatibility ()
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-218 - Fails on clientaliveinterval control even when you run the playbook with the exclude option. (GitHub Issue #69)
+    - VIYAARK-224 - Validate RHEL8
+    - VIYAARK-229 - Get the permissions of the directories TASK fails in checkmode
+    - VIYAARK-232 - Check for RHEL8 compatibility packages
+    - VIYAARK-238 - Support RHEL8 OS checks
+  - SAS Viya Deployment Report
+    - VIYAARK-225 - Validate RHEL8
+    - VIYAARK-239 - UnicodeEncodeError: 'ascii' codec can't encode character correctly. (GitHub Issue #75)
+- Ansible Support: Ansible 2.8 - Ansible 2.10
+
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.11 - December 18, 2020 
 - **Summary**:
   Bug fixes and a couple of enhancments.
@@ -14,7 +37,6 @@
     - VIYAARK-222 - Archive Obsolete Log Folders Playbook Fails on Power Linux
 - Ansible Support: Ansible 2.8 - Ansible 2.10
 
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.10 - October 20, 2020 
 - **Summary**:

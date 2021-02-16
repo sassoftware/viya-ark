@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -12,6 +12,9 @@ os_major_version_1: 7
 os_major_minor_version_1: 7.1
 os_major_version_2: 6
 os_major_minor_version_2: 6.7
+os_major_version_3: 8
+os_major_minor_version_3: 8.0
+
 suse_os_major_version: 12
 suse_os_major_minor_version: 12.2
 
@@ -165,6 +168,11 @@ min_java_version: 1.8.0_121
 required_package_versions_rhel:
   - { name: curl, value: 7.19.7-53 }
   - { name: nss.x86_64, value: 3.36.0-7 }
+
+compat_packages:
+  - compat-openssl10
+  - authselect-compat
+  - ncurses-compat-libs
 
 ##
 ## SAS YUM repos.
