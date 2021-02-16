@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -42,7 +42,7 @@
   ## case 3: current value is smaller, we update
   - block:
       - fail:
-          msg: "Your current SSH clientaliveinterval value ({{cur_clientaliveinterval.stdout}}) is smaller than the recommended value of {{min_clientaliveinterval_val}}. SAS Viya tasks can take some time, and given this low value, they may time out before completion. Either update the value of clientaliveinterval in your SSHD config file, or, if you prefer to suppress this warning, re-run the playbook with a lower threshold by adding -e 'min_ssh_client_alive_internal=1' to the playbook execution command line."
+          msg: "Your current SSH clientaliveinterval value ({{cur_clientaliveinterval.stdout}}) is smaller than the recommended value of {{min_clientaliveinterval_val}}. SAS Viya tasks can take some time, and given this low value, they may time out before completion. Either update the value of clientaliveinterval in your SSHD config file, or, if you prefer to suppress this warning, re-run the playbook with a lower threshold by adding -e 'min_clientaliveinterval_val=1' to the playbook execution command line."
         run_once: true
     when: cur_clientaliveinterval is defined and ((cur_clientaliveinterval.stdout | int) > 0) and ((cur_clientaliveinterval.stdout | int) < min_clientaliveinterval_val|int)
 

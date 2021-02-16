@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -98,6 +98,7 @@
     shell: 'stat -c %a "{{ item.path }}"'
     changed_when: False
     check_mode: no
+    when: not ansible_check_mode
     with_items:
       - "{{dir_list}}"
     register: permission_result
@@ -107,6 +108,7 @@
       
   - name: Show the results of the list command
     debug: var=permission_result
+    when: not ansible_check_mode
     tags:
       - skipifbelowspecs
       - skipstoragefail
