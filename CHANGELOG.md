@@ -1,6 +1,19 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.13 - March 23, 2021
+- **Sumary**:
+  Bug fixes.
+- Issues addressed:
+  - SAS Multi-Machine Services Utilities
+    - VIYAARK-210 - MMSU: Document enable_svs_alternative.
+    - VIYAARK-214 - MMSU: Task names for Postgres start/stop need to be clarified.
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-204 - Make yum cachedir path customizable.
+  - SAS Viya Deployment Report
+    - VIYAARK-242 - Deployment Report not reporting the status of "not ready" services.
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.12 - February 16, 2021 
 - **Summary**:
   RHEL8 Support and bug fixes.
@@ -22,7 +35,6 @@
     - VIYAARK-239 - UnicodeEncodeError: 'ascii' codec can't encode character correctly. (GitHub Issue #75)
 - Ansible Support: Ansible 2.8 - Ansible 2.10
 
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.11 - December 18, 2020 
 - **Summary**:

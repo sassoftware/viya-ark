@@ -708,11 +708,13 @@ class _HostDetailsKeys(object):
                     memory: ''
 
             :cvar str DOWN:  Key referencing *down* (str) in *status* (dict).
+            :cvar str NOT_READY: Key referencing *not_ready* (str) in *status* (dict).
             :cvar str OTHER: Key referencing *other* (str) in *status* (dict).
             :cvar str UP:    Key referencing *up* (str) in *status* (dict).
             :cvar str MEMORY: Key referencing *memory* (str) in *status* (dict).
             """
             DOWN = 'down'
+            NOT_READY = 'not_ready'
             OTHER = 'other'
             UP = 'up'
             MEMORY = 'memory'
@@ -832,10 +834,12 @@ class _ServiceStatus(object):
     """
     Internal class for static reference to service status values.
 
-    :cvar str DOWN: Denotes a service's status as down.
-    :cvar str UP:   Denotes a service's status as up.
+    :cvar str DOWN:      Denotes a service's status as down.
+    :cvar str NOT_READY: Denotes a service's status as "not ready".
+    :cvar str UP:        Denotes a service's status as up.
     """
     DOWN = 'down'
+    NOT_READY = 'not ready'
     UP = 'up'
 
 
@@ -1302,6 +1306,7 @@ def _get_sas_service_info(module):
 
     total_up = 0
     total_down = 0
+    total_not_ready = 0
     total_other = 0
     total_memory = 0
 
@@ -1318,12 +1323,30 @@ def _get_sas_service_info(module):
             # remove leading/trailing whitespace and split by whitespace
             status_values = status.rstrip().split()
 
-            # If line contains all 5 known values, add it to results
-            if len(status_values) == 5:
+            # If the line must contain at least 5 values to have all columns returned
+            if len(status_values) >= 5:
 
+                # the name will always be the first value in the array
                 name = status_values[0]
-                status = status_values[1]
-                pid = status_values[4]
+
+                # get the number of extra values in the array
+                status_length = len(status_values) - 5
+
+                # define the starting index of the status
+                status_start_index = 1
+
+                # there is at least 1 status value so get directly in the second position in the array
+                status = status_values[status_start_index]
+
+                # get any additional status values
+                for i in range(status_length):
+                    status = status + " " + status_values[status_start_index + i + 1]
+
+                # the port will always be the second to last value in the array
+                port = status_values[-2]
+
+                # the pid will always be the last value in the array
+                pid = status_values[-1]
 
                 # If the service is up and running then get the memory size.
                 if status == _ServiceStatus.UP:
@@ -1346,7 +1369,7 @@ def _get_sas_service_info(module):
 
                 service_attributes = {
                     _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.STATUS: status,
-                    _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.PORT: status_values[3],
+                    _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.PORT: port,
                     _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.PID: pid,
                     _HostDetailsKeys.SASServicesKeys.InstalledServiceKeys.ServiceAttributesKeys.RESIDENT_MEMORY: h_read_memory
                 }
@@ -1356,6 +1379,8 @@ def _get_sas_service_info(module):
                     total_up += 1
                 elif status == _ServiceStatus.DOWN:
                     total_down += 1
+                elif status == _ServiceStatus.NOT_READY:
+                    total_not_ready += 1
                 else:
                     total_other += 1
 
@@ -1370,6 +1395,7 @@ def _get_sas_service_info(module):
     results[_HostDetailsKeys.SASServicesKeys.STATUS] = {
         _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.UP: total_up,
         _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.DOWN: total_down,
+        _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.NOT_READY: total_not_ready,
         _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.OTHER: total_other,
         _HostDetailsKeys.SASServicesKeys.ServicesStatusKeys.MEMORY: h_total_memory
     }

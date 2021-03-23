@@ -701,7 +701,7 @@ div.no-software-installed {
 
                 <!-- BEGIN: services -->
 
-                <h3 id="{{ host[1]._id }}-machine-details-accordion-services-header">Services &nbsp;(<b>total</b>: {{ host[1].sas_services.installed | length }} | <b>up</b>: {{ host[1].sas_services.status.up }} | <b>down</b>: {{ host[1].sas_services.status.down }} | <b>other</b>: {{ host[1].sas_services.status.other }} | <b>memory</b>: {{ host[1].sas_services.status.memory }})</h3>
+                <h3 id="{{ host[1]._id }}-machine-details-accordion-services-header">Services &nbsp;(<b>total</b>: {{ host[1].sas_services.installed | length }} | <b>up</b>: {{ host[1].sas_services.status.up }} | <b>down</b>: {{ host[1].sas_services.status.down }} | <b>not ready</b>: {{ host[1].sas_services.status.not_ready }} | <b>other</b>: {{ host[1].sas_services.status.other }} | <b>memory</b>: {{ host[1].sas_services.status.memory }})</h3>
 
                 <!-- services accordion -->
                 <div class="accordion services-accordion" id="{{ host[1]._id }}-services-accordion">
