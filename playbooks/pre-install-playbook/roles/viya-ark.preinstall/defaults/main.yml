@@ -135,8 +135,9 @@ max_hostname_length: 58        ## better number, SAS note is yet to be written.
 viya_version: 3.5
 
 ## yum related
-yum_cache_yn: 0                ## do you want to turn the yum cache on or off? (1=on, 0=off)
-yum_cache_min_space_mb: 8000   ## how many MB of free space should be in /var/yum/cache ?
+yum_cache_yn: 0                  ## do you want to turn the yum cache on or off? (1=on, 0=off)
+yum_cache_min_space_mb: 8000     ## how many MB of free space should be in /var/cache/yum ?
+yum_cache_dir: /var/cache/yum    ## edit if using a custom cache location
 
 packages_nicetohave:
   - "{{ browser }}"   ## a browser on the server can be useful

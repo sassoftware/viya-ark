@@ -72,10 +72,16 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restart.yml
     [WARNING: All Viya services are about to be stopped!]
     Press 'ctl+c' to interrupt the process. If no response, playbook will continue after 10 seconds:
 ```
-  User may modify viya-services-vars.yml file as following to disable the pause timer or pass the variable through the command line.
+  The user may modify viya-services-vars.yml file as following to disable the pause timer or pass the variable through the command line.
 ```
     enable_pause_timer: false
 ```
+* An experimental, alternative method of starting and stopping services based on server resource utilization is optionally available using the enable_svs_alternative variable.
+```
+    ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-start.yml -e "enable_svs_alternative=true"
+    ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-stop.yml  -e "enable_svs_alternative=true"
+```
+  Note: if an order contains Common Planning Service (CPS), you will not be able to use the alternative method.
 
-Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0

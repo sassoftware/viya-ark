@@ -4,9 +4,9 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
-- name: SAS Infrastructure Data Server Consul Template - {{dbname}}
+- name: "{{dbaction|replace('dbct','')|capitalize()}} SAS Infrastructure Data Server Consul Template common {{dbtype}} - {{dbname}}"
   script: "viya-svs.sh {{dbaction}} {{dbname}} {{dbtype}}"
   when: not ansible_check_mode
