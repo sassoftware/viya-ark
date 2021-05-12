@@ -47,6 +47,12 @@ The SAS Viya LDAP Validator Playbook will try to validate access to your LDAP in
 * fetch group[5 users] attributes
 * fetch the attributes of admin user provided in the `sitedefault.yml` file.
 
+
+## Note:
+* Set anonymousBind to True, only if the you know that the LDAP allows anonymous access.  You must also set User DN and password to empty strings to validate connection to LDAP Server.
+* Otherwise, set the anonymousBind to 'false' in the sitedefault yaml, and set the correct User DN and password values.  With these correct credentials,  the tool will successfully validate the the connection to LDAP sever.
+
+
 ## Success Criteria
 
 If all tasks come back OK (green), it means that all the tests passed. If any test fails, an error message should indicate the reason for the failure. 
