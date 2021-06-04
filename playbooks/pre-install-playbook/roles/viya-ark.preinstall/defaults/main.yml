@@ -201,8 +201,6 @@ ansible_version_compare_max_version: "2.11"  # Must be set one major version abo
 required_python_min_version: "2.6"
 
 
-DefaultTimeoutStopSec: 1800s
-DefaultTimeoutStartSec: 1800s
 
 semaphores:
   - { name: kernel.sem.SEMMSL, value: 512 }
