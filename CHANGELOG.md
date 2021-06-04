@@ -1,6 +1,17 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.14 - June 4, 2021
+- **Sumary**:
+  Enhancement of RHEL8 compatibility libraries installation.  Dropping unused feature.  README updates.
+- Issues addressed:
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-253 - systemd DefaultTimeout parameters not needed
+    - VIYAARK-241 - Install missing RHEL8 compatibility libraries
+  - SAS LDAP Validator
+    - VIYAARK-185 - Address GitHub issue [#20](https://github.com/sassoftware/viya-ark/issues/20) - anonymousBind usage update
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.13 - March 23, 2021
 - **Sumary**:
   Bug fixes.
@@ -12,7 +23,6 @@
     - VIYAARK-204 - Make yum cachedir path customizable.
   - SAS Viya Deployment Report
     - VIYAARK-242 - Deployment Report not reporting the status of "not ready" services.
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.12 - February 16, 2021 
 - **Summary**:

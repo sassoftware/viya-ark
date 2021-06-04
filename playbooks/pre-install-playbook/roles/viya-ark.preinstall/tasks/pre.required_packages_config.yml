@@ -52,10 +52,33 @@
 
     - debug: var=missing_packages
 
+    - name: Install missing Compatibility Packages
+      package:
+        name: "{{ item }}"
+        state: present
+      loop: "{{missing_packages}}"
+      when: item in missing_packages
+
+    - name: Gather package facts again
+      ansible.builtin.package_facts:
+        manager: auto
+    
+    - name: Check whether Compatibility Packages are installed
+      set_fact:
+        still_missing_package="{{ item }}"
+      loop: "{{ compat_packages }}"
+      register: still_missing_package_result
+      when: item not in ansible_facts.packages
+
+    - name: Check again for missing Compatibility Packages
+      set_fact: still_missing_packages="{{ still_missing_package_result.results | selectattr('ansible_facts', 'defined') | map(attribute='ansible_facts.still_missing_package') | list }}"
+
+    - debug: var=still_missing_packages
+
     - name: Assert there are no missing Compatibility Packages
       assert:
         that:
-          - missing_packages|length == 0
+          - still_missing_packages|length == 0
         fail_msg: There are missing Compatibility Packages. {{missing_packages}}
         success_msg: There are no missing Compatibility Packages.
       when: not ansible_check_mode    

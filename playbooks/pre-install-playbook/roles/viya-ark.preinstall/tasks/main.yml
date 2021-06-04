@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -27,7 +27,6 @@
 - import_tasks: pre.os_firewall_config.yml
 - import_tasks: pre.ntp_config.yml
 - import_tasks: pre.network_and_bandwidth_check.yml
-- import_tasks: pre.timeouts_config.yml
 - import_tasks: pre.swappiness_config.yml
 - import_tasks: pre.performance_config.yml
 - import_tasks: pre.locale_check.yml
