@@ -10,6 +10,7 @@
     - VIYAARK-241 - Install missing RHEL8 compatibility libraries
   - SAS LDAP Validator
     - VIYAARK-185 - Address GitHub issue [#20](https://github.com/sassoftware/viya-ark/issues/20) - anonymousBind usage update
+- Ansible Support: Ansible 2.8 - Ansible 2.10  
 <!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.13 - March 23, 2021
@@ -23,6 +24,7 @@
     - VIYAARK-204 - Make yum cachedir path customizable.
   - SAS Viya Deployment Report
     - VIYAARK-242 - Deployment Report not reporting the status of "not ready" services.
+- Ansible Support: Ansible 2.8 - Ansible 2.10
 
 ## Viya35-ark-1.12 - February 16, 2021 
 - **Summary**:
