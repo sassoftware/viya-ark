@@ -322,7 +322,7 @@ def merge_inventory_ini(current_inventory, new_inventory, merge_default_host):
         # save the current hosts for the commandline section
         if 'CommandLine' == section:
             for option in current_inventory.options(section):
-                if cmdline_hosts is not '':
+                if type(cmdline_hosts) is not str:
                     cmdline_hosts = cmdline_hosts + '\n' + option.split(' ', 1)[0]
                 else:
                     cmdline_hosts = option.split(' ', 1)[0]
