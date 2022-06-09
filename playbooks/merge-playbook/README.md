@@ -10,7 +10,7 @@ The differences between the current and newer inventory files are written to ```
 The playbook will copy the default inventory.ini and vars.yml from the playbook root directory to a time-stamped folder and then update them with the merged information included so that they are ready to use. If your inventory file and vars.yml include a new host group value ```? choose-target-host```, you must manually replace that value to avoid Ansible warnings and failures.
 
 ## Requirements for running the Playbook
-* Install "ruamel.yaml" in your Python installation by running `pip install ruamel.yaml`
+* Install "ruamel.yaml and six" in your Python installation by running `pip install ruamel.yaml six`
 * The Merge SAS Viya Deployment Files playbooks must be placed under a new generated sas_viya_playbook directory where SAS Viya will be deployed, separate from the sas_viya_playbook directory that was previously deployed from.
   The directory structure of this project must be preserved. For example: ```sas_viya_playbook/viya-ark/playbooks/merge-playboook/```
 * The following SAS Viya configuration files that were used in the previous deployment must exist in the ```sas_viya_playbook``` directory:
