@@ -198,7 +198,7 @@ sas_yum_urls:
 required_ansible_min_version: "2.10"
 required_ansible_max_version: "2.12"
 ansible_version_compare_max_version: "2.13"  # Must be set one minor version above required_ansible_max_version
-required_python_min_version: "3.5"
+required_python_min_version: "3.4" # Must be set one minor version below actual version supported by Viya.
 
 
 
