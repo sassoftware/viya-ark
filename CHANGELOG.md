@@ -1,7 +1,7 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
-## Viya35-ark-1.15 - August 17, 2022
+## Viya35-ark-1.15 - August 23, 2022
 - **Sumary**:
   Changes related to Viya 3.5 support for new range of Ansible versions and new minimum Python version.  Addressed GitHub issue.
 - Issues addressed:
@@ -9,6 +9,7 @@
     - VIYAARK-244 - Support Ansible 2.11 (4.0) in Viya ARK Pre-Install Playbook
     - VIYAARK-263 - Pre-Install: Update the playbook to support Ansible 2.12
     - VIYAARK-264 - Update Ansible and Python support range
+    - VIYAARK-269 - Pre-Install Playbook tasks/pre.third_party_check.yml logic flawed
   - SAS Multi-Machine Service Utilties
     - VIYAARK-260 - Address GitHub issue [#86](https://github.com/sassoftware/viya-ark/issues/86)
   - SAS Viya Upgrade Tasks Playbooks
