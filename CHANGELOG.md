@@ -1,6 +1,22 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.15 - August 23, 2022
+- **Sumary**:
+  Changes related to Viya 3.5 support for new range of Ansible versions and new minimum Python version.  Addressed GitHub issue.
+- Issues addressed:
+  - SAS Viya Pre-Installation Playbook
+    - VIYAARK-244 - Support Ansible 2.11 (4.0) in Viya ARK Pre-Install Playbook
+    - VIYAARK-263 - Pre-Install: Update the playbook to support Ansible 2.12
+    - VIYAARK-264 - Update Ansible and Python support range
+    - VIYAARK-269 - Pre-Install Playbook tasks/pre.third_party_check.yml logic flawed
+  - SAS Multi-Machine Service Utilties
+    - VIYAARK-260 - Address GitHub issue [#86](https://github.com/sassoftware/viya-ark/issues/86)
+  - SAS Viya Upgrade Tasks Playbooks
+    - VIYAARK-265 - Merge playbook: Support Ansible 2.12
+- Ansible Support: Ansible 2.10 - Ansible 2.12    
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.14 - June 4, 2021
 - **Sumary**:
   Enhancement of RHEL8 compatibility libraries installation.  Dropping unused feature.  README updates.
@@ -10,7 +26,7 @@
     - VIYAARK-241 - Install missing RHEL8 compatibility libraries
   - SAS LDAP Validator
     - VIYAARK-185 - Address GitHub issue [#20](https://github.com/sassoftware/viya-ark/issues/20) - anonymousBind usage update
-<!-- LATEST RELEASE END -->
+- Ansible Support: Ansible 2.8 - Ansible 2.10  
 
 ## Viya35-ark-1.13 - March 23, 2021
 - **Sumary**:
@@ -23,6 +39,7 @@
     - VIYAARK-204 - Make yum cachedir path customizable.
   - SAS Viya Deployment Report
     - VIYAARK-242 - Deployment Report not reporting the status of "not ready" services.
+- Ansible Support: Ansible 2.8 - Ansible 2.10
 
 ## Viya35-ark-1.12 - February 16, 2021 
 - **Summary**:
