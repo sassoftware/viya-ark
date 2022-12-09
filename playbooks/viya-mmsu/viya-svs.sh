@@ -3,7 +3,7 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2022, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 #
@@ -91,7 +91,6 @@ do_ps_common()
 
 	for p in $LIST
 	do
-		#echo "viyasvs: $ACTION $p"
 		if [[ $p =~ -all-services ]]; then
 			/etc/init.d/$p $ACTION &
 		else
@@ -408,7 +407,9 @@ checkspace()
 
 clean_dbps()
 {
-	local LIST=$(ps -e -o "user pid ppid cmd" |grep -E 'sds_consul_health_check|sas-crypto-management'|grep -v grep)
+	local LIST=$(ps -e -o "user pid ppid cmd"|\
+		grep -E 'sds_consul_health_check|sas-crypto-management|sds_load_config_service_kv_definition|sas-configuration-cli'|\
+		grep -v grep |awk 'BEGIN{OFS=" "} { print $1, $2, $4, $5}')
 	do_cleanps "$LIST"
 }
 
@@ -427,9 +428,11 @@ do_cleanps()
 	local flag
 	local NLIST
 	local LIST=$*
+
 	if [[ "$LIST" == "" ]]; then
-		return
+		return 0
 	fi
+
 	if [[ "$1" == "-s" ]]; then
 		flag=$1
 		shift
@@ -442,13 +445,15 @@ do_cleanps()
 		NLIST=$(echo "$LIST"|awk '{printf "%s ",$2}')
 	fi
 
+	if [[ "$NLIST" == "" ]]; then
+		return 0
+	fi
+
 	for p in $NLIST
 	do
-		if [[ "$flag" == "" ]]; then
-			echo "kill -KILL $p"
-		fi
 		ps -p $p > /dev/null
 		if [[ $? == 0 ]]; then
+			pkill -P $p 2>/dev/null
 			kill -KILL $p 2>/dev/null
 		fi
 	done
@@ -634,12 +639,10 @@ init()
 	if [[ -f "$SVCFILE" ]]; then
 		IGNORE=$(sed -e 's/#.*$//' -e '/^$/d' $SVCFILE)
 	fi
-
 }
 ######
 # main
 ######
-
 OPT=$1
 init
 
@@ -709,11 +712,14 @@ case "$OPT" in
 		fi
 		;;
 	cleanps)
-		LIST=$(ps -e -o "user pid ppid cmd"|grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep -v -E 'grep|pgpool|postgres')
+		shift 1
+		DLIST=$*
+		LIST=$(echo "$DLIST" | sed -e "{ s/[][]//g ; s/\,/\n/g ; s/'//g }" | awk '{print $1 " " $2}')
 		do_cleanps "$LIST"
 		;;
 	cleancomp)
-		LIST=$(ps -e -o "user pid ppid cmd" |grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep compsrv|grep -v grep)
+		LIST=$(ps -e -o "user pid ppid cmd"|grep -E '/opt/sas/spre/|/opt/sas/viya/'|grep -v grep |\
+			awk 'BEGIN{OFS=" "} { print $1, $2, $4, $5}'| grep -E 'launcher|compsrv')
 		do_cleanps "$LIST"
 		;;
 	checkspace)
@@ -727,7 +733,8 @@ case "$OPT" in
 		shift 1
 		CNT=$*
 		if [[ $CNT -eq 0 ]]; then
-			ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool|postgres'|grep -v grep|awk '{print}'
+			info=$(ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool|postgres'|grep -v grep|awk '{print}')
+		        echo "$info"
 		else
 			info=$(ps -ef|grep -E '/opt/sas/spre/|/opt/sas/viya/|pgpool|postgres'|grep -v grep)
 			if [[ "$info" == "" ]]; then

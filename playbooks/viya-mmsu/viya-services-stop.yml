@@ -4,7 +4,7 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2022, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -262,7 +262,7 @@
         when: (stray_processes.stdout != '') and (enable_stray_cleanup|bool != true)
 
       - name: Clean up SAS stray processes if enabled
-        script: viya-svs.sh cleanps
+        script: viya-svs.sh cleanps "{{stray_processes.stdout_lines}}"
         when: (enable_stray_cleanup|bool == true) and (stray_processes.stdout != '')
         check_mode: no
         any_errors_fatal: true
