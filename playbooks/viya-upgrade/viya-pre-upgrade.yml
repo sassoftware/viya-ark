@@ -8,7 +8,7 @@
 ####                                                            ####
 ####################################################################
 #
-# Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ####################################################################
@@ -95,6 +95,8 @@
 
 # Create Pre-Upgrade Summary
 # This should always be called last
-- import_playbook: common/create_upgrade_summary.yml upgrade_stage=pre
+- import_playbook: common/create_upgrade_summary.yml
   tags:
     - always
+  vars:
+    upgrade_stage: pre

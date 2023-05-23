@@ -6,7 +6,7 @@
 ####                                                                                             ####
 #####################################################################################################
 #
-# Copyright (c) 2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2020-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 #####################################################################################################
@@ -139,8 +139,6 @@
     # On SUSE, if the package for the corresponding log folder is still installed then we will skip archiving the log folder.
   - name: "Checking for package existence on SUSE before attempting to archive folders"
     shell: "zypper search --match-exact sas-{{item}}"
-    args:
-      warn: false
     become: yes
     become_user: root
     loop: "{{folders_to_archive}}"
@@ -152,8 +150,6 @@
     # On RHEL, if the package for the corresponding log folder is still installed, then we will skip archiving the log folder.
   - name: "Checking for package existence on Red Hat before attempting to archive folders"
     shell: "yum info sas-{{item}}"
-    args:
-      warn: false
     become: yes
     become_user: root
     loop: "{{folders_to_archive}}"
