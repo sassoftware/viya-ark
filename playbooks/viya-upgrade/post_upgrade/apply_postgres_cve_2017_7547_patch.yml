@@ -4,7 +4,7 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ####################################################################
@@ -78,7 +78,7 @@
     - name: Retrieve Consul token
       become: yes
       become_user: root
-      shell: "sudo cat {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/tokens/consul/default/client.token"
+      shell: "cat {{ SASROOT }}/{{ tenant_id | default('viya') }}/config/etc/SASSecurityCertificateFramework/tokens/consul/default/client.token"
       register: consul_token
       when: security_patch_needed
 

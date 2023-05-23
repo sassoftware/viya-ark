@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2022, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -31,7 +31,11 @@
       that:
         - ansible_python_version is version(required_python_min_version, '>=')
       msg: 
-        "It looks like you are using Python {{ansible_python_version}} but SAS deployment requires Python {{required_python_min_version}}."
+        "It looks like you are using Python {{ansible_python_version}} but SAS deployment requires Python {{required_python_min_version}}.  
+        The asserted minimum version of Python can be altered by changing 'required_python_min_version' 
+        in roles/viya-ark.preinstall/defaults/main.yml or bypass with 
+        '--skip-tags python_version_check'. 
+         See Python section of https://support.sas.com/en/documentation/third-party-software-reference/viya/35/support-for-operating-systems.html#ansible."
     tags:
       - python_version_check
 

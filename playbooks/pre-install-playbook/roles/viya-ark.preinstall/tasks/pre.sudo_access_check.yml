@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -62,8 +62,9 @@
        - usersudoaccess
 
   - name: capture the current user's actual sudo rights
-    shell: sudo -l
-    become: no
+    shell: sudo -l -U "{{ ansible_env.SUDO_USER }}"
+    become: yes
+    become_user: root
     ignore_errors: true
     check_mode: no
     changed_when: false

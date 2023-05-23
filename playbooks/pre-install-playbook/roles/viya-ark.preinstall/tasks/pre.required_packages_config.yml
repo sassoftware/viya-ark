@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -210,8 +210,6 @@
 
     - name: obtain systemd minor version
       shell: rpm systemd -q | sed 's/^[^-]*-\([0-9]*-[0-9]*\).*/\1/' | awk -F'[-]' '{print $2}'
-      args:
-        warn: false
       register: systemd_minor
       changed_when: False
       check_mode: no
