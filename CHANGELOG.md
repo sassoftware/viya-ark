@@ -1,6 +1,12 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
+## Viya35-ark-1.16 - May 24, 2023
+- **Sumary**:
+  Changes related to Viya 3.5 support for new range of Ansible versions and new minimum Python version.
+- Ansible Support: Ansible 2.12 - Ansible 2.14    
+<!-- LATEST RELEASE END -->
+
 ## Viya35-ark-1.15 - August 23, 2022
 - **Sumary**:
   Changes related to Viya 3.5 support for new range of Ansible versions and new minimum Python version.  Addressed GitHub issue.
@@ -15,7 +21,6 @@
   - SAS Viya Upgrade Tasks Playbooks
     - VIYAARK-265 - Merge playbook: Support Ansible 2.12
 - Ansible Support: Ansible 2.10 - Ansible 2.12    
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.14 - June 4, 2021
 - **Sumary**:
