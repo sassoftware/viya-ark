@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -21,8 +21,6 @@
     shell: yum list installed {{ item.name }}
     check_mode: no
     changed_when: False
-    args:
-      warn: no
     register: installed_package
     ignore_errors: true
     
@@ -30,8 +28,6 @@
     shell: yum list installed {{ item.name }} | tail -1 | awk '{print $2}'
     check_mode: no
     changed_when: False
-    args:
-      warn: no
     register: installed_package_version
     when: installed_package.rc == 0
     
@@ -45,8 +41,6 @@
     shell: yum list available {{ item.name }}
     check_mode: no
     changed_when: False
-    args:
-      warn: no
     register: package_available
     ignore_errors: true
     when: not package_meets_requirement
@@ -64,8 +58,6 @@
     shell: yum list available {{ item.name }} | tail -1 | awk '{print $2}'
     check_mode: no
     changed_when: False
-    args:
-      warn: no
     register: this_version
     when: not package_meets_requirement
 
