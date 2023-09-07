@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -61,6 +61,7 @@ PCP_PORT_LINE    = "      - PCP_PORT"
 PGPOOL_PORT_LINE_BEFORE = "PGPOOL_PORT:"
 POOL_NUMBER_LINE = "        POOL_NUMBER: '0'\n"
 PGPOOL_HEARTBEAT_LINE = "        HA_PGPOOL_HEARTBEAT_PORT: ''\n"
+
 ############################################################
 #   Get Local Environment
 ############################################################
@@ -535,10 +536,8 @@ def add_pgpool_heartbeat_property_invocation_variable (vars_file):
     with open(vars_file, "w") as out_file:
         for line in buf:
             temp_line = line.lstrip()
-            # LOG.info("temp_line " + temp_line )
             if temp_line.startswith("POOL_NUMBER:"):
                 line = PGPOOL_HEARTBEAT_LINE +  line
-                # LOG.info("line " + line )
             out_file.write(line)
 
 ############################################################
