@@ -296,9 +296,31 @@
       check_mode: yes
       failed_when: false
 
+    - name: Check whether the HA_PGPOOL_HEARTBEAT_PORT property exists in the pre merged vars.yml
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        regexp: 'HA_PGPOOL_HEARTBEAT_PORT:'
+        state: absent
+      register: pgpool_heartbeat_property_exists
+      check_mode: yes
+      failed_when: false
+
+    - name: Check whether the HA_PGPOOL_HEARTBEAT_PORT property exists in the current vars.yml
+      lineinfile:
+        path: "{{ current_vars_yml }}"
+        regexp: 'HA_PGPOOL_HEARTBEAT_PORT:'
+        state: absent
+      register: curr_pgpool_heartbeat_property_exists
+      check_mode: yes
+      failed_when: false
+
     - set_fact:
        add_perms_override: true
       when: perms_override_property_exists.changed == True and curr_perms_override_property_exists.changed == False
+
+    - set_fact:
+       add_pgpool_heartbeat: true
+      when: pgpool_heartbeat_property_exists.changed == True and curr_pgpool_heartbeat_property_exists.changed == False and ha_properties_exist.changed == True
 
     - name: Uncomment out the vars.yml properties in the merged folder if they are activated in the current vars.yml
       replace:
@@ -400,6 +422,7 @@
         current_files_dir: "{{ current_files_dir }}"
         add_ha_properties: "{{ ha_properties_exist.changed }}"
         add_perms_override: "{{ add_perms_override is defined | default(false) }}"
+        add_pgpool_heartbeat: "{{ add_pgpool_heartbeat is defined | default(false) }}"
         log_file_name: "{{ merged_folder }}/merge_viya_deployment_files.log"
         tenant_id_string: "{{ tenant_id_string if tenantID_list is defined | default(false) else omit }}"
         merge_default_host: "{{ merge_default_host if merge_default_host is defined | default(false) else omit }}"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
@@ -60,6 +60,7 @@ PERMS_OVERRIDE_LINE = "        PERMS_OVERRIDE: 'false' \n"
 PCP_PORT_LINE    = "      - PCP_PORT"
 PGPOOL_PORT_LINE_BEFORE = "PGPOOL_PORT:"
 POOL_NUMBER_LINE = "        POOL_NUMBER: '0'\n"
+PGPOOL_HEARTBEAT_LINE = "        HA_PGPOOL_HEARTBEAT_PORT: ''\n"
 
 ############################################################
 #   Get Local Environment
@@ -524,6 +525,21 @@ def add_perms_override_property_invocation_variable (vars_file):
                 line = PERMS_OVERRIDE_LINE +  line
             out_file.write(line)
 
+
+############################################################
+#   Add a new HA_PGPOOL_HEARTBEAT_PORT property to cpspgpoolc and pgpoolc in the vars.yml
+############################################################
+def add_pgpool_heartbeat_property_invocation_variable (vars_file):
+    with open(vars_file, "r") as in_file:
+        buf = in_file.readlines()
+
+    with open(vars_file, "w") as out_file:
+        for line in buf:
+            temp_line = line.lstrip()
+            if temp_line.startswith("POOL_NUMBER:"):
+                line = PGPOOL_HEARTBEAT_LINE +  line
+            out_file.write(line)
+
 ############################################################
 #   Main
 ############################################################
@@ -534,6 +550,7 @@ def main():
         "current_files_dir": {"required": True, "type": "str"},
         "add_ha_properties": {"required": True, "type": "bool"},
         "add_perms_override": {"required": True, "type": "bool"},
+        "add_pgpool_heartbeat": {"required": True, "type": "bool"},
         "log_file_name": {"required": True, "type": "str"},
         "tenant_id_string": {"required": False, "type": "str"},
         "merge_default_host": {"required": False, "type": "str"},
@@ -545,6 +562,7 @@ def main():
     current_files_dir = module.params['current_files_dir']
     add_ha_properties = module.params['add_ha_properties']
     add_perms_override = module.params['add_perms_override']
+    add_pgpool_heartbeat = module.params['add_pgpool_heartbeat']
 
     if not current_inventory_file.startswith(os.sep):
         # force working with absolution path location
@@ -643,6 +661,11 @@ def main():
     if add_perms_override:
         add_perms_override_property_invocation_variable(new_vars_yml)
         LOG.info("The new postgres perms_override property was added to the newer vars.yml file.")
+
+    # add pgpool_heartbeat properties
+    if add_pgpool_heartbeat:
+        add_pgpool_heartbeat_property_invocation_variable(new_vars_yml)
+        LOG.info("The new postgres pgpool_heartbeat property was added to the newer vars.yml file.")
 
     # Get the tenant_id_list and do merge the tenant_vars.yml files
     tenant_string = module.params['tenant_id_string']
