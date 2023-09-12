@@ -44,7 +44,7 @@ The following issues are known and may impact the expected usage or performance 
 ## Contributing
 We welcome your contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to submit contributions to this project.
 
-This project is in maintenance mode.   If you have an enhancement request you will need to submit a contribution for consideration.
+This project is in maintenance mode. If you have an enhancement request you will need to submit a contribution for consideration.
 
 ## License
 
