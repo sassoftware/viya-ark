@@ -41,6 +41,11 @@ The following issues are known and may impact the expected usage or performance 
 * SAS Viya 3.5 supports Linux on Power on a limited availability basis. The SAS Viya ARK tools do not support Linux on Power in the Viya35-ark-1.0 release.
 * Viya ARK Pre-Install Playbook SSL check play may fail to complete if multiple sets of SSL configuration files exist.  The playbook will not fail, but subsequent tasks related to SSL Certificate check will be skipped.  Workaround the issue by ensuring only one configuration file specifying ``SSLCertificateFile`` exist under ``/etc/[httpd|apache2]`` root directory.
 
+## Contributing
+We welcome your contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to submit contributions to this project.
+
+This project is in maintenance mode. If you have an enhancement request you will need to submit a contribution for consideration.
+
 ## License
 
 This project is licensed under the [Apache 2.0 License](LICENSE).
