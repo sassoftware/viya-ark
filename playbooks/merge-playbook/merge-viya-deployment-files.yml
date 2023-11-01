@@ -34,7 +34,7 @@
 # Optional: The default_host can be designated for newly created host groups. Run:
 # -e "merge_default_host=deployTarget"
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ####################################################################
