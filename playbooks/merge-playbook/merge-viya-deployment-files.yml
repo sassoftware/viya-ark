@@ -34,7 +34,7 @@
 # Optional: The default_host can be designated for newly created host groups. Run:
 # -e "merge_default_host=deployTarget"
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ####################################################################
@@ -296,9 +296,31 @@
       check_mode: yes
       failed_when: false
 
+    - name: Check whether the HA_PGPOOL_HEARTBEAT_PORT property exists in the pre merged vars.yml
+      lineinfile:
+        path: "{{ merged_vars_yml }}"
+        regexp: 'HA_PGPOOL_HEARTBEAT_PORT:'
+        state: absent
+      register: pgpool_heartbeat_property_exists
+      check_mode: yes
+      failed_when: false
+
+    - name: Check whether the HA_PGPOOL_HEARTBEAT_PORT property exists in the current vars.yml
+      lineinfile:
+        path: "{{ current_vars_yml }}"
+        regexp: 'HA_PGPOOL_HEARTBEAT_PORT:'
+        state: absent
+      register: curr_pgpool_heartbeat_property_exists
+      check_mode: yes
+      failed_when: false
+
     - set_fact:
        add_perms_override: true
       when: perms_override_property_exists.changed == True and curr_perms_override_property_exists.changed == False
+
+    - set_fact:
+       add_pgpool_heartbeat: true
+      when: pgpool_heartbeat_property_exists.changed == True and curr_pgpool_heartbeat_property_exists.changed == False and ha_properties_exist.changed == True
 
     - name: Uncomment out the vars.yml properties in the merged folder if they are activated in the current vars.yml
       replace:
@@ -400,6 +422,7 @@
         current_files_dir: "{{ current_files_dir }}"
         add_ha_properties: "{{ ha_properties_exist.changed }}"
         add_perms_override: "{{ add_perms_override is defined | default(false) }}"
+        add_pgpool_heartbeat: "{{ add_pgpool_heartbeat is defined | default(false) }}"
         log_file_name: "{{ merged_folder }}/merge_viya_deployment_files.log"
         tenant_id_string: "{{ tenant_id_string if tenantID_list is defined | default(false) else omit }}"
         merge_default_host: "{{ merge_default_host if merge_default_host is defined | default(false) else omit }}"
@@ -638,7 +661,30 @@
                    SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
                    SERVICE_NAME: cpspostgres
       when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and ha_properties_exist.changed == True and merge_default_host is defined and perms_override_property_exists.changed == True
-   
+
+    # case 3-2-3 For 19w43 to 23w44 adding cps
+    - name: Move CommonPlanningService Invocation variables to INVOCATION_VARIABLES
+      blockinfile:
+        path: "{{ merged_vars_yml }}"
+        insertafter: "{{ merge_default_host }}:"
+        block: |3
+                 cpsdatasvrc:
+                 - NODE_NUMBER: '0'
+                   PG_PORT: '5442'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+                 cpspgpoolc:
+                 - HA_PGPOOL_VIRTUAL_IP: ''
+                   HA_PGPOOL_WATCHDOG_PORT: ''
+                   HA_PGPOOL_HEARTBEAT_PORT: ''
+                   PERMS_OVERRIDE: 'false'
+                   POOL_NUMBER: '0'
+                   PCP_PORT: '5440'
+                   PGPOOL_PORT: '5441'
+                   SANMOUNT: '{{ "{{ SAS_CONFIG_ROOT }}/data/sasdatasvrc" }}'
+                   SERVICE_NAME: cpspostgres
+      when: cps_invocation|length > 0 and cpspostgres_props_exist.changed == False and merge_default_host is defined and curr_pgpool_heartbeat_property_exists.changed == False and ha_properties_exist.changed == True
+
     - name: Check whether the NODE_TYPE property exists in the merged vars.yml
       lineinfile:
         path: "{{ merged_vars_yml }}"
