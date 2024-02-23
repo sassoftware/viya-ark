@@ -144,7 +144,7 @@
   - name: Check if the certificate is Valid
     assert:
       that:
-        - "{{ansible_date_time.epoch}} > {{date_start.stdout}} and {{ansible_date_time.epoch}} < {{date_end.stdout}}"
+        - "ansible_date_time.epoch > date_start.stdout and ansible_date_time.epoch < date_end.stdout"
       msg: |
         If this machine currently includes the HTTP proxy installation, please check the validity of the certificate. The certificate was expired on : {{end_date}}. If you prefer to bypass this HTTP proxy check for now, add --skip-tags ssl_check.
     when: not ansible_check_mode and ssldir_list is defined and (ssldir_list | trim != '')
