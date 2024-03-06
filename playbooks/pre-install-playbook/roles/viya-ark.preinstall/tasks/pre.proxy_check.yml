@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2024, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -62,7 +62,7 @@
   - name: "Assert that https_proxy is set as environment variable"
     assert:
       that:
-        - ("{{ https_proxy }}" != "")
+        - ("https_proxy" != "")
       msg: |
         The environment variable "https_proxy" is not set in environment variables
         If your organization uses a forward HTTP proxy server, It should be set as ex. 
@@ -94,7 +94,7 @@
   - name: "Assert that http_proxy is set as environment variable"
     assert:
       that:
-        - ("{{ http_proxy }}" != "")
+        - ("http_proxy" != "")
       msg: |
         The environment variable "http_proxy" is not set in environment variables
         If your organization uses a forward HTTP proxy server, It should be set as ex. 
