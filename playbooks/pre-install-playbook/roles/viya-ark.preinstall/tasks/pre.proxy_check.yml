@@ -62,7 +62,7 @@
   - name: "Assert that https_proxy is set as environment variable"
     assert:
       that:
-        - ("https_proxy" != "")
+        - (https_proxy != "")
       msg: |
         The environment variable "https_proxy" is not set in environment variables
         If your organization uses a forward HTTP proxy server, It should be set as ex. 
@@ -94,7 +94,7 @@
   - name: "Assert that http_proxy is set as environment variable"
     assert:
       that:
-        - ("http_proxy" != "")
+        - (http_proxy != "")
       msg: |
         The environment variable "http_proxy" is not set in environment variables
         If your organization uses a forward HTTP proxy server, It should be set as ex. 
@@ -127,7 +127,7 @@
   - name: "Assert that no_proxy is set as environment variable if https_proxy and http_proxy are set"
     assert:
       that:
-        - ((("{{ https_proxy }}" != "" ) and ("{{ http_proxy }}" != "" )) and ("{{ no_proxy }}" != ""))
+        - ((( https_proxy != "" ) and ( http_proxy != "" )) and ( no_proxy != ""))
       msg: |
         The environment variable "no_proxy" is not set in environment variables
         If your organization uses a forward HTTP proxy server, It should be set as ex. 
@@ -156,7 +156,7 @@
   - name: "Assert that proxy is set in yum.conf if https_proxy and http_proxy are set"
     assert:
       that:
-        - ("{{ proxy_conf_exists.stdout }}" != "" )
+        - ( proxy_conf_exists.stdout != "" )
       msg: 
         The variable "proxy" is not set in yum.conf file
     when: (https_proxy != "") and (http_proxy != "") and not ansible_check_mode
@@ -177,7 +177,7 @@
   - name: "Assert that proxy_username is set in yum.conf if https_proxy and http_proxy are set"
     assert:
       that:
-        - ("{{ proxyuser_conf_exists.stdout }}" != "" )
+        - ( proxyuser_conf_exists.stdout != "" )
       msg: 
         The variable "proxy_username" is not set in yum.conf file
     when: (https_proxy != "") and (http_proxy != "") and not ansible_check_mode
@@ -198,7 +198,7 @@
   - name: "Assert that proxy_password is set in yum.conf if https_proxy and http_proxy are set"
     assert:
       that:
-        - ("{{ proxypass_conf_exists.stdout }}" != "" )
+        - ( proxypass_conf_exists.stdout != "" )
       msg: 
         The variable "proxy_password" is not set in yum.conf file.
     when: (https_proxy != "") and (http_proxy != "") and not ansible_check_mode
