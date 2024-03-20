@@ -43,8 +43,8 @@
   - name: Assert that the most important variables are defined
     assert:
       that:
-        - "item is defined"
-        - "item | trim != '' "
+        - item is defined
+        - item | trim != ''
       msg: |
         This item is not defined or empty in your sitedefault file: 
         {{item}}  
