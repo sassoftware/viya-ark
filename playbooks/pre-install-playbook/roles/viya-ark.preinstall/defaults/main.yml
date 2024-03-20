@@ -39,9 +39,6 @@ storage_list:
   - { path: /var/cache, min_storage_mb: 15000, min_io: 2}
   - { path: /opt, min_storage_mb: 40000, min_io: 2, permission: 755}
   
-ssl_dir_path:
-  - { path: /etc/apache2}
-  - { path: /etc/httpd}  
 
   #
   # this line can be added to check on another partition
