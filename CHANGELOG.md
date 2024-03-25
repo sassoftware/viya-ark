@@ -1,11 +1,27 @@
 # Changelog for SAS Viya ARK
 
-<!-- LATEST RELEASE START -->
+## Viya35-ark-1.19 - March 25, 2024
+- **Summary**
+  * Changes related to Viya 3.5 support for a new range of Ansible versions.
+  * Changes related to jinja2 templating delimiter usage in conditionals.
+  * Removed Pre-Install Playbook ssl_check tasks.  The check is no longer needed 
+    in viya-ark as SAS Viya 3.5 deployment process will automatically install Apache httpd.
+- Ansible Support: Ansible 2.14 - 2.16
+
+## Viya35-ark-1.18 - November, 8 2023
+- **Summary**
+  Updates supporting SAS Viya 3.5 PostgreSQL 15 & pgpool-II 4.4 updates.   Documentation updates related to contributing to the project. 
+- Ansible Support: Ansible 2.12 - Ansible 2.14
+
+## Viya35-ark-1.17 - August 2, 2023
+- **Summary**:
+  Fix for sas-viya-launcher-default service not stopped by viya-services-stop.yml (#92 )
+- Ansible Support: Ansible 2.12 - Ansible 2.14 
+
 ## Viya35-ark-1.16 - May 24, 2023
 - **Sumary**:
   Changes related to Viya 3.5 support for new range of Ansible versions and new minimum Python version.
 - Ansible Support: Ansible 2.12 - Ansible 2.14    
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.15 - August 23, 2022
 - **Sumary**:

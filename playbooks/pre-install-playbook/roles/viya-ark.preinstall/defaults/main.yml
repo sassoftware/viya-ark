@@ -39,9 +39,6 @@ storage_list:
   - { path: /var/cache, min_storage_mb: 15000, min_io: 2}
   - { path: /opt, min_storage_mb: 40000, min_io: 2, permission: 755}
   
-ssl_dir_path:
-  - { path: /etc/apache2}
-  - { path: /etc/httpd}  
 
   #
   # this line can be added to check on another partition
@@ -195,9 +192,9 @@ sas_yum_urls:
 
 
 ## third-party software requirements
-required_ansible_min_version: "2.12"
-required_ansible_max_version: "2.14"
-ansible_version_compare_max_version: "2.15"  # Must be set one minor version above required_ansible_max_version
+required_ansible_min_version: "2.14"
+required_ansible_max_version: "2.16"
+ansible_version_compare_max_version: "2.17"  # Must be set one minor version above required_ansible_max_version
 required_python_min_version: "3.10"
 
 

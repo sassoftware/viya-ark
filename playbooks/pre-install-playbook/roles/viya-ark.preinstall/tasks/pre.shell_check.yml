@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2024, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -18,7 +18,7 @@
   - name: Ensure that the Bash shell is installed
     assert:
       that:
-        - ({{ current_shell.rc }} == 0)
+        - current_shell.rc == 0
       msg: |
         Bash does not appear to be installed on this system. 
         Viya requires that the default system shell is bash.
