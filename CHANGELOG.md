@@ -1,6 +1,5 @@
 # Changelog for SAS Viya ARK
 
-<!-- LATEST RELEASE START -->
 ## Viya35-ark-1.19 - March 25, 2024
 - **Summary**
   * Changes related to Viya 3.5 support for a new range of Ansible versions.
@@ -8,7 +7,6 @@
   * Removed Pre-Install Playbook ssl_check tasks.  The check is no longer needed 
     in viya-ark as SAS Viya 3.5 deployment process will automatically install Apache httpd.
 - Ansible Support: Ansible 2.14 - 2.16
-<!-- LATEST RELEASE END -->
 
 ## Viya35-ark-1.18 - November, 8 2023
 - **Summary**
