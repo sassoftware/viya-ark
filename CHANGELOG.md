@@ -1,7 +1,7 @@
 # Changelog for SAS Viya ARK
 
 <!-- LATEST RELEASE START -->
-## Viya35-ark-2.0 - March 25, 2024
+## Viya35-ark-1.19 - March 25, 2024
 - **Summary**
   * Changes related to Viya 3.5 support for a new range of Ansible versions.
   * Changes related to jinja2 templating delimiter usage in conditionals.
