@@ -1,7 +1,7 @@
 # SAS Viya Administration Resource Kit (SAS Viya ARK) - Merge SAS Viya Deployment Files Playbook
 This playbook compares and merges user-edited values from configuration files that were used in a previous SAS Viya deployment with new configuration files used for the SAS Viya upgrade process. The configuration files the playbook handles are ```ansible.cfg```, ```vars.yml```, and ```inventory.ini```.
 
-When you run the playbook, it will prompt you for the location of the current inventory file (which is assumed to be in the same directory as the current ansible.cfg and vars.yml files). You can also provide the location from the command line.
+When you run the playbook, it will prompt you for the location of the current (source) inventory file (which is assumed to be in the same directory as the current ansible.cfg and vars.yml files). You can also provide the location from the command line.
 
 The playbook will create time-stamped backups of your files and write them in place. The merged information is included so that they are ready to use. Your inventory file and vars.yml might include a new host group, ```? choose-target-host```, if you do not pass the merge-playbook argument -e "merge_default_host=<your deployTarget>. In this case, you must manually replace that value in inventory.ini and vars.yml with a valid host name to avoid Ansible warnings and failures. 
 
@@ -11,9 +11,9 @@ The playbook will copy the default inventory.ini and vars.yml from the playbook 
 
 ## Requirements for running the Playbook
 * Install "ruamel.yaml and six" in your Python installation by running `pip install ruamel.yaml six`
-* The Merge SAS Viya Deployment Files playbooks must be placed under a new generated sas_viya_playbook directory where SAS Viya will be deployed, separate from the sas_viya_playbook directory that was previously deployed from.
+* The Merge SAS Viya Deployment Files playbooks must be placed under a new generated sas_viya_playbook directory from which the target SAS Viya will be deployed. That directory is separate from the current, source sas_viya_playbook directory.
   The directory structure of this project must be preserved. For example: ```sas_viya_playbook/viya-ark/playbooks/merge-playboook/```
-* The following SAS Viya configuration files that were used in the previous deployment must exist in the ```sas_viya_playbook``` directory:
+* The following SAS Viya configuration files that were used to create the current deployment must exist in the source ```sas_viya_playbook``` directory:
   * ```inventory.ini```
   * ```ansible.cfg```
   * ```vars.yml```
