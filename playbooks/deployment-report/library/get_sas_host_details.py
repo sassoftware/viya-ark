@@ -1426,7 +1426,7 @@ def _get_process_memory_info(pid, module):
 
     for row in processes:
         # skip blank lines
-        if row == '' or not row:
+        if not row:
             continue
 
         nfields = len(row.split()) - 1
