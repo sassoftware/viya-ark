@@ -5,7 +5,7 @@
   * Clarification of requirements for running merge-playbook. (#118)
   * merge-playbook Python module update for interoperability with ansible_python_interpreter. (#118)
   * Minor fix for SyntaxWarning when running deployment-report. (#119)
-  * Update msg output for pre-install-playbook minimum Python version check. (#121)
+  * Update message output for pre-install-playbook minimum Python version check. (#121)
 - Ansible Support: Ansible 2.14 - 2.16
 
 ## Viya35-ark-1.19 - March 25, 2024
