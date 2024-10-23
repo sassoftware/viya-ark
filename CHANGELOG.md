@@ -1,5 +1,13 @@
 # Changelog for SAS Viya ARK
 
+## Viya35-ark-1.20 - October 23, 2024
+- **Summary**
+  * Clarification of requirements for running merge-playbook. (#118)
+  * merge-playbook Python module update for interoperability with ansible_python_interpreter. (#118)
+  * Minor fix for SyntaxWarning when running deployment-report. (#119)
+  * Update message output for pre-install-playbook minimum Python version check. (#121)
+- Ansible Support: Ansible 2.14 - 2.16
+
 ## Viya35-ark-1.19 - March 25, 2024
 - **Summary**
   * Changes related to Viya 3.5 support for a new range of Ansible versions.
