@@ -8,6 +8,7 @@
   * Update message output for pre-install-playbook minimum Python version check. (#121)
 - Ansible Support: Ansible 2.14 - 2.16
 
+
 ## Viya35-ark-1.19 - March 25, 2024
 - **Summary**
   * Changes related to Viya 3.5 support for a new range of Ansible versions.
