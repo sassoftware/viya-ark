@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2024, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -35,7 +35,8 @@
         The asserted minimum version of Python can be altered by changing 'required_python_min_version' 
         in roles/viya-ark.preinstall/defaults/main.yml or bypass with 
         '--skip-tags python_version_check'. 
-         See Python section of https://support.sas.com/en/documentation/third-party-software-reference/viya/35/support-for-operating-systems.html#ansible."
+         See Python Requirements section of 
+         https://go.documentation.sas.com/doc/en/calcdc/3.5/dplyml0phy0lax/p1gclfomj2px4ln1094gh8tj52mj.htm."
     tags:
       - python_version_check
 
