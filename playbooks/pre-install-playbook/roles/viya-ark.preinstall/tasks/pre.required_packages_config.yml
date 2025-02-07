@@ -6,7 +6,6 @@
 ####################################################################
 ## Required Packages Config
 ####################################################################
-# 
 # Test harness:
 #   make it pass
 #     ansible-playbook viya_pre_install_playbook.yml -i inventory --tags required_packages_config -e use_pause=0
