@@ -18,7 +18,7 @@
   - name: Run tasks to check version of available required package
     include_tasks: pre.package_version_check.yml
     loop: "{{ required_package_versions_rhel }}"
-    when: ((ansible_distribution == redhat_os_name|string or  == oracle_os_name|string) and viya_version is version('3.5','>=') and not (ansible_architecture == plx_os_architecture|string))
+    when: ((ansible_distribution == redhat_os_name|string or ansible_distribution == oracle_os_name|string) and viya_version is version('3.5','>=') and not (ansible_architecture == plx_os_architecture|string))
     tags:
       - packages
       - package_version_check
