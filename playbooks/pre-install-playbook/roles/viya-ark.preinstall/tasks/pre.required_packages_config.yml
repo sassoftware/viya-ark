@@ -31,7 +31,7 @@
       - "{{ ansible_os_family }}-{{ ansible_architecture }}.yml"
 
   - block:
-    ## RHEL 8, and RHEL 8 compatible systems, specific package requirements
+    ## RHEL 8 and RHEL 8 compatible systems specific package requirements
     - name: Gather package facts
       ansible.builtin.package_facts:
         manager: auto
