@@ -8,7 +8,7 @@
 ####                                                            ####
 ####################################################################
 #
-# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0 
 #
 ####################################################################
@@ -84,10 +84,10 @@
           varcache_location: "/var/cache/zypp"
         when: ansible_distribution == "SLES"
 
-      - name: Check for RHEL8 OS
+      - name: Check for RHEL/Oracle 8 OS
         set_fact:
           varcache_location: "/var/cache/dnf"
-        when: ansible_distribution == 'RedHat' and ansible_distribution_major_version == '8'
+        when: (ansible_distribution == 'RedHat' or ansible_distribution == 'OracleLinux') and ansible_distribution_major_version == '8'
 
       - name: test for available disk space in {{ varcache_location }}
         command: df -BG {{ varcache_location }}

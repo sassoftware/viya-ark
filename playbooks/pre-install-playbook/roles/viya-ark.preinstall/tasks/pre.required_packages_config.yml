@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -31,7 +31,7 @@
       - "{{ ansible_os_family }}-{{ ansible_architecture }}.yml"
 
   - block:
-    ## RHEL 8 Specific package requirements
+    ## RHEL 8 and RHEL 8 compatible systems specific package requirements
     - name: Gather package facts
       ansible.builtin.package_facts:
         manager: auto
@@ -82,7 +82,7 @@
         fail_msg: There are missing Compatibility Packages. {{missing_packages}}
         success_msg: There are no missing Compatibility Packages.
       when: not ansible_check_mode    
-    when: ansible_distribution == redhat_os_name|string and ansible_distribution_major_version == '8'
+    when: (ansible_distribution == redhat_os_name|string or ansible_distribution == oracle_os_name|string) and ansible_distribution_major_version == '8'
     # end block
     tags:
       - packages
