@@ -35,7 +35,7 @@
 - name: Get Md5 checksum for casstartup_usermods.lua
   stat:
      path: "{{ caslua_data }}/config/etc/cas/default/casstartup_usermods.lua"
-     get_md5: yes
+     get_checksum: true 
   register: before
   when: caslua_files.matched|int != 0
 
@@ -51,7 +51,7 @@
 - name: Get Md5 checksum for casstartup_usermods.lua after adding user formats
   stat:
      path: "{{ caslua_data }}/config/etc/cas/default/casstartup_usermods.lua"
-     get_md5: yes
+     get_checksum: true
   register: after
   when: caslua_files.matched|int != 0
 
@@ -60,14 +60,14 @@
     CASUSERMODSFILES_LIST: "{{ hostvars['localhost']['CASUSERMODSFILES_LIST'] }} + ['{{ caslua_data }}config/etc/cas/default/casstartup_usermods.lua']"
   delegate_to: localhost
   delegate_facts: true 
-  when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.md5 != after.stat.md5 
+  when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.checksum != after.stat.checksum 
 
 - name: Stop SAS CAS server
   any_errors_fatal: true
   script: ../../viya-mmsu/viya-svs.sh stopcas
-  when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.md5 != after.stat.md5
+  when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.checksum != after.stat.checksum
 
 - name: Start SAS CAS server
   any_errors_fatal: true
   script: ../../viya-mmsu/viya-svs.sh startcas
-  when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.md5 != after.stat.md5 
+  when: before is defined and after is defined and caslua_files.matched|int != 0 and before.stat.exists and before.stat.checksum != after.stat.checksum 
