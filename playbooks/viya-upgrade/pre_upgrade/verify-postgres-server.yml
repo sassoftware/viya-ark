@@ -5,7 +5,7 @@
 ####                                                            ####
 ####################################################################
 #
-# Copyright (c) 2019-2020, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ####################################################################
@@ -34,9 +34,14 @@
       - pgpoolc_not_running_msg: "PostgreSQL cluster is not running. You must start the PostgreSQL cluster and its status must be running."
 
   tasks:
-    - name: Check for /opt/sas/viya/home/postgresql11/bin/pg_ctl
+    - name: Check for postgresql11
       stat: path=/opt/sas/viya/home/postgresql11/bin/pg_ctl
-      register: postgres11found
+      register: postgres11_plus_found
+
+    - name: Check for postgresql15
+      stat: path=/opt/sas/viya/home/postgresql15/bin/pg_ctl
+      register: postgres11_plus_found
+      when: postgres11_plus_found.stat.exists | bool == false
 
     - block:
         - name: Report the version number of the installed PostgreSQL on this host
@@ -71,7 +76,7 @@
             msg: "{{ postgres_cluster_unhealthy }}"
           register: assert_postgres_nodes
           when: pool_cdf.stat.exists
-      when: postgres11found.stat.exists | bool == false
+      when: postgres11_plus_found.stat.exists | bool == false
 
     - name: Retrieve the sasdatasvrc host names from the inventory file
       set_fact:
@@ -98,7 +103,7 @@
 
     - set_fact:
         postgres_service_name: /etc/init.d/sas-viya-sasdatasvrc-postgres-pgpool0
-      when: postgres11found.stat.exists
+      when: postgres11_plus_found.stat.exists
 
     - name: Check for {{ postgres_service_name }}
       stat: path="{{ postgres_service_name }}"
@@ -141,7 +146,7 @@
           with_items:
           - "{{ INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] }}"
           when: postgresinit.stat.exists
-      when: postgres11found.stat.exists | bool == false and nodetype_exists | bool == true
+      when: postgres11_plus_found.stat.exists | bool == false and nodetype_exists | bool == true
 
     - name: Obtain the status of the PostgreSQL cluster
       shell: '{{ postgres_service_name }} status'
@@ -210,7 +215,7 @@
             msg: "{{ secondary_node_type_unmatched }}"
           register: assert_secondary_host
           when: postgresinit.stat.exists and sasdatasvrc_type == "S"
-      when: postgres11found.stat.exists | bool == false and nodetype_exists | bool == true
+      when: postgres11_plus_found.stat.exists | bool == false and nodetype_exists | bool == true
 
     - name: Compare the host names from the PostgreSQL check with the host names in the inventory file
       assert:
