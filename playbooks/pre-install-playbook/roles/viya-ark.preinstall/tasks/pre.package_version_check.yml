@@ -1,13 +1,13 @@
 #
-# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
 ####################################################################
-## Required Package Version for RHEL
+## Required Package Version for RHEL or RHEL compatible systems
 ####################################################################
-# This task block should only run on RHEL systems, as it uses yum
-# to query available package versions.
+# This task block should only run on RHEL or RHEL compatible systems,
+# as it uses yum to query available package versions.
 
 - block:
   ## RHEL packages with a minimum version requirement
@@ -17,14 +17,14 @@
       package_meets_requirement: False
      
   # Is the package already installed at the required level?
-  - name: Check for installed RHEL package '{{ item.name }}'
+  - name: Check for installed package '{{ item.name }}'
     shell: yum list installed {{ item.name }}
     check_mode: no
     changed_when: False
     register: installed_package
     ignore_errors: true
     
-  - name: Check that installed RHEL package '{{ item.name }}' meets minimum version {{ item.value }}
+  - name: Check that installed package '{{ item.name }}' meets minimum version {{ item.value }}
     shell: yum list installed {{ item.name }} | tail -1 | awk '{print $2}'
     check_mode: no
     changed_when: False
@@ -37,7 +37,7 @@
     when: installed_package.rc == 0 and installed_package_version.stdout is version_compare(item.value, '>=')
     
   # Is there a package by that name in an available repository?
-  - name: Check that required RHEL package '{{ item.name }}' is available in a repository at some version
+  - name: Check that required package '{{ item.name }}' is available in a repository at some version
     shell: yum list available {{ item.name }}
     check_mode: no
     changed_when: False
@@ -54,7 +54,7 @@
     when: not package_meets_requirement
     
   # Does the located package meet the defined minimum version?
-  - name: Check that required RHEL package {{ item.name }} is available in some repository at minimum version {{ item.value }}
+  - name: Check that required package {{ item.name }} is available in some repository at minimum version {{ item.value }}
     shell: yum list available {{ item.name }} | tail -1 | awk '{print $2}'
     check_mode: no
     changed_when: False
