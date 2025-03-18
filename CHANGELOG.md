@@ -1,5 +1,12 @@
 # Changelog for SAS Viya ARK
 
+## Viya35-ark-1.21 - March 18, 2025
+- **Summary**
+  * Add support for Oracle Linux 8.
+  * Update post-upgrade usage of ansible.builtin.stat checksum parameter.
+  * Update pre-upgrade support for Postgres15 verification.
+- Ansible Support: Ansible 2.14 - 2.16
+
 ## Viya35-ark-1.20 - October 23, 2024
 - **Summary**
   * Clarification of requirements for running merge-playbook. (#118)
