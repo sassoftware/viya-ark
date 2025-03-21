@@ -1,5 +1,5 @@
   ####################################################################
-  #### viya-services-start-restore.yml                                    ####
+  #### viya-services-start-restore.yml                            ####
   ####################################################################
   #### Author: SAS Institute Inc.                                 ####
   ####################################################################
@@ -7,7 +7,7 @@
   # Copyright (c) 2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
   # SPDX-License-Identifier: Apache-2.0
   #
-  ---
+---
   - import_playbook: ../common/handle_hostgroup_hyphens.yml
     tags:
       - always
