@@ -23,4 +23,4 @@
     tasks:
       - name: Starting service {{ item }}
         script: viya-svs.sh start {{ item }}
-        loop: "{{ restore-required-services }}"
+        loop: "{{ foo }}"
