@@ -16,33 +16,33 @@
 # https://go.documentation.sas.com/doc/en/calcdc/3.5/calbr/n1607whucnyc02n1eo6tbvl1tzcs.htm#p12exaj18ngpw1n1ekl9u6l09y22
 
 restore-required-services:
-  - sas-viya-authorization-default
-  - sas-viya-backup-agent-default
-  - sas-viya-backupmanager-default
-  - sas-viya-cachelocator-default
-  - sas-viya-cacheserver-default
-  - sas-viya-cas-administration-default
-  - sas-viya-configuration-default
-  - sas-viya-consul-default
-  - sas-viya-credentials-default
-  - sas-viya-cascontroller-default
-  - sas-viya-deploymentBackup-default
-  - sas-viya-environmentmanager-default
-  - sas-viya-httpproxy-default
-  - sas-viya-identities-default
-  - sas-viya-saslogon-default
-  - sas-viya-notifications-default
-  - sas-viya-rabbitmq-server-default
-  - sas-viya-sasdatasvrc-postgres-node0-consul-template-operation_node
-  - sas-viya-sasdatasvrc-postgres-node0
-  - sas-viya-sasdatasvrc-postgres-node0-consul-template-pg_hba
-  - sas-viya-sasdatasvrc-postgres-pgpool0-consul-template-operation_node
-  - sas-viya-sasdatasvrc-postgres-pgpool0
-  - sas-viya-sasdatasvrc-postgres-pgpool0-consul-template-pool_hba
+- sas-viya-authorization-default
+- sas-viya-backup-agent-default
+- sas-viya-backupmanager-default
+- sas-viya-cachelocator-default
+- sas-viya-cacheserver-default
+- sas-viya-cas-administration-default
+- sas-viya-cascontroller-default
+- sas-viya-configuration-default
+- sas-viya-consul-default
+- sas-viya-credentials-default
+- sas-viya-deploymentBackup-default
+- sas-viya-environmentmanager-default
+- sas-viya-httpproxy-default
+- sas-viya-identities-default
+- sas-viya-notifications-default
+- sas-viya-rabbitmq-server-default
+- sas-viya-sasdatasvrc-postgres-node0
+- sas-viya-sasdatasvrc-postgres-node0-consul-template-operation_node
+- sas-viya-sasdatasvrc-postgres-node0-consul-template-pg_hba
+- sas-viya-sasdatasvrc-postgres-pgpool0
+- sas-viya-sasdatasvrc-postgres-pgpool0-consul-template-operation_node
+- sas-viya-sasdatasvrc-postgres-pgpool0-consul-template-pool_hba
+- sas-viya-saslogon-default
   # only in the case of a multi-tenant deployment is next service needed.
   # will this matter if attempted to start in a non-tenant deployment??
-  - sas-viya-tenant-default
-  - sas-viya-themecontent-default
-  - sas-viya-themes-default
-  - sas-viya-thumbnails-default
-  - sas-viya-vault-default
+- sas-viya-tenant-default
+- sas-viya-themecontent-default
+- sas-viya-themes-default
+- sas-viya-thumbnails-default
+- sas-viya-vault-default
