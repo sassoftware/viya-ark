@@ -15,7 +15,7 @@
 # ??? based on what we are doing here.
 # https://go.documentation.sas.com/doc/en/calcdc/3.5/calbr/n1607whucnyc02n1eo6tbvl1tzcs.htm#p12exaj18ngpw1n1ekl9u6l09y22
 
-foo:
+restore_minimal_services:
   - sas-viya-authorization-default
   - sas-viya-backup-agent-default
   - sas-viya-backupmanager-default
