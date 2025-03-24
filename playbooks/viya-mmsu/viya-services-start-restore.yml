@@ -21,6 +21,6 @@
     vars_files:
       - viya-services-start-restore-vars.yml
     tasks:
-      - name: Starting service {{ item }}
+      - name: Starting minimal services before a Restore operation
         script: viya-svs.sh start {{ item }}
         loop: "{{ restore_minimal_services }}"
