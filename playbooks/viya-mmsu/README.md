@@ -51,7 +51,8 @@ To start the minimally required set of services prior to starting a Restore, exe
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restore.yml
 ```
-## Notes about the viya-services-start-restored.yml Playbook
+
+## Notes about the viya-services-start-restore.yml Playbook
 The `viya-services-start-restore.yml` playbook is used to simply some of the operations
 required by the Restore process
 
