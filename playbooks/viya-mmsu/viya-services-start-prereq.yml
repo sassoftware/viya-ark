@@ -159,4 +159,3 @@
   tasks:
     - name: Start cachelocator/cacheserver
       script: viya-svs.sh start sas-viya-cachelocator-default sas-viya-cacheserver-default
-      when: enable_svs_alternative|bool == true

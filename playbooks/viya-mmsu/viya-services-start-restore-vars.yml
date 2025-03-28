@@ -15,7 +15,6 @@ restore_minimal_services:
   - sas-viya-backup-agent-default
   - sas-viya-backupmanager-default
   - sas-viya-cas-administration-default
-  - sas-viya-cascontroller-default
   - sas-viya-configuration-default
   - sas-viya-credentials-default
   - sas-viya-deploymentBackup-default
@@ -33,6 +32,7 @@ restore_minimal_services:
 # started as a prerequisite set of services imported from viya-services-start-prereq.yml.
 # - sas-viya-cachelocator-default
 # - sas-viya-cacheserver-default
+# - sas-viya-cascontroller-default
 # - sas-viya-consul-default
 # - sas-viya-httpproxy-default
 # - sas-viya-rabbitmq-server-default
