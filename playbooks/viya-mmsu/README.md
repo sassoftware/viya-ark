@@ -53,7 +53,7 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restore.yml
 ```
 
 ## Notes about the viya-services-start-restore.yml Playbook
-The `viya-services-start-restore.yml` playbook is used to simply some of the operations
+The `viya-services-start-restore.yml` playbook is used to simplify some of the operations
 required by the Restore process
 
 Before running the `viya-services-start-restore.yml` playbook, all services must be stopped using
