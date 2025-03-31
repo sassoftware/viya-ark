@@ -1,0 +1,45 @@
+####################################################################
+#### viya-services-start-restore-vars.yml                               ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+#
+# Copyright (c) 2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# This file contains the list of services that need to be started
+# before performing restore operation.
+restore_minimal_services:
+  - sas-viya-authorization-default
+  - sas-viya-backup-agent-default
+  - sas-viya-backupmanager-default
+  - sas-viya-cas-administration-default
+  - sas-viya-configuration-default
+  - sas-viya-credentials-default
+  - sas-viya-deploymentBackup-default
+  - sas-viya-environmentmanager-default
+  - sas-viya-identities-default
+  - sas-viya-notifications-default
+  - sas-viya-saslogon-default
+  - sas-viya-tenant-default
+  - sas-viya-themecontent-default
+  - sas-viya-themes-default
+  - sas-viya-thumbnails-default
+
+# The following services are in the set of minimal services that need to be started,
+# but they are not included in the restore_minimal_services list because they are
+# started as a prerequisite set of services imported from viya-services-start-prereq.yml.
+# - sas-viya-cachelocator-default
+# - sas-viya-cacheserver-default
+# - sas-viya-cascontroller-default
+# - sas-viya-consul-default
+# - sas-viya-httpproxy-default
+# - sas-viya-rabbitmq-server-default
+# - sas-viya-sasdatasvrc-postgres-node0
+# - sas-viya-sasdatasvrc-postgres-pgpool0
+# - sas-viya-sasdatasvrc-postgres-node0-consul-template-operation_node
+# - sas-viya-sasdatasvrc-postgres-node0-consul-template-pg_hba
+# - sas-viya-sasdatasvrc-postgres-pgpool0-consul-template-operation_node
+# - sas-viya-sasdatasvrc-postgres-pgpool0-consul-template-pool_hba
+# - sas-viya-vault-default

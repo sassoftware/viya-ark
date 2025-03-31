@@ -1,0 +1,25 @@
+  ####################################################################
+  #### viya-services-start-restore.yml                            ####
+  ####################################################################
+  #### Author: SAS Institute Inc.                                 ####
+  ####################################################################
+  #
+  # Copyright (c) 2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+  # SPDX-License-Identifier: Apache-2.0
+  #
+---
+  - import_playbook: ../common/handle_hostgroup_hyphens.yml
+    tags:
+      - always
+
+  - import_playbook: viya-services-start-prereq.yml
+    tags:
+      - always
+
+  - hosts: sas_all
+    become: yes
+    vars_files:
+      - viya-services-start-restore-vars.yml
+    tasks:
+      - name: Starting minimal services before a Restore operation
+        script: viya-svs.sh start "{{ restore_minimal_services | join(' ') }}"
