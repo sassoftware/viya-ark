@@ -8,7 +8,7 @@ The SAS Viya Multi-Machine Services Utilities repository contains a set of playb
 
 * All services must have an Up status after the deployment has completed.
   See "Running the Playbooks" for instructions on listing the status of SAS Viya services.
-* The MMSU playbooks must be placed under the sas_viya_playbook directory where SAS Viya was deployed.
+* The MMSU playbooks must be placed under the sas_viya_playbook directory where SAS Viya was deployed. This step prevents the script from executing automatically when the machine is restarted. This can be done by running viya-services-disable.yml playbook.
   The directory structure of this project must be preserved.
   For example: ```sas_viya_playbook/viya-ark/playbooks/viya-mmsu/```
 * Verify that the sas-viya-all-services script is exempted from system reboots.
@@ -30,10 +30,6 @@ The SAS Viya Multi-Machine Services Utilities repository contains a set of playb
 To list the status of all SAS Viya services and URLs, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-status.yml
-```
-To exempt sas-viya-all-services from system reboot, execute:
-```
-ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-disable.yml
 ```
 To stop all services gracefully, execute:
 ```
