@@ -19,7 +19,7 @@
   any_errors_fatal: true
 
   tasks:
-    - name: Enable SAS Viya all services from system reboot
+    - name: Enable SAS Viya all services at system reboot
       service:
         name: sas-viya-all-services
         enabled: yes
