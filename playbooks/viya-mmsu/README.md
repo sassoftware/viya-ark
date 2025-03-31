@@ -31,10 +31,6 @@ To list the status of all SAS Viya services and URLs, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-status.yml
 ```
-To exempt sas-viya-all-services from system reboot, execute:
-```
-ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-disable.yml
-```
 To stop all services gracefully, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-stop.yml
@@ -50,6 +46,14 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restart.yml
 To start the minimally required set of services prior to starting a Restore, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restore.yml
+```
+To disable sas-viya-all-services to run on system reboot, execute:
+```
+ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-disable.yml
+```
+To enable sas-viya-all-services to run on system reboot, execute:
+```
+ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-enable.yml
 ```
 
 ## Notes about the viya-services-start-restore.yml Playbook

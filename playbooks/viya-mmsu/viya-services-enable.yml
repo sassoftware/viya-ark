@@ -1,10 +1,10 @@
 ####################################################################
-#### viya-services-disable.yml                                  ####
+#### viya-services-enable.yml                                  ####
 ####################################################################
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -19,7 +19,7 @@
   any_errors_fatal: true
 
   tasks:
-    - name: Disable SAS Viya all services at system reboot
+    - name: Enable SAS Viya all services at system reboot
       service:
         name: sas-viya-all-services
-        enabled: no
+        enabled: yes
