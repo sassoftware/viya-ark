@@ -148,6 +148,7 @@
   tasks:
     - name: Start SAS multi-tenant services
       script: viya-svs.sh startmt
+      when: startmt|bool == true
 
 - hosts: CoreServices
   become: yes

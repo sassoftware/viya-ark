@@ -13,6 +13,8 @@
       - always
 
   - import_playbook: viya-services-start-prereq.yml
+    vars:
+      startmt: false
     tags:
       - always
 
