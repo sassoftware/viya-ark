@@ -45,7 +45,7 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restart.yml
 ```
 To start the minimally required set of services prior to starting a Restore, execute:
 ```
-ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restore.yml
+ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-start-restore.yml
 ```
 To disable sas-viya-all-services to run on system reboot, execute:
 ```

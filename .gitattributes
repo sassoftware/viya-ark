@@ -1,0 +1,2 @@
+# Enforce LF line endings for all shell script files
+*.sh text=auto eol=lf
