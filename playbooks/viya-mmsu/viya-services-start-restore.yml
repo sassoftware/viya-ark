@@ -52,7 +52,7 @@
 
           - name: Establish List of SAS Services
             set_fact:
-              filtered_sas_services: "{{ filtered_sas_services + [item.value.name | replace ('.service', '')] }}"
+              filtered_sas_services: "{{ (filtered_sas_services + [item.value.name | replace ('.service', '')]) | unique }}"
             loop: "{{ ansible_facts.services | dict2items }}"
             when: item.value.name is defined and item.value.name.startswith('sas-viya-')
 
