@@ -42,6 +42,10 @@
           - name: Gather service facts
             service_facts:
 
+          - name: Display all gathered service facts
+            debug:
+              var: ansible_facts.services
+
           - name: Initialize service list
             set_fact:
               filtered_sas_services: []
@@ -61,4 +65,5 @@
               name: "{{ item }}"
               state: started
             with_items: "{{ filtered_sas_services }}"
+            when: goforstart | default(false)
         when: not ansible_check_mode
