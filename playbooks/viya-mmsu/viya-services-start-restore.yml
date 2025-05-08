@@ -66,9 +66,9 @@
             debug:
               msg: "Host {{ inventory_hostname  }} filtered SAS services: {{ filtered_sas_services }}"
 
-          - name: Create List of Services to Start
+          - name: Create List of the Services to Start
             set_fact:
-            intersected_services: "{{ filtered_sas_services | intersect(global_restore_minimal_services) }}"
+              intersected_services: "{{ filtered_sas_services | intersect(global_restore_minimal_services) }}"
 
           - name: Start SAS Services
             service:
