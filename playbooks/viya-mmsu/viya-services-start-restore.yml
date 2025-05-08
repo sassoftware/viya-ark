@@ -43,6 +43,8 @@
     become_user: root
     gather_facts: false
     any_errors_fatal: true
+    vars:
+      global_restore_minimal_services: "{{ hostvars['localhost']['global_restore_minimal_services'] }}"
     tasks:
       - block:
           - name: Gather service facts
