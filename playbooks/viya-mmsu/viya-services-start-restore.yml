@@ -50,11 +50,7 @@
           - name: Gather service facts
             service_facts:
 
-          - name: Display all gathered service facts
-            debug:
-              var: ansible_facts.services
-
-          - name: Initialize service list
+          - name: Initialize services list
             set_fact:
               filtered_sas_services: []
 
@@ -71,6 +67,10 @@
           - name: Create List of the Services to Start
             set_fact:
               intersected_services: "{{ filtered_sas_services | intersect(global_restore_minimal_services) }}"
+
+          - name: Display List of Services to Start
+            debug:
+                msg: "Host {{ inventory_hostname  }} services to start: {{ intersected_services }}"
 
           - name: Start SAS Services
             service:
