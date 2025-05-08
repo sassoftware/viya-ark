@@ -12,6 +12,12 @@
     tags:
       - always
 
+  - import_playbook: viya-services-start-prereq.yml
+    vars:
+      startmt: false
+    tags:
+      - always
+
   - name: Minimal Services for Restore
     hosts: localhost
     gather_facts: false
