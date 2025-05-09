@@ -54,21 +54,17 @@
             set_fact:
               filtered_sas_services: []
 
-          - name: Establish List of SAS Services
+          - name: Establish List of all SAS Services
             set_fact:
               filtered_sas_services: "{{ (filtered_sas_services + [item.value.name | replace ('.service', '')]) | unique }}"
             loop: "{{ ansible_facts.services | dict2items }}"
             when: item.value.name is defined and item.value.name.startswith('sas-viya-')
 
-          - name: Display List of SAS Services per Host
-            debug:
-              msg: "Host {{ inventory_hostname  }} filtered SAS services: {{ filtered_sas_services }}"
-
-          - name: Create List of the Services to Start
+          - name: Create Curated List of the Services to Start
             set_fact:
               intersected_services: "{{ filtered_sas_services | intersect(global_restore_minimal_services) }}"
 
-          - name: Display List of Services to Start
+          - name: Display Curated List of Services to Start
             debug:
                 msg: "Host {{ inventory_hostname  }} services to start: {{ intersected_services }}"
 
