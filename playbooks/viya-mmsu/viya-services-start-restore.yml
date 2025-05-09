@@ -18,10 +18,59 @@
     tags:
       - always
 
-  - hosts: sas_all
-    become: yes
-    vars_files:
-      - viya-services-start-restore-vars.yml
+  - name: Minimal Services for Restore
+    hosts: localhost
+    gather_facts: false
     tasks:
-      - name: Starting minimal services before a Restore operation
-        script: viya-svs.sh start "{{ restore_minimal_services | join(' ') }}"
+      - name: Load Minimal Services for Restore from vars file
+        include_vars:
+          file: viya-services-start-restore-vars.yml
+        delegate_to: localhost
+
+      - name: Minimal Services that must be started for Restore
+        debug:
+          var: restore_minimal_services
+        delegate_to: localhost
+
+      - name: Set restore_minimal_services globally
+        set_fact:
+          global_restore_minimal_services: "{{ restore_minimal_services }}"
+        delegate_to: localhost
+
+  - name: Determine where SAS services reside and start the services
+    hosts: sas_all
+    become: yes
+    become_user: root
+    gather_facts: false
+    any_errors_fatal: true
+    vars:
+      global_restore_minimal_services: "{{ hostvars['localhost']['global_restore_minimal_services'] }}"
+    tasks:
+      - block:
+          - name: Gather service facts
+            service_facts:
+
+          - name: Initialize services list
+            set_fact:
+              filtered_sas_services: []
+
+          - name: Establish List of all SAS Services
+            set_fact:
+              filtered_sas_services: "{{ (filtered_sas_services + [item.value.name | replace ('.service', '')]) | unique }}"
+            loop: "{{ ansible_facts.services | dict2items }}"
+            when: item.value.name is defined and item.value.name.startswith('sas-viya-')
+
+          - name: Create Curated List of the Services to Start
+            set_fact:
+              intersected_services: "{{ filtered_sas_services | intersect(global_restore_minimal_services) }}"
+
+          - name: Display Curated List of Services to Start
+            debug:
+                msg: "Host {{ inventory_hostname  }} services to start: {{ intersected_services }}"
+
+          - name: Start SAS Services
+            service:
+              name: "{{ item }}"
+              state: started
+            with_items: "{{ intersected_services }}"
+        when: not ansible_check_mode
