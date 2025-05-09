@@ -77,5 +77,4 @@
               name: "{{ item }}"
               state: started
             with_items: "{{ intersected_services }}"
-            when: goforstart | default(false)
         when: not ansible_check_mode
