@@ -1,5 +1,10 @@
 # Changelog for SAS Viya ARK
 
+## Viya35-ark-1.22 - June 18, 2025
+- **Summary**
+  * Added support for starting select services in a backup/restore scenario. (#128)
+- Ansible Support: Ansible 2.14 - 2.16
+
 ## Viya35-ark-1.21 - March 18, 2025
 - **Summary**
   * Add support for Oracle Linux 8.
