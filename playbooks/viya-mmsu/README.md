@@ -31,10 +31,6 @@ To list the status of all SAS Viya services and URLs, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-status.yml
 ```
-To exempt sas-viya-all-services from system reboot, execute:
-```
-ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-disable.yml
-```
 To stop all services gracefully, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-stop.yml
@@ -47,6 +43,32 @@ To restart all services gracefully, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-restart.yml
 ```
+To start the minimally required set of services prior to starting a Restore, execute:
+```
+ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-start-restore.yml
+```
+To disable sas-viya-all-services to run on system reboot, execute:
+```
+ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-disable.yml
+```
+To enable sas-viya-all-services to run on system reboot, execute:
+```
+ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-enable.yml
+```
+
+## Notes about the viya-services-start-restore.yml Playbook
+The `viya-services-start-restore.yml` playbook is used to simplify some of the operations
+required by the Restore process
+
+Before running the `viya-services-start-restore.yml` playbook, all services must be stopped using
+the `viya-services-stop.yml` playbook. The `viya-services-start-restore.yml` playbook will start the
+minimal set of services required for a restore operation.
+
+The minimal set of services that will be started are enumerated in the `viya-services-start-restore-vars.yml`
+file.
+
+See the [Restore](https://go.documentation.sas.com/doc/en/calcdc/3.5/calbr/n1607whucnyc02n1eo6tbvl1tzcs.htm)
+documentation for more information. 
 
 ## Notes about the systemctl status Command
 
