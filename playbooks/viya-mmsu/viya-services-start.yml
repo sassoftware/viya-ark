@@ -4,7 +4,7 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2025, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -12,7 +12,13 @@
   tags:
     - always
 
-- import_playbook: viya-services-start-prereq.yml
+- hosts: all
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  roles:
+    - viya-services-start-prereq
   vars:
     startmt: true
   tags:

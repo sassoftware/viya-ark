@@ -1,0 +1,126 @@
+####################################################################
+#### viya-services-start.yml                                    ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+#
+# Copyright (c) 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+---
+# Include necessary vars files
+- name: Include viya-services-vars.yml
+  include_vars:
+    file: viya-services-vars.yml
+
+- name: Include ../../../vars.yml
+  include_vars:
+    file: ../../../vars.yml
+
+# Tasks for hosts: sas_all (initial checks)
+- name: Check the accessibility of the hosts
+  ping:
+
+- name: Check disk space for Viya log directory
+  script: viya-svs.sh checkspace /opt/sas/viya/config/var/log {{log_diskspace_minimum}}
+  changed_when: false
+  check_mode: no
+
+# Tasks for hosts: consul
+- name: Start SAS Primary Consul Server
+  script: viya-svs.sh start sas-viya-consul-default
+  when: "'consul' in group_names"
+
+- name: Start SAS Secret Manager (Vault)
+  script: viya-svs.sh start sas-viya-vault-default
+  when: "'consul' in group_names"
+
+# Tasks for hosts: sas_all:!consul
+- name: Start SAS Local Consul Servers
+  script: viya-svs.sh start sas-viya-consul-default
+  when: "'sas_all' in group_names and 'consul' not in group_names"
+
+# Tasks for hosts: sas_all (database related)
+- block:
+  - name: Start SAS Infrastructure Data Server Consul Template pgpool
+    include_tasks: viya-dbct.yml
+    vars:
+      dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
+      dbaction: startdbct
+      dbtype: pgpool
+    when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
+
+  - name: Start SAS Infrastructure Data Server Consul Template node
+    include_tasks: viya-dbct.yml
+    vars:
+      dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+      dbaction: startdbct
+      dbtype: node
+    when: INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] is defined
+
+  - name: Start SAS Infrastructure Data Server Consul Template pgpool
+    include_tasks: viya-dbct.yml
+    vars:
+      dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
+      dbaction: startdbct
+      dbtype: pgpool
+    when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
+
+  - name: Start SAS Infrastructure Data Server Consul Template node
+    include_tasks: viya-dbct.yml
+    vars:
+      dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+      dbaction: startdbct
+      dbtype: node
+    when: INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'] is defined
+
+  - name: Start SAS Infrastructure Data Server
+    include_tasks: "{{item}}"
+    loop:
+      - viya-db.yml
+      - viya-dbcheck.yml
+    vars:
+      dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
+      dbaction: startdb
+      dbnum:  "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['POOL_NUMBER']|default([])}}"
+      dbtype: pgpool
+    when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined
+
+  - name: Start SAS Infrastructure Data Server
+    include_tasks: "{{item}}"
+    loop:
+      - viya-db.yml
+      - viya-dbcheck.yml
+    vars:
+      dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
+      dbaction: startdb
+      dbnum:  "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['POOL_NUMBER']|default([])}}"
+      dbtype: pgpool
+    when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined
+
+  when: INVOCATION_VARIABLES[inventory_hostname] is defined
+
+# Tasks for hosts: rabbitmq
+- name: Start SAS Message Broker (RabbitMQ)
+  script: viya-svs.sh start sas-viya-rabbitmq-server-default
+  when: "'rabbitmq' in group_names"
+
+# Tasks for hosts: httpproxy
+- name: Start SAS HTTP proxy
+  script: viya-svs.sh start sas-viya-httpproxy-default
+  when: "'httpproxy' in group_names"
+
+# Tasks for hosts: sas_casserver_primary
+- name: Start SAS CAS servers
+  script: viya-svs.sh startcas
+  when: "'sas_casserver_primary' in group_names"
+
+# Tasks for hosts: ComputeServer:sas_casserver_*:programming
+- name: Start SAS multi-tenant services
+  script: viya-svs.sh startmt
+  when: ( 'ComputeServer' in group_names or any(group.startswith('sas_casserver_') for group in group_names) or 'programming' in group_names ) and startmt|bool == true
+
+# Tasks for hosts: CoreServices
+- name: Start cachelocator/cacheserver
+  script: viya-svs.sh start sas-viya-cachelocator-default sas-viya-cacheserver-default
+  when: "'CoreServices' in group_names"
