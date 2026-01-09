@@ -12,7 +12,7 @@
     tags:
       - always
 
-  - import_playbook: _viya-services-start-prereq.yml
+  - import_playbook: _services-start-prereq.yml
     vars:
       startmt: false
     tags:
