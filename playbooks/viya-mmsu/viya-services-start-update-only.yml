@@ -40,7 +40,7 @@
   gather_facts: false
   any_errors_fatal: true
   vars_files:
-    - ../viya-upgrade/vars.yml
+    - ../../../vars.yml
   tasks:
     - block:
         - name: Start SAS Infrastructure Data Server Consul Template pgpool
