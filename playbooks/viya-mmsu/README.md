@@ -55,7 +55,7 @@ To enable sas-viya-all-services to run on system reboot, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-enable.yml
 ```
-To start the minimally required set of services prior to starting an update, execute:
+To start the minimally required set of services prior to updating your software, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-start-update.yml
 ```
