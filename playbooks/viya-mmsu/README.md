@@ -55,7 +55,10 @@ To enable sas-viya-all-services to run on system reboot, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-enable.yml
 ```
-
+To start the minimally required set of services prior to starting a Hotfix update, execute:
+```
+ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-start-update.yml
+```
 ## Notes about the viya-services-start-restore.yml Playbook
 The `viya-services-start-restore.yml` playbook is used to simplify some of the operations
 required by the Restore process
