@@ -14,7 +14,7 @@
   gather_facts: false
   any_errors_fatal: true
   vars_files:
-    - viya-services-vars.yml
+    - ../viya-mmsu/viya-services-vars.yml
   tasks:
     - name: Check the accessibility of the hosts
       ping:
