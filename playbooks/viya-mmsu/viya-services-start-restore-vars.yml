@@ -29,7 +29,7 @@ restore_minimal_services:
 
 # The following services are in the set of minimal services that need to be started,
 # but they are not included in the restore_minimal_services list because they are
-# started as a prerequisite set of services imported from _services-start-prereq.yml.
+# started as a prerequisite set of services imported from playbooks/common/_services-start-prereq.yml.
 # - sas-viya-cachelocator-default
 # - sas-viya-cacheserver-default
 # - sas-viya-cascontroller-default
