@@ -27,14 +27,51 @@
           file: viya-services-start-restore-vars.yml
         delegate_to: localhost
 
+      - name: "Check if  {{ SAS_CONFIG_ROOT }}/consul.conf exists"
+        stat:
+            path: "{{ SAS_CONFIG_ROOT }}/consul.conf"
+        become: yes
+        delegate_to: "{{ groups['consul'] | first }}"
+        register: consul_conf_file
+
+      - block:
+          - name: "Check if deployment is multi-tenancy enabled"
+            shell: |
+                source {{ SAS_CONFIG_ROOT }}/consul.conf
+                {{ SASHOME }}/bin/sas-bootstrap-config \
+                --token-file {{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/tokens/consul/{{ INSTANCE_ID }}/client.token \
+                kv read config/application/sas.multi.tenancy.enabled
+            environment: "{{ cli_env }}"
+            become: yes
+            delegate_to: "{{ groups['consul'] | first }}"
+            register: sas_multi_tenancy_key
+
+          - block:
+              - set_fact:
+                    mt_env: "{{ sas_multi_tenancy_key.stdout | bool }}"
+            rescue:
+              - set_fact:
+                    mt_env: false
+        when: consul_conf_file.stat.exists
+
+      - block:
+          - set_fact:
+                mt_env: false
+        when: not consul_conf_file.stat.exists
+
       - name: Minimal Services that must be started for Restore
         debug:
           var: restore_minimal_services
         delegate_to: localhost
 
+      - name: Filter restore_minimal_services based on mt_env
+        set_fact:
+          filtered_restore_minimal_services: "{{ restore_minimal_services | difference(only_start_in_mt_env) if mt_env else restore_minimal_services }}"
+        delegate_to: localhost
+
       - name: Set restore_minimal_services globally
         set_fact:
-          global_restore_minimal_services: "{{ restore_minimal_services }}"
+          global_restore_minimal_services: "{{ filtered_restore_minimal_services }}"
         delegate_to: localhost
 
   - name: Determine where SAS services reside and start the services
