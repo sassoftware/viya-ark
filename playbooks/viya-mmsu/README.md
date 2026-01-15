@@ -57,7 +57,7 @@ ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-enable.yml
 ```
 To start the minimally required set of services prior to updating your software, execute:
 ```
-ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-start-update.yml
+ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-start-update-only.yml
 ```
 ## Notes about the viya-services-start-restore.yml Playbook
 The `viya-services-start-restore.yml` playbook is used to simplify some of the operations
