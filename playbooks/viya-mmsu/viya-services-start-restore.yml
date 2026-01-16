@@ -12,7 +12,7 @@
     tags:
       - always
 
-  - import_playbook: ../common/_services-start-prereq.yml
+  - import_playbook: ./utils/services-start-prereq.yml
     vars:
       startmt: false
     tags:
