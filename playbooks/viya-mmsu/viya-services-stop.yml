@@ -4,7 +4,7 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2022, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -33,7 +33,7 @@
 
   tasks:
     - name: Check any SAS process running
-      script: viya-svs.sh checkps 1
+      script: ./utils/viya-svs.sh checkps 1
       register: psflag
       check_mode: no
       changed_when: false
@@ -54,16 +54,16 @@
     - block:
 
       - name: Stop SAS multi-tenant services
-        script: viya-svs.sh stopmt
+        script: ./utils/viya-svs.sh stopmt
 
       - name: Stop SAS microservices
-        script: viya-svs.sh stopms
+        script: ./utils/viya-svs.sh stopms
 
       any_errors_fatal: true
       when: psflag.stdout != "" and not ansible_check_mode and enable_svs_alternative|bool != true
 
     - name: Stop SAS all services using alternative script
-      script: viya-svs-alternative.sh 1 stop
+      script: ./utils/viya-svs-alternative.sh 1 stop
       when: psflag.stdout != "" and not ansible_check_mode and enable_svs_alternative|bool == true
 
 - hosts: httpproxy
@@ -73,7 +73,7 @@
   any_errors_fatal: true
   tasks:
     - name: Stop SAS HTTP proxy service
-      script: viya-svs.sh stop sas-viya-httpproxy-default
+      script: ./utils/viya-svs.sh stop sas-viya-httpproxy-default
       when: psflag.stdout != ""
 
 - hosts: sas_casserver_primary
@@ -83,7 +83,7 @@
   any_errors_fatal: true
   tasks:
     - name: Stop SAS CAS server
-      script: viya-svs.sh stopcas
+      script: ./utils/viya-svs.sh stopcas
       when: psflag.stdout != ""
 
 - hosts: CoreServices
@@ -95,7 +95,7 @@
     - viya-services-vars.yml
   tasks:
     - name: Stop cachelocator/cacheserver
-      script: viya-svs.sh stop sas-viya-cachelocator-default sas-viya-cacheserver-default
+      script: ./utils/viya-svs.sh stop sas-viya-cachelocator-default sas-viya-cacheserver-default
       when: enable_svs_alternative|bool == true
 
 - hosts: rabbitmq
@@ -106,7 +106,7 @@
   tasks:
     - name: Stop SAS Message Broker RabbitMQ
       any_errors_fatal: true
-      script: viya-svs.sh stop sas-viya-rabbitmq-server-default
+      script: ./utils/viya-svs.sh stop sas-viya-rabbitmq-server-default
       when: psflag.stdout != ""
 
 - hosts: sas_all
@@ -119,7 +119,7 @@
   tasks:
     - block:
       - name: Stop SAS Infrastructure Data Server pgpool
-        include_tasks: viya-db.yml
+        include_tasks: ./utils/viya-db.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: "stopdb"
@@ -128,7 +128,7 @@
         when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined
 
       - name: Stop SAS Infrastructure Data Server node
-        include_tasks: viya-db.yml
+        include_tasks: ./utils/viya-db.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: "stopdb"
@@ -137,7 +137,7 @@
         when: INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] is defined
 
       - name: Stop SAS Infrastructure Data Server Consul Template pgpool
-        include_tasks: viya-dbct.yml
+        include_tasks: ./utils/viya-dbct.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: stopdbct
@@ -145,7 +145,7 @@
         when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
 
       - name: Stop SAS Infrastructure Data Server Consul Template node
-        include_tasks: viya-dbct.yml
+        include_tasks: ./utils/viya-dbct.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: stopdbct
@@ -153,7 +153,7 @@
         when: INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] is defined
 
       - name: Stop SAS Infrastructure Data Server pgpool
-        include_tasks: viya-db.yml
+        include_tasks: ./utils/viya-db.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: "stopdb"
@@ -162,7 +162,7 @@
         when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined
 
       - name: Stop SAS Infrastructure Data Server node
-        include_tasks: viya-db.yml
+        include_tasks: ./utils/viya-db.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: "stopdb"
@@ -171,7 +171,7 @@
         when: INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'] is defined
 
       - name: Stop SAS Infrastructure Data Server Consul Template pgpool
-        include_tasks: viya-dbct.yml
+        include_tasks: ./utils/viya-dbct.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: stopdbct
@@ -179,7 +179,7 @@
         when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
 
       - name: Stop SAS Infrastructure Data Server Consul Template node
-        include_tasks: viya-dbct.yml
+        include_tasks: ./utils/viya-dbct.yml
         vars:
           dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['SERVICE_NAME']|default([])}}"
           dbaction: stopdbct
@@ -198,7 +198,7 @@
   tasks:
     - name: Stop SAS Configuration consul Agent(s)
       any_errors_fatal: true
-      script: viya-svs.sh stop sas-viya-consul-default {{consul_retry_count}}
+      script: ./utils/viya-svs.sh stop sas-viya-consul-default {{consul_retry_count}}
       when: psflag.stdout != ""
 
 - hosts: consul
@@ -211,12 +211,12 @@
   tasks:
     - name: Stop SAS Secret Manager - vault
       any_errors_fatal: true
-      script: viya-svs.sh stop sas-viya-vault-default
+      script: ./utils/viya-svs.sh stop sas-viya-vault-default
       when: psflag.stdout != ""
 
     - name: Stop SAS Configuration consul Server(s)
       any_errors_fatal: true
-      script: viya-svs.sh stop sas-viya-consul-default {{consul_retry_count}}
+      script: ./utils/viya-svs.sh stop sas-viya-consul-default {{consul_retry_count}}
       when: psflag.stdout != ""
 
 - hosts: ComputeServer
@@ -227,7 +227,7 @@
   tasks:
 
       - name: Clean up SAS compsrv child processes
-        script: viya-svs.sh cleancomp
+        script: ./utils/viya-svs.sh cleancomp
         when: not ansible_check_mode
 
 - hosts: sas_all
@@ -245,7 +245,7 @@
 
     - block:
       - name: Capture SAS stray processes
-        script: "viya-svs.sh checkps {{stray_process_count}}"
+        script: "./utils/viya-svs.sh checkps {{stray_process_count}}"
         register: stray_processes
         changed_when: false
         check_mode: no
@@ -262,7 +262,7 @@
         when: (stray_processes.stdout != '') and (enable_stray_cleanup|bool != true)
 
       - name: Clean up SAS stray processes if enabled
-        script: viya-svs.sh cleanps "{{stray_processes.stdout_lines}}"
+        script: ./utils/viya-svs.sh cleanps "{{stray_processes.stdout_lines}}"
         when: (enable_stray_cleanup|bool == true) and (stray_processes.stdout != '')
         check_mode: no
         any_errors_fatal: true
@@ -276,4 +276,3 @@
         when: (stray_processes.stdout != '') and (enable_stray_cleanup|bool == true)
 
       when: psflag.stdout != ""
-

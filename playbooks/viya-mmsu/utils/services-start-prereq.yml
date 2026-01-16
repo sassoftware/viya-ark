@@ -1,5 +1,5 @@
 ####################################################################
-#### _services-start-prereq.yml                               ####
+#### services-start-prereq.yml                               ####
 ####################################################################
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
@@ -14,7 +14,7 @@
   gather_facts: false
   any_errors_fatal: true
   vars_files:
-    - viya-services-vars.yml
+    - ../viya-services-vars.yml
   tasks:
     - name: Check the accessibility of the hosts
       ping:
@@ -51,7 +51,7 @@
   gather_facts: false
   any_errors_fatal: true
   vars_files:
-    - ../../../vars.yml
+    - ../../../../vars.yml
   tasks:
     - block:
       - name: Start SAS Infrastructure Data Server Consul Template pgpool
@@ -156,7 +156,7 @@
   gather_facts: false
   any_errors_fatal: true
   vars_files:
-    - viya-services-vars.yml
+    - ../viya-services-vars.yml
   tasks:
     - name: Start cachelocator/cacheserver
       script: viya-svs.sh start sas-viya-cachelocator-default sas-viya-cacheserver-default

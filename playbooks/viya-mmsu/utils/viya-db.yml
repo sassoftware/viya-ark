@@ -4,11 +4,10 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
 - name: "{{dbaction|replace('db','')|capitalize()}} SAS Infrastructure Data Server {{dbtype}} - {{dbname}}"
-  script: "viya-svs.sh {{dbaction}} {{dbname}} {{dbnum}} {{dbtype}}"
+  script: "./viya-svs.sh {{dbaction}} {{dbname}} {{dbnum}} {{dbtype}}"
   when: not ansible_check_mode
-

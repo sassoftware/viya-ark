@@ -4,7 +4,7 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ---
@@ -21,7 +21,7 @@
     - viya-services-vars.yml
   tasks:
     - name: Capture all SAS services status from Consul
-      script: viya-svs.sh svastatus
+      script: ./utils/viya-svs.sh svastatus
       changed_when: false
       register: svas_status
 
@@ -47,7 +47,7 @@
     - block:
 
       - name: Capture SAS Viya URLs from the Apache HTTP Proxy
-        script: viya-svs.sh geturls {{url_link}}
+        script: ./utils/viya-svs.sh geturls {{url_link}}
         check_mode: no
         changed_when: false
         register: url_list
