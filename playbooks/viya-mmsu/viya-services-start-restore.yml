@@ -74,31 +74,6 @@
           global_restore_minimal_services: "{{ filtered_restore_minimal_services }}"
         delegate_to: localhost
 
-      - name: Debug mt_env value
-        debug:
-          msg: "mt_env is set to: {{ mt_env }}"
-        delegate_to: localhost
-
-      - name: Debug restore_minimal_services
-        debug:
-          msg: "restore_minimal_services: {{ restore_minimal_services }}"
-        delegate_to: localhost
-
-      - name: Debug only_start_in_mt_env
-        debug:
-          msg: "only_start_in_mt_env: {{ only_start_in_mt_env }}"
-        delegate_to: localhost
-
-      - name: Debug filtered_restore_minimal_services
-        debug:
-          msg: "filtered_restore_minimal_services: {{ filtered_restore_minimal_services }}"
-        delegate_to: localhost
-
-      - name: Debug global_restore_minimal_services
-        debug:
-          msg: "global_restore_minimal_services: {{ global_restore_minimal_services }}"
-        delegate_to: localhost
-
   - name: Determine where SAS services reside and start the services
     hosts: sas_all
     become: yes
@@ -122,17 +97,9 @@
             loop: "{{ ansible_facts.services | dict2items }}"
             when: item.value.name is defined and item.value.name.startswith('sas-viya-')
 
-          - name: Debug filtered_sas_services
-            debug:
-              msg: "filtered_sas_services on {{ inventory_hostname }}: {{ filtered_sas_services }}"
-
           - name: Create Curated List of the Services to Start
             set_fact:
               intersected_services: "{{ filtered_sas_services | intersect(global_restore_minimal_services) }}"
-
-          - name: Debug intersected_services
-            debug:
-              msg: "intersected_services on {{ inventory_hostname }}: {{ intersected_services }}"
 
           - name: Display Curated List of Services to Start
             debug:
