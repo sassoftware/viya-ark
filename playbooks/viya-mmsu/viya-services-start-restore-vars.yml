@@ -46,9 +46,9 @@ restore_minimal_services:
 
 # Environment variables for CLI commands
 cli_env:
-  SSL_CERT_FILE: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
-  CONSUL_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
-  VAULT_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+  SSL_CERT_FILE: &cert_path "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+  CONSUL_CACERT: *cert_path
+  VAULT_CACERT: *cert_path
 
 # Services to exclude from starting when mt_env is true (multi-tenant environment)
 only_start_in_mt_env:
