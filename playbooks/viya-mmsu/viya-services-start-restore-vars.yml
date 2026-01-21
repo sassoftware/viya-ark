@@ -43,3 +43,13 @@ restore_minimal_services:
 # - sas-viya-sasdatasvrc-postgres-pgpool0-consul-template-operation_node
 # - sas-viya-sasdatasvrc-postgres-pgpool0-consul-template-pool_hba
 # - sas-viya-vault-default
+
+# Environment variables for CLI commands
+cli_env:
+  SSL_CERT_FILE: &cert_path "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+  CONSUL_CACERT: *cert_path
+  VAULT_CACERT: *cert_path
+
+# Services to exclude from starting when mt_env is true (multi-tenant environment)
+only_start_in_mt_env:
+  - sas-viya-tenant-default
