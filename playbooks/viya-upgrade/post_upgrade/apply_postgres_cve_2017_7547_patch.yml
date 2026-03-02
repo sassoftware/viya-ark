@@ -4,7 +4,7 @@
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2023, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 ####################################################################
@@ -179,7 +179,7 @@
 
         # Start sasdatasvrc
         - name: Start SAS Infrastructure Data Server service which might take a while
-          script: ../../viya-mmsu/viya-svs.sh start sas-viya-sasdatasvrc-postgres
+          script: ../../viya-mmsu/utils/viya-svs.sh start sas-viya-sasdatasvrc-postgres
           any_errors_fatal: true
 
 
@@ -278,7 +278,7 @@
 
         # Stop sasdatasvrc
         - name: Stop SAS Infrastructure Data Server service which might take a while
-          script: ../../viya-mmsu/viya-svs.sh stop sas-viya-sasdatasvrc-postgres
+          script: ../../viya-mmsu/utils/viya-svs.sh stop sas-viya-sasdatasvrc-postgres
           any_errors_fatal: true
 
 
