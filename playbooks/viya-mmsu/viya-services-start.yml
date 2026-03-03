@@ -27,7 +27,7 @@
     - viya-services-vars.yml
   tasks:
     - name: Start SAS all services using alternative script which might take a while
-      script: viya-svs-alternative.sh 1 start
+      script: ./utils/viya-svs-alternative.sh 1 start
       when: enable_svs_alternative|bool == true
 
 - hosts: consul,rabbitmq,httpproxy,pgpoolc,sasdatasvrc,sas_casserver_primary
