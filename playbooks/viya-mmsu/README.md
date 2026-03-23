@@ -55,7 +55,10 @@ To enable sas-viya-all-services to run on system reboot, execute:
 ```
 ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-enable.yml
 ```
-
+To start the minimally required set of services prior to updating your software, execute:
+```
+ansible-playbook viya-ark/playbooks/viya-mmsu/viya-services-start-update-only.yml
+```
 ## Notes about the viya-services-start-restore.yml Playbook
 The `viya-services-start-restore.yml` playbook is used to simplify some of the operations
 required by the Restore process
@@ -126,5 +129,5 @@ IMPORTANT The systemctl command does not provide a status of a service that it d
 ```
   Note: if an order contains Common Planning Service (CPS), you will not be able to use the alternative method.
 
-Copyright (c) 2019-2022, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+Copyright (c) 2019-2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0

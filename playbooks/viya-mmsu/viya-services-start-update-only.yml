@@ -1,0 +1,78 @@
+####################################################################
+#### viya-services-start-update-only.yml                        ####
+####################################################################
+#### Author: SAS Institute Inc.                                 ####
+####################################################################
+#
+# Copyright (c) 2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# SPDX-License-Identifier: Apache-2.0
+#
+# This playbook starts the essential services required before a Viya upgrade:
+# - Consul (sas-viya-consul-default)
+# - Vault (sas-viya-vault-default)
+# - Local Consul
+# - HA Postgres Consul Template
+---
+- hosts: consul
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Start SAS Primary Consul Server
+      script: ./utils/viya-svs.sh start sas-viya-consul-default
+
+    - name: Start SAS Secret Manager (Vault)
+      script: ./utils/viya-svs.sh start sas-viya-vault-default
+
+- hosts: sas_all:!consul
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  tasks:
+    - name: Start SAS Local Consul Servers
+      script: ./utils/viya-svs.sh start sas-viya-consul-default
+
+- hosts: sas_all
+  become: yes
+  become_user: root
+  gather_facts: false
+  any_errors_fatal: true
+  vars_files:
+    - ../../../vars.yml
+  tasks:
+    - block:
+        - name: Start SAS Infrastructure Data Server Consul Template pgpool
+          include_tasks: ./utils/viya-dbct.yml
+          vars:
+            dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['SERVICE_NAME']|default([])}}"
+            dbaction: startdbct
+            dbtype: pgpool
+          when: INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['pgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
+
+        - name: Start SAS Infrastructure Data Server Consul Template node
+          include_tasks: ./utils/viya-dbct.yml
+          vars:
+            dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+            dbaction: startdbct
+            dbtype: node
+          when: INVOCATION_VARIABLES[inventory_hostname]['sasdatasvrc'] is defined
+
+        - name: Start SAS Infrastructure Data Server Consul Template pgpool
+          include_tasks: ./utils/viya-dbct.yml
+          vars:
+            dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['SERVICE_NAME']|default([])}}"
+            dbaction: startdbct
+            dbtype: pgpool
+          when: INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'] is defined and INVOCATION_VARIABLES[inventory_hostname]['cpspgpoolc'][0]['HA_PGPOOL_VIRTUAL_IP'] is defined
+
+        - name: Start SAS Infrastructure Data Server Consul Template node
+          include_tasks: ./utils/viya-dbct.yml
+          vars:
+            dbname: "{{INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'][0]['SERVICE_NAME']|default([])}}"
+            dbaction: startdbct
+            dbtype: node
+          when: INVOCATION_VARIABLES[inventory_hostname]['cpsdatasvrc'] is defined
+
+      when: INVOCATION_VARIABLES[inventory_hostname] is defined

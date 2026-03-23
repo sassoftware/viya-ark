@@ -1,15 +1,15 @@
 ####################################################################
-#### viya-db.yml                                                ####
+#### viya-dbcheck.yml                                           ####
 ####################################################################
 #### Author: SAS Institute Inc.                                 ####
 ####################################################################
 #
-# Copyright (c) 2019-2021, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
+# Copyright (c) 2019-2026, SAS Institute Inc., Cary, NC, USA.  All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
 #
 
 - name: Check SAS Infrastructure Data Server status - {{dbname}}
-  script: "viya-svs.sh checkdb {{dbname}} {{dbnum}}"
+  script: "./viya-svs.sh checkdb {{dbname}} {{dbnum}}"
   changed_when: false
   register: dbrc
   check_mode: no

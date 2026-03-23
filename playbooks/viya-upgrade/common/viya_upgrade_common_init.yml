@@ -29,10 +29,9 @@
 
   vars:
       - cli_env:
-            SSL_CERT_FILE: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
-            CONSUL_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
-            VAULT_CACERT: "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
-
+            SSL_CERT_FILE: &cert_path "{{ SAS_CONFIG_ROOT }}/etc/SASSecurityCertificateFramework/cacerts/trustedcerts.pem"
+            CONSUL_CACERT: *cert_path
+            VAULT_CACERT: *cert_path
       - no_tenants_defined_fail_msg: >
             Multi-tenancy was detected as enabled for this environment but no tenant details were provided. To provide
             tenant details, uncomment and add entries in the SAS_TENANT_DETAILS list (in playbooks/viya-upgrade/vars.yml)
