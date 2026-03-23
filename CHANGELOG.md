@@ -1,5 +1,13 @@
 # Changelog for SAS Viya ARK
 
+## Viya35-ark-1.23 - March 23, 2026
+- **Summary**
+  Enhancements and fixes to the SAS Multi-Machine Services Utilities.
+- Issues Addressed:
+  - Enhancement issue (#143): playbook for minimum services needed for updates. (#146)
+  - Minimize visibility of playbooks not expected to be run directly. (#147)
+  - Tentant microservice starting in non-multi-tenant deployment. (#148)
+
 ## Viya35-ark-1.22 - June 18, 2025
 - **Summary**
   * Added support for starting select services in a backup/restore scenario. (#128)
