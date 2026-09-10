@@ -273,7 +273,10 @@ div.no-software-installed {
 
 {% if not hostvars['localhost']['sas_deployment_details']['contact_hotfix_website'] %}
         <h2> Unable to access Hot Fix Web site: <br><font color="red"><b>{{ hostvars['localhost']['sas_deployment_details']['master_website'] }}</b></font><br> Hot Fix report skipped.</h2>
-{% else %}
+{% endif %}
+{% if hostvars['localhost']['sas_deployment_details']['key_rpms_missing'] | default(false) %}
+        <h2><font color="red"><b>Hot Fix report unavailable:</b></font><br>{{ hostvars['localhost']['sas_deployment_details']['key_rpms_missing_message'] }}</h2>
+{% elif hostvars['localhost']['sas_deployment_details']['contact_hotfix_website'] %}
         <!-- available hot fix accordion -->
         <div class="accordion hotfix-accordian available-hotfix-accordion">
         <h2 id="available-hotfix-accordion-header">Available Hot Fixes  (<b>total</b>: {{  hostvars['localhost']['sas_deployment_details']['available_hotfixes'] | length }}) <span class="ui-icon ui-icon-circle-arrow-n inline-icon"></span></h2>
