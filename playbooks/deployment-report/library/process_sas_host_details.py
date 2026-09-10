@@ -337,15 +337,6 @@ def main():
     results["hotfix_legacy_products"] = "There is no hotfix data available for the following products due to their age:\n"
     results["no_hotfixes_available"] = False
     results["no_hotfix_products"] = "The following products are installed, but there are no associated hotfixes for them:\n"
-    # Flags whether none of the key product RPMs (required to determine which hotfix file(s) to
-    # scan) were found on any host in the deployment.
-    results["key_rpms_missing"] = False
-    results["key_rpms_missing_message"] = ""
-    # Always initialize these keys so downstream Jinja templating never fails when hotfix content
-    # is unavailable (e.g. report disabled, no key RPMs found, all products legacy, or all hotfix
-    # files fail to download).
-    results["available_hotfixes"] = {}
-    results["installed_hotfixes"] = {}
 
     results["include_hotfix_report"] = include_hotfix_report
     files_to_scan = []
@@ -536,20 +527,6 @@ def main():
                         results["hotfix_legacy_products"] = results["hotfix_legacy_products"] + "  " + current_rpm + \
                                                             " is at version " + str(rpm_version) + \
                                                             ", but the minimum reported version is 6.3.2.\n"
-
-        # None of the key product RPMs used to determine which hotfix file(s) to scan were found
-        # on any reachable host in the deployment (and it isn't simply because every found product
-        # was too old/legacy, which is reported separately above).  Surface this clearly instead of
-        # silently reporting "no applicable hotfix files to report on", so it is clear that the Hot
-        # Fix report requires one of these products to be installed.
-        if not any(current_rpm in all_installed_rpms for current_rpm in key_rpms) and not results["legacy_products_found"]:
-            results["key_rpms_missing"] = True
-            results["key_rpms_missing_message"] = (
-                "The Hot Fix report could not determine which hotfix file(s) to scan because none of the "
-                "following required product RPMs were found installed on any reachable host in this "
-                "deployment: " + ", ".join(key_rpms) + ". Install one of these products, or set "
-                "\"include_hotfix_report=False\" to suppress this section of the report."
-            )
 
         # This is the URL base from which to pull the hotfix files.
         # Because the user can specify hotfix_url, we need to check to see if the trailing slash is there.  If not,
@@ -833,10 +810,7 @@ def main():
                         results[hotfix_dict_to_use][currentHotfix]["sas_notes"][current_number] = {"sas_note_link":sas_note_html_link, "description":temp_sasnote_description}
 
     if len(files_to_scan) == 0:
-        if results["key_rpms_missing"]:
-            formatted_file_output = results["key_rpms_missing_message"] + "\n"
-        else:
-            formatted_file_output = "Installed products analyzed; no applicable hotfix files to report on.\n"
+        formatted_file_output = "Installed products analyzed; no applicable hotfix files to report on.\n"
     else:
         formatted_file_output = "Installed Products analyzed; hotfix files used in report:\n"
         current_file_number = 1
