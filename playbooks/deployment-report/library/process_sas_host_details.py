@@ -545,10 +545,8 @@ def main():
         if not any(current_rpm in all_installed_rpms for current_rpm in key_rpms) and not results["legacy_products_found"]:
             results["key_rpms_missing"] = True
             results["key_rpms_missing_message"] = (
-                "The Hot Fix report could not determine which hotfix file(s) to scan because none of the "
-                "following required product RPMs were found installed on any reachable host in this "
-                "deployment: " + ", ".join(key_rpms) + ". Install one of these products, or set "
-                "\"include_hotfix_report=False\" to suppress this section of the report."
+                "The Hot Fix report could not determine which hotfix file(s) to scan. "
+                "Set \"include_hotfix_report=False\" to suppress this section of the report."
             )
 
         # This is the URL base from which to pull the hotfix files.
